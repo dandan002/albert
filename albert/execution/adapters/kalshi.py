@@ -76,4 +76,4 @@ class KalshiAdapter(ExchangeAdapter):
                 logger.warning("kalshi POST %s attempt %d failed: %s", path, attempt + 1, e)
                 if attempt < _MAX_RETRIES - 1:
                     await asyncio.sleep(2 ** attempt)
-        raise last_exc
+        raise last_exc  # type: ignore[misc]  # guaranteed non-None after _MAX_RETRIES > 0
