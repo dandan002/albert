@@ -72,3 +72,45 @@ async def test_kalshi_ingestor_ignores_non_orderbook_messages():
             task.cancel()
 
     assert queue.empty()
+
+
+from albert.ingestor.polymarket import PolymarketIngestor
+
+
+async def test_polymarket_ingestor_publishes_market_data_event():
+    bus = EventBus()
+    queue = bus.subscribe("market_data")
+
+    ws_message = json.dumps([{
+        "asset_id": "token456",
+        "bid_price": "0.44",
+        "ask_price": "0.46",
+        "price": "0.45",
+        "size": "200",
+    }])
+
+    mock_ws = AsyncMock()
+    mock_ws.__aenter__ = AsyncMock(return_value=mock_ws)
+    mock_ws.__aexit__ = AsyncMock(return_value=False)
+    mock_ws.send = AsyncMock()
+
+    async def fake_aiter(self):
+        yield ws_message
+        await asyncio.sleep(999)
+
+    mock_ws.__aiter__ = fake_aiter
+
+    with patch("albert.ingestor.polymarket.websockets.connect", return_value=mock_ws):
+        ingestor = PolymarketIngestor(
+            bus=bus,
+            market_ids=["polymarket:cond123:token456"],
+        )
+        task = asyncio.create_task(ingestor.run())
+        await asyncio.sleep(0.05)
+        task.cancel()
+
+    assert not queue.empty()
+    event: MarketDataEvent = queue.get_nowait()
+    assert event.market_id == "polymarket:cond123:token456"
+    assert event.yes_ask == pytest.approx(0.46)
+    assert event.no_bid == pytest.approx(0.54)
