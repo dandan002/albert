@@ -271,3 +271,58 @@ Traceback (most recent call last):
   File "/Users/dandan/anaconda3/lib/python3.12/site-packages/websockets/client.py", line 151, in process_response
     raise InvalidStatus(response)
 websockets.exceptions.InvalidStatus: server rejected WebSocket connection: HTTP 404
+{"time": "2026-03-30 16:38:45,732", "level": "INFO", "logger": "albert.strategies.engine", "msg": "loaded strategy momentum_v1"}
+{"time": "2026-03-30 16:38:45,968", "level": "ERROR", "logger": "albert.ingestor.base", "msg": "KalshiIngestor disconnected, reconnecting in 5.0s"}
+Traceback (most recent call last):
+  File "/Users/dandan/Desktop/Projects/albert/albert/ingestor/base.py", line 19, in run
+    await self._connect_and_stream()
+  File "/Users/dandan/Desktop/Projects/albert/albert/ingestor/kalshi.py", line 43, in _connect_and_stream
+    async with websockets.connect(
+  File "/Users/dandan/anaconda3/lib/python3.12/site-packages/websockets/asyncio/client.py", line 487, in __aenter__
+    return await self
+           ^^^^^^^^^^
+  File "/Users/dandan/anaconda3/lib/python3.12/site-packages/websockets/asyncio/client.py", line 446, in __await_impl__
+    await self.connection.handshake(*self.handshake_args)
+  File "/Users/dandan/anaconda3/lib/python3.12/site-packages/websockets/asyncio/client.py", line 104, in handshake
+    raise self.protocol.handshake_exc
+  File "/Users/dandan/anaconda3/lib/python3.12/site-packages/websockets/client.py", line 340, in parse
+    self.process_response(response)
+  File "/Users/dandan/anaconda3/lib/python3.12/site-packages/websockets/client.py", line 151, in process_response
+    raise InvalidStatus(response)
+websockets.exceptions.InvalidStatus: server rejected WebSocket connection: HTTP 401
+{"time": "2026-03-30 16:38:51,068", "level": "ERROR", "logger": "albert.ingestor.base", "msg": "KalshiIngestor disconnected, reconnecting in 5.0s"}
+Traceback (most recent call last):
+  File "/Users/dandan/Desktop/Projects/albert/albert/ingestor/base.py", line 19, in run
+    await self._connect_and_stream()
+  File "/Users/dandan/Desktop/Projects/albert/albert/ingestor/kalshi.py", line 43, in _connect_and_stream
+    async with websockets.connect(
+  File "/Users/dandan/anaconda3/lib/python3.12/site-packages/websockets/asyncio/client.py", line 487, in __aenter__
+    return await self
+           ^^^^^^^^^^
+  File "/Users/dandan/anaconda3/lib/python3.12/site-packages/websockets/asyncio/client.py", line 446, in __await_impl__
+    await self.connection.handshake(*self.handshake_args)
+  File "/Users/dandan/anaconda3/lib/python3.12/site-packages/websockets/asyncio/client.py", line 104, in handshake
+    raise self.protocol.handshake_exc
+  File "/Users/dandan/anaconda3/lib/python3.12/site-packages/websockets/client.py", line 340, in parse
+    self.process_response(response)
+  File "/Users/dandan/anaconda3/lib/python3.12/site-packages/websockets/client.py", line 151, in process_response
+    raise InvalidStatus(response)
+websockets.exceptions.InvalidStatus: server rejected WebSocket connection: HTTP 401
+{"time": "2026-03-30 16:38:56,176", "level": "ERROR", "logger": "albert.ingestor.base", "msg": "KalshiIngestor disconnected, reconnecting in 5.0s"}
+Traceback (most recent call last):
+  File "/Users/dandan/Desktop/Projects/albert/albert/ingestor/base.py", line 19, in run
+    await self._connect_and_stream()
+  File "/Users/dandan/Desktop/Projects/albert/albert/ingestor/kalshi.py", line 43, in _connect_and_stream
+    async with websockets.connect(
+  File "/Users/dandan/anaconda3/lib/python3.12/site-packages/websockets/asyncio/client.py", line 487, in __aenter__
+    return await self
+           ^^^^^^^^^^
+  File "/Users/dandan/anaconda3/lib/python3.12/site-packages/websockets/asyncio/client.py", line 446, in __await_impl__
+    await self.connection.handshake(*self.handshake_args)
+  File "/Users/dandan/anaconda3/lib/python3.12/site-packages/websockets/asyncio/client.py", line 104, in handshake
+    raise self.protocol.handshake_exc
+  File "/Users/dandan/anaconda3/lib/python3.12/site-packages/websockets/client.py", line 340, in parse
+    self.process_response(response)
+  File "/Users/dandan/anaconda3/lib/python3.12/site-packages/websockets/client.py", line 151, in process_response
+    raise InvalidStatus(response)
+websockets.exceptions.InvalidStatus: server rejected WebSocket connection: HTTP 401

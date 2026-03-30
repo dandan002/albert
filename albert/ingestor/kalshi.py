@@ -14,7 +14,7 @@ from .base import BaseIngestor
 
 logger = logging.getLogger(__name__)
 
-_WS_URL = "wss://trading-api.kalshi.com/trade-api/ws/v2"
+_WS_URL = "wss://api.elections.kalshi.com/trade-api/ws/v2"
 _WS_PATH = "/trade-api/ws/v2"
 
 

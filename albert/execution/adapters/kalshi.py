@@ -14,7 +14,7 @@ from .base import ExchangeAdapter
 
 logger = logging.getLogger(__name__)
 
-_BASE_URL = "https://trading-api.kalshi.com/trade-api/v2"
+_BASE_URL = "https://api.elections.kalshi.com/trade-api/v2"
 _MAX_RETRIES = 3
 
 

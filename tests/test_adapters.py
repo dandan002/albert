@@ -60,6 +60,18 @@ async def test_kalshi_get_bankroll_returns_float():
     assert bankroll == pytest.approx(500.0)
 
 
+def test_kalshi_adapter_uses_current_production_rest_base_url():
+    env = {
+        "KALSHI_API_KEY_ID": "test_key_id",
+        "KALSHI_PRIVATE_KEY": "test_private_key",
+    }
+    with patch.dict("os.environ", env):
+        with patch("albert.execution.adapters.kalshi._load_private_key", return_value=MagicMock()):
+            adapter = KalshiAdapter()
+
+    assert str(adapter._client.base_url) == "https://api.elections.kalshi.com/trade-api/v2/"
+
+
 from albert.execution.adapters.polymarket import PolymarketAdapter
 
 

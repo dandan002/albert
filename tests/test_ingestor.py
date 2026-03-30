@@ -89,6 +89,33 @@ async def test_kalshi_ingestor_ignores_non_orderbook_messages():
     assert queue.empty()
 
 
+async def test_kalshi_ingestor_uses_current_production_websocket_url():
+    bus = EventBus()
+
+    mock_ws = AsyncMock()
+    mock_ws.__aenter__ = AsyncMock(return_value=mock_ws)
+    mock_ws.__aexit__ = AsyncMock(return_value=False)
+    mock_ws.send = AsyncMock()
+
+    async def fake_aiter(self):
+        if False:
+            yield None
+
+    mock_ws.__aiter__ = fake_aiter
+
+    env = {
+        "KALSHI_API_KEY_ID": "test_key_id",
+        "KALSHI_PRIVATE_KEY": "test_private_key",
+    }
+    with patch.dict("os.environ", env):
+        with patch("albert.ingestor.kalshi._load_private_key", return_value=make_private_key()):
+            with patch("albert.ingestor.kalshi.websockets.connect", return_value=mock_ws) as connect:
+                ingestor = KalshiIngestor(bus=bus, market_ids=["kalshi:BTC-24"])
+                await ingestor._connect_and_stream()
+
+    assert connect.call_args.args[0] == "wss://api.elections.kalshi.com/trade-api/ws/v2"
+
+
 from albert.ingestor.polymarket import PolymarketIngestor
 
 
