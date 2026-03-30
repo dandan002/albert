@@ -49,7 +49,8 @@ class ExecutionEngine:
             return
 
         ask_price = row["yes_ask"] if intent.side == "yes" else row["no_ask"]
-        if not ask_price:
+        if ask_price is None or ask_price <= 0:
+            logger.warning("execution:no_ask market=%s side=%s", intent.market_id, intent.side)
             return
 
         strategy_row = self._conn.execute(
