@@ -2,9 +2,14 @@ import asyncio
 import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime
 from albert.events import EventBus, MarketDataEvent
 from albert.ingestor.kalshi import KalshiIngestor
+
+
+def make_private_key():
+    key = MagicMock()
+    key.sign.return_value = b"sig"
+    return key
 
 
 async def test_kalshi_ingestor_publishes_market_data_event():
@@ -33,12 +38,17 @@ async def test_kalshi_ingestor_publishes_market_data_event():
 
     mock_ws.__aiter__ = fake_aiter
 
-    with patch.dict("os.environ", {"KALSHI_API_TOKEN": "test"}):
-        with patch("albert.ingestor.kalshi.websockets.connect", return_value=mock_ws):
-            ingestor = KalshiIngestor(bus=bus, market_ids=["kalshi:BTC-24"])
-            task = asyncio.create_task(ingestor.run())
-            await asyncio.sleep(0.05)
-            task.cancel()
+    env = {
+        "KALSHI_API_KEY_ID": "test_key_id",
+        "KALSHI_PRIVATE_KEY": "test_private_key",
+    }
+    with patch.dict("os.environ", env):
+        with patch("albert.ingestor.kalshi._load_private_key", return_value=make_private_key()):
+            with patch("albert.ingestor.kalshi.websockets.connect", return_value=mock_ws):
+                ingestor = KalshiIngestor(bus=bus, market_ids=["kalshi:BTC-24"])
+                task = asyncio.create_task(ingestor.run())
+                await asyncio.sleep(0.05)
+                task.cancel()
 
     assert not queue.empty()
     event: MarketDataEvent = queue.get_nowait()
@@ -64,12 +74,17 @@ async def test_kalshi_ingestor_ignores_non_orderbook_messages():
 
     mock_ws.__aiter__ = fake_aiter
 
-    with patch.dict("os.environ", {"KALSHI_API_TOKEN": "test"}):
-        with patch("albert.ingestor.kalshi.websockets.connect", return_value=mock_ws):
-            ingestor = KalshiIngestor(bus=bus, market_ids=["kalshi:BTC-24"])
-            task = asyncio.create_task(ingestor.run())
-            await asyncio.sleep(0.05)
-            task.cancel()
+    env = {
+        "KALSHI_API_KEY_ID": "test_key_id",
+        "KALSHI_PRIVATE_KEY": "test_private_key",
+    }
+    with patch.dict("os.environ", env):
+        with patch("albert.ingestor.kalshi._load_private_key", return_value=make_private_key()):
+            with patch("albert.ingestor.kalshi.websockets.connect", return_value=mock_ws):
+                ingestor = KalshiIngestor(bus=bus, market_ids=["kalshi:BTC-24"])
+                task = asyncio.create_task(ingestor.run())
+                await asyncio.sleep(0.05)
+                task.cancel()
 
     assert queue.empty()
 

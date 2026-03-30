@@ -1,6 +1,5 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from datetime import datetime
 from albert.events import OrderIntent, FillEvent
 from albert.execution.adapters.kalshi import KalshiAdapter
 
@@ -27,10 +26,15 @@ async def test_kalshi_place_order_returns_fill():
         }
     }
 
-    with patch.dict("os.environ", {"KALSHI_API_TOKEN": "test_token"}):
-        adapter = KalshiAdapter()
-        with patch.object(adapter._client, "post", new=AsyncMock(return_value=mock_response)):
-            fill = await adapter.place_order(make_intent(), contracts=5, price=0.47)
+    env = {
+        "KALSHI_API_KEY_ID": "test_key_id",
+        "KALSHI_PRIVATE_KEY": "test_private_key",
+    }
+    with patch.dict("os.environ", env):
+        with patch("albert.execution.adapters.kalshi._load_private_key", return_value=MagicMock()):
+            adapter = KalshiAdapter()
+            with patch.object(adapter._client, "post", new=AsyncMock(return_value=mock_response)):
+                fill = await adapter.place_order(make_intent(), contracts=5, price=0.47)
 
     assert fill.fill_id == "ord_abc123"
     assert fill.contracts == 5
@@ -43,10 +47,15 @@ async def test_kalshi_get_bankroll_returns_float():
     mock_response.raise_for_status = MagicMock()
     mock_response.json.return_value = {"balance": {"available": 50000}}
 
-    with patch.dict("os.environ", {"KALSHI_API_TOKEN": "test_token"}):
-        adapter = KalshiAdapter()
-        with patch.object(adapter._client, "get", new=AsyncMock(return_value=mock_response)):
-            bankroll = await adapter.get_bankroll()
+    env = {
+        "KALSHI_API_KEY_ID": "test_key_id",
+        "KALSHI_PRIVATE_KEY": "test_private_key",
+    }
+    with patch.dict("os.environ", env):
+        with patch("albert.execution.adapters.kalshi._load_private_key", return_value=MagicMock()):
+            adapter = KalshiAdapter()
+            with patch.object(adapter._client, "get", new=AsyncMock(return_value=mock_response)):
+                bankroll = await adapter.get_bankroll()
 
     assert bankroll == pytest.approx(500.0)
 

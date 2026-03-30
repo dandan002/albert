@@ -1,6 +1,6 @@
 import time
 import pytest
-from datetime import date
+from datetime import date, datetime, timezone
 from albert.db import get_connection, migrate
 from albert.events import OrderIntent
 from albert.execution.risk import RiskChecker
@@ -67,10 +67,9 @@ def test_blocks_when_daily_loss_limit_hit():
 def test_blocks_when_max_notional_exceeded():
     conn = get_connection(":memory:")
     migrate(conn)
-    import datetime
     conn.execute(
         "INSERT INTO positions (market_id, strategy_id, side, contracts, avg_entry_price, current_price, unrealized_pnl, opened_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        ("kalshi:Y", "s1", "yes", 10.0, 0.50, 0.50, 0.0, datetime.datetime.utcnow().isoformat())
+        ("kalshi:Y", "s1", "yes", 10.0, 0.50, 0.50, 0.0, datetime.now(timezone.utc).isoformat())
     )
     conn.commit()
     # current notional = 10 * 0.50 = 5.0 USD

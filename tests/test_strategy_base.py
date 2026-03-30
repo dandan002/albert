@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from albert.strategies.base import BaseStrategy
 from albert.events import MarketDataEvent, OrderIntent
 
@@ -25,7 +25,7 @@ def make_event(yes_ask: float) -> MarketDataEvent:
     return MarketDataEvent(
         market_id="kalshi:X",
         exchange="kalshi",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         yes_bid=yes_ask - 0.02,
         yes_ask=yes_ask,
         no_bid=0.0,

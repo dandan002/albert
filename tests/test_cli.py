@@ -1,7 +1,7 @@
 # tests/test_cli.py
 import io
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from albert.db import get_connection, migrate
 from albert.cli import cmd_status
 
@@ -11,7 +11,7 @@ def make_db_with_data():
     migrate(conn)
     conn.execute(
         "INSERT INTO positions (market_id, strategy_id, side, contracts, avg_entry_price, current_price, unrealized_pnl, opened_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        ("kalshi:X", "momentum_v1", "yes", 5.0, 0.40, 0.45, 0.25, datetime.utcnow().isoformat())
+        ("kalshi:X", "momentum_v1", "yes", 5.0, 0.40, 0.45, 0.25, datetime.now(timezone.utc).isoformat())
     )
     conn.execute(
         "INSERT INTO daily_pnl (date, strategy_id, realized_pnl, unrealized_pnl) VALUES (date('now'), 'momentum_v1', 1.50, 0.25)"

@@ -1,6 +1,6 @@
 import asyncio
 import pytest
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from albert.db import get_connection, migrate
 from albert.events import EventBus, FillEvent, MarketDataEvent
 from albert.portfolio.tracker import PortfolioTracker
@@ -15,7 +15,7 @@ def make_fill(contracts: float = 5.0, price: float = 0.40, side: str = "yes") ->
         contracts=contracts,
         fill_price=price,
         fee=0.0,
-        filled_at=datetime.utcnow(),
+        filled_at=datetime.now(timezone.utc),
     )
 
 
@@ -23,7 +23,7 @@ def make_market_data(yes_bid: float = 0.45) -> MarketDataEvent:
     return MarketDataEvent(
         market_id="kalshi:X",
         exchange="kalshi",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         yes_bid=yes_bid,
         yes_ask=yes_bid + 0.02,
         no_bid=0.0,
@@ -107,7 +107,7 @@ async def test_closing_fill_records_realized_pnl():
         contracts=-5.0,
         fill_price=0.50,
         fee=0.0,
-        filled_at=datetime.utcnow(),
+        filled_at=datetime.now(timezone.utc),
     )
     await bus.publish("fills", close_fill)
     await asyncio.sleep(0.05)
@@ -151,7 +151,7 @@ async def test_partial_close_records_realized_pnl():
         contracts=-3.0,
         fill_price=0.55,
         fee=0.0,
-        filled_at=datetime.utcnow(),
+        filled_at=datetime.now(timezone.utc),
     )
     await bus.publish("fills", partial_close)
     await asyncio.sleep(0.05)

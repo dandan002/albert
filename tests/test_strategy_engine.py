@@ -1,7 +1,7 @@
 import asyncio
 import json
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from albert.db import get_connection, migrate
 from albert.events import EventBus, MarketDataEvent, OrderIntent
 from albert.strategies.engine import StrategyEngine
@@ -22,7 +22,7 @@ def make_event(yes_ask: float) -> MarketDataEvent:
     return MarketDataEvent(
         market_id="kalshi:X",
         exchange="kalshi",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         yes_bid=yes_ask - 0.02,
         yes_ask=yes_ask,
         no_bid=0.0,

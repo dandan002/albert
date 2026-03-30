@@ -20,7 +20,7 @@ def make_db_with_strategy(config: dict = None):
     )
     conn.execute(
         "INSERT INTO orderbook_snapshots (market_id, timestamp, yes_bid, yes_ask, no_bid, no_ask, last_price, volume) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        ("kalshi:X", datetime.utcnow().isoformat(), 0.45, 0.47, 0.53, 0.55, 0.46, 1000.0)
+        ("kalshi:X", datetime.now(timezone.utc).isoformat(), 0.45, 0.47, 0.53, 0.55, 0.46, 1000.0)
     )
     conn.commit()
     return conn
@@ -37,7 +37,7 @@ def make_mock_adapter(bankroll: float = 10000.0) -> ExchangeAdapter:
         contracts=5.0,
         fill_price=0.47,
         fee=0.01,
-        filled_at=datetime.utcnow(),
+        filled_at=datetime.now(timezone.utc),
     ))
     return adapter
 

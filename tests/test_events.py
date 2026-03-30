@@ -1,13 +1,13 @@
 import asyncio
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from albert.events import EventBus, MarketDataEvent, OrderIntent, FillEvent, StrategyHaltedEvent
 
 def make_market_event():
     return MarketDataEvent(
         market_id="kalshi:TEST-24",
         exchange="kalshi",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         yes_bid=0.45,
         yes_ask=0.47,
         no_bid=0.53,
@@ -52,7 +52,7 @@ def test_fill_event_fields():
         contracts=10.0,
         fill_price=0.47,
         fee=0.01,
-        filled_at=datetime.utcnow(),
+        filled_at=datetime.now(timezone.utc),
     )
     assert fill.contracts == 10.0
     assert fill.fill_price == 0.47

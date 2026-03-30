@@ -7,7 +7,7 @@ import sqlite3
 import sys
 from pathlib import Path
 
-from albert.config import load_global_config
+from albert.config import load_global_config, load_project_env
 from albert.db import get_connection, migrate
 from albert.events import EventBus
 from albert.execution.adapters.kalshi import KalshiAdapter
@@ -82,6 +82,7 @@ if __name__ == "__main__":
         sys.exit(0)
 
     _setup_logging()
+    load_project_env()
     _check_env()
     conn = get_connection()
     migrate(conn)
