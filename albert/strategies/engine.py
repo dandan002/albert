@@ -39,11 +39,14 @@ class StrategyEngine:
             sid = row["strategy_id"]
             config = json.loads(row["config"])
             if sid not in self._strategies:
-                module_path, class_name = row["class_path"].rsplit(".", 1)
-                module = importlib.import_module(module_path)
-                cls = getattr(module, class_name)
-                self._strategies[sid] = cls(strategy_id=sid, config=config)
-                logger.info("loaded strategy %s", sid)
+                try:
+                    module_path, class_name = row["class_path"].rsplit(".", 1)
+                    module = importlib.import_module(module_path)
+                    cls = getattr(module, class_name)
+                    self._strategies[sid] = cls(strategy_id=sid, config=config)
+                    logger.info("loaded strategy %s", sid)
+                except Exception:
+                    logger.exception("failed to load strategy %s from %s", sid, row["class_path"])
             else:
                 self._strategies[sid].config = config
 
