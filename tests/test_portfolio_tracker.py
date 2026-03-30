@@ -90,17 +90,13 @@ async def test_closing_fill_records_realized_pnl():
     conn = get_connection(":memory:")
     migrate(conn)
     bus = EventBus()
-    # Open 5 contracts at 0.40
     tracker = PortfolioTracker(bus, conn)
     task = asyncio.create_task(tracker.run())
     await asyncio.sleep(0.01)
+
+    # Open 5 contracts at 0.40
     await bus.publish("fills", make_fill(contracts=5.0, price=0.40))
     await asyncio.sleep(0.05)
-    task.cancel()
-    try:
-        await task
-    except asyncio.CancelledError:
-        pass
 
     # Close 5 contracts at 0.50 (closing fill has negative contracts)
     close_fill = FillEvent(
@@ -113,15 +109,11 @@ async def test_closing_fill_records_realized_pnl():
         fee=0.0,
         filled_at=datetime.utcnow(),
     )
-    bus2 = EventBus()
-    tracker2 = PortfolioTracker(bus2, conn)
-    task2 = asyncio.create_task(tracker2.run())
-    await asyncio.sleep(0.01)
-    await bus2.publish("fills", close_fill)
+    await bus.publish("fills", close_fill)
     await asyncio.sleep(0.05)
-    task2.cancel()
+    task.cancel()
     try:
-        await task2
+        await task
     except asyncio.CancelledError:
         pass
 

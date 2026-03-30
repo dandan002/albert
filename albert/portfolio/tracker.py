@@ -12,12 +12,10 @@ class PortfolioTracker:
     def __init__(self, bus: EventBus, conn: sqlite3.Connection) -> None:
         self._bus = bus
         self._conn = conn
-        self._fills_queue = self._bus.subscribe("fills")
-        self._market_data_queue = self._bus.subscribe("market_data")
 
     async def run(self) -> None:
-        fills_queue = self._fills_queue
-        market_data_queue = self._market_data_queue
+        fills_queue = self._bus.subscribe("fills")
+        market_data_queue = self._bus.subscribe("market_data")
 
         async def handle_fills() -> None:
             while True:
