@@ -17,17 +17,20 @@ _MAX_RETRIES = 3
 
 class PolymarketAdapter(ExchangeAdapter):
     def __init__(self) -> None:
+        self._api_key = os.environ["POLYMARKET_API_KEY"]
+        self._api_secret = os.environ["POLYMARKET_API_SECRET"]
+        self._api_passphrase = os.environ["POLYMARKET_API_PASSPHRASE"]
+        # TODO: Production use requires per-request ECDSA signing via api_secret/passphrase.
+        # See Polymarket CLOB L2 auth docs for POLY_SIGNATURE / POLY_TIMESTAMP / POLY_NONCE.
         self._client = httpx.AsyncClient(
             base_url=_BASE_URL,
             headers={
                 "POLY_ADDRESS": os.environ["POLYMARKET_ADDRESS"],
+                "POLY_API_KEY": self._api_key,
                 "Content-Type": "application/json",
             },
             timeout=10.0,
         )
-        self._api_key = os.environ["POLYMARKET_API_KEY"]
-        self._api_secret = os.environ["POLYMARKET_API_SECRET"]
-        self._api_passphrase = os.environ["POLYMARKET_API_PASSPHRASE"]
 
     def _token_id(self, market_id: str) -> str:
         # market_id format: polymarket:<condition_id>:<token_id>
