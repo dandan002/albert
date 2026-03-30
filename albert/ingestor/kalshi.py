@@ -42,7 +42,7 @@ class KalshiIngestor(BaseIngestor):
     async def _connect_and_stream(self) -> None:
         async with websockets.connect(
             _WS_URL,
-            extra_headers=self._make_auth_headers(),
+            additional_headers=self._make_auth_headers(),
         ) as ws:
             for ticker in self._tickers:
                 await ws.send(json.dumps({

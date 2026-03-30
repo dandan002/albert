@@ -9,7 +9,7 @@ from .base import BaseIngestor
 
 logger = logging.getLogger(__name__)
 
-_WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/"
+_WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
 
 
 class PolymarketIngestor(BaseIngestor):
