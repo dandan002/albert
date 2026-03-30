@@ -1,9 +1,13 @@
 import asyncio
+import base64
 import logging
 import os
 from datetime import datetime, timezone
 
 import httpx
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
 
 from albert.events import FillEvent, OrderIntent
 from .base import ExchangeAdapter
@@ -14,14 +18,52 @@ _BASE_URL = "https://trading-api.kalshi.com/trade-api/v2"
 _MAX_RETRIES = 3
 
 
+def _load_private_key(key_str: str):
+    """Load an RSA private key from a PEM string.
+
+    Handles keys stored as a single line in env vars (newlines replaced by spaces,
+    BEGIN header possibly absent).
+    """
+    pem = key_str.strip().strip("\"'")
+
+    if "\n" not in pem:
+        end_marker = "-----END RSA PRIVATE KEY-----"
+        begin_marker = "-----BEGIN RSA PRIVATE KEY-----"
+        if end_marker in pem:
+            body = pem.replace(end_marker, "").strip()
+        else:
+            body = pem
+        if begin_marker in body:
+            body = body.replace(begin_marker, "").strip()
+        raw_b64 = body.replace(" ", "")
+        wrapped = "\n".join(raw_b64[i:i + 64] for i in range(0, len(raw_b64), 64))
+        pem = f"{begin_marker}\n{wrapped}\n{end_marker}"
+
+    return serialization.load_pem_private_key(pem.encode(), password=None, backend=default_backend())
+
+
 class KalshiAdapter(ExchangeAdapter):
     def __init__(self) -> None:
-        token = os.environ["KALSHI_API_TOKEN"]
+        self._key_id = os.environ["KALSHI_API_KEY_ID"]
+        self._private_key = _load_private_key(os.environ["KALSHI_PRIVATE_KEY"])
         self._client = httpx.AsyncClient(
             base_url=_BASE_URL,
-            headers={"Authorization": f"Bearer {token}"},
             timeout=10.0,
+            event_hooks={"request": [self._sign_request]},
         )
+
+    def _sign_request(self, request: httpx.Request) -> None:
+        ts = str(int(datetime.now(timezone.utc).timestamp() * 1000))
+        path = request.url.path
+        msg = f"{ts}{request.method}{path}".encode()
+        sig = self._private_key.sign(
+            msg,
+            padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.DIGEST_LENGTH),
+            hashes.SHA256(),
+        )
+        request.headers["KALSHI-ACCESS-KEY"] = self._key_id
+        request.headers["KALSHI-ACCESS-SIGNATURE"] = base64.b64encode(sig).decode()
+        request.headers["KALSHI-ACCESS-TIMESTAMP"] = ts
 
     async def place_order(self, intent: OrderIntent, contracts: int, price: float) -> FillEvent:
         ticker = intent.market_id.removeprefix("kalshi:")
@@ -76,4 +118,4 @@ class KalshiAdapter(ExchangeAdapter):
                 logger.warning("kalshi POST %s attempt %d failed: %s", path, attempt + 1, e)
                 if attempt < _MAX_RETRIES - 1:
                     await asyncio.sleep(2 ** attempt)
-        raise last_exc  # type: ignore[misc]  # guaranteed non-None after _MAX_RETRIES > 0
+        raise last_exc  # type: ignore[misc]

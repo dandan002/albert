@@ -1,28 +1,48 @@
+import base64
 import json
 import logging
 import os
 from datetime import datetime, timezone
 
 import websockets
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
 
 from albert.events import EventBus, MarketDataEvent
+from albert.execution.adapters.kalshi import _load_private_key
 from .base import BaseIngestor
 
 logger = logging.getLogger(__name__)
 
 _WS_URL = "wss://trading-api.kalshi.com/trade-api/ws/v2"
+_WS_PATH = "/trade-api/ws/v2"
 
 
 class KalshiIngestor(BaseIngestor):
     def __init__(self, bus: EventBus, market_ids: list[str]) -> None:
         super().__init__(bus)
-        self._token = os.environ["KALSHI_API_TOKEN"]
+        self._key_id = os.environ["KALSHI_API_KEY_ID"]
+        self._private_key = _load_private_key(os.environ["KALSHI_PRIVATE_KEY"])
         self._tickers = [mid.removeprefix("kalshi:") for mid in market_ids if mid.startswith("kalshi:")]
+
+    def _make_auth_headers(self) -> dict:
+        ts = str(int(datetime.now(timezone.utc).timestamp() * 1000))
+        msg = f"{ts}GET{_WS_PATH}".encode()
+        sig = self._private_key.sign(
+            msg,
+            padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.DIGEST_LENGTH),
+            hashes.SHA256(),
+        )
+        return {
+            "KALSHI-ACCESS-KEY": self._key_id,
+            "KALSHI-ACCESS-SIGNATURE": base64.b64encode(sig).decode(),
+            "KALSHI-ACCESS-TIMESTAMP": ts,
+        }
 
     async def _connect_and_stream(self) -> None:
         async with websockets.connect(
             _WS_URL,
-            extra_headers={"Authorization": f"Bearer {self._token}"},
+            extra_headers=self._make_auth_headers(),
         ) as ws:
             for ticker in self._tickers:
                 await ws.send(json.dumps({
