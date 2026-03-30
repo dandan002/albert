@@ -25,7 +25,9 @@ def test_status_prints_strategy_row(capsys):
     cmd_status(conn)
     out = capsys.readouterr().out
     assert "momentum_v1" in out
-    assert "1" in out  # 1 position
+    lines = [l for l in out.splitlines() if "momentum_v1" in l]
+    assert len(lines) == 1
+    assert "1" in lines[0]  # 1 position in the momentum_v1 row
 
 
 def test_status_prints_total_row(capsys):
