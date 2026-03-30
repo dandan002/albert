@@ -16,7 +16,7 @@ def cmd_status(conn: sqlite3.Connection) -> None:
     """).fetchall()
 
     col_w = 22
-    header = f"{'Strategy':<{col_w}} {'Positions':>10} {'Unrealized PnL':>15} {'Today Realized':>15}"
+    header = f"{'Strategy':<{col_w}} {'Positions':>10} {'Unrealized PnL':>14} {'Today Realized':>14}"
     sep = "─" * len(header)
     print(header)
     print(sep)
