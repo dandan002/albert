@@ -3,9 +3,9 @@ import asyncio
 import json
 import logging
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 
-from albert.events import EventBus, FillEvent, OrderIntent, StrategyHaltedEvent
+from albert.events import EventBus, FillEvent, MarketDataEvent, OrderIntent, StrategyHaltedEvent
 from albert.execution.adapters.base import ExchangeAdapter
 from albert.execution.kelly import kelly_size
 from albert.execution.risk import RiskChecker
@@ -25,13 +25,22 @@ class ExecutionEngine:
         self._conn = conn
         self._adapters = adapters
         self._risk = RiskChecker(conn, global_config)
-        self._queue = self._bus.subscribe("order_intents")
+        self._order_queue = self._bus.subscribe("order_intents")
+        self._market_data_queue = self._bus.subscribe("market_data")
+        self._price_cache: dict[str, tuple[float | None, float | None]] = {}
 
     async def run(self) -> None:
-        queue = self._queue
-        while True:
-            intent: OrderIntent = await queue.get()
-            await self._handle_intent(intent)
+        async def handle_market_data() -> None:
+            while True:
+                event: MarketDataEvent = await self._market_data_queue.get()
+                self._price_cache[event.market_id] = (event.yes_ask, event.no_ask)
+
+        async def handle_orders() -> None:
+            while True:
+                intent: OrderIntent = await self._order_queue.get()
+                await self._handle_intent(intent)
+
+        await asyncio.gather(handle_market_data(), handle_orders())
 
     async def _handle_intent(self, intent: OrderIntent) -> None:
         exchange = intent.market_id.split(":")[0]
@@ -40,15 +49,13 @@ class ExecutionEngine:
             logger.error("execution:no_adapter exchange=%s", exchange)
             return
 
-        row = self._conn.execute(
-            "SELECT yes_ask, no_ask FROM orderbook_snapshots WHERE market_id = ? ORDER BY timestamp DESC LIMIT 1",
-            (intent.market_id,),
-        ).fetchone()
-        if not row:
+        cached = self._price_cache.get(intent.market_id)
+        if not cached:
             logger.warning("execution:no_orderbook market=%s", intent.market_id)
             return
 
-        ask_price = row["yes_ask"] if intent.side == "yes" else row["no_ask"]
+        yes_ask, no_ask = cached
+        ask_price = yes_ask if intent.side == "yes" else no_ask
         if ask_price is None or ask_price <= 0:
             logger.warning("execution:no_ask market=%s side=%s", intent.market_id, intent.side)
             return
@@ -109,6 +116,6 @@ class ExecutionEngine:
         await self._bus.publish("strategy_halted", StrategyHaltedEvent(
             strategy_id=strategy_id,
             reason=reason,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         ))
         logger.error("execution:strategy_halted strategy=%s reason=%s", strategy_id, reason)

@@ -51,8 +51,7 @@ async def _ttl_cleanup(conn: sqlite3.Connection, ttl_days: int) -> None:
     while True:
         await asyncio.sleep(3600)  # run every hour
         conn.execute(
-            "DELETE FROM orderbook_snapshots WHERE timestamp < datetime('now', ?)",
-            (f"-{ttl_days} days",),
+            f"DELETE FROM orderbook_snapshots WHERE timestamp < datetime('now', '-{ttl_days} days')"
         )
         conn.commit()
 

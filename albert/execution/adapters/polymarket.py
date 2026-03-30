@@ -2,7 +2,7 @@
 import asyncio
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import httpx
 
@@ -55,7 +55,7 @@ class PolymarketAdapter(ExchangeAdapter):
             contracts=float(contracts),
             fill_price=price,
             fee=0.0,
-            filled_at=datetime.utcnow(),
+            filled_at=datetime.now(timezone.utc),
         )
 
     async def cancel_order(self, order_id: str) -> None:

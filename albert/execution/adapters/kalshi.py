@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import httpx
 
@@ -45,7 +45,7 @@ class KalshiAdapter(ExchangeAdapter):
             contracts=float(order["count"]),
             fill_price=fill_price,
             fee=order.get("fee", 0) / 100,
-            filled_at=datetime.utcnow(),
+            filled_at=datetime.now(timezone.utc),
         )
 
     async def cancel_order(self, order_id: str) -> None:

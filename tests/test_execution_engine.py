@@ -3,9 +3,9 @@ import asyncio
 import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from datetime import datetime
+from datetime import datetime, timezone
 from albert.db import get_connection, migrate
-from albert.events import EventBus, OrderIntent, FillEvent, StrategyHaltedEvent
+from albert.events import EventBus, MarketDataEvent, OrderIntent, FillEvent, StrategyHaltedEvent
 from albert.execution.engine import ExecutionEngine
 from albert.execution.adapters.base import ExchangeAdapter
 
@@ -54,6 +54,7 @@ async def test_execution_engine_places_order_and_publishes_fill():
         adapters={"kalshi": adapter},
         global_config={"max_total_notional_usd": 100000, "daily_loss_limit_usd": -10000, "order_debounce_seconds": 0},
     )
+    engine._price_cache["kalshi:X"] = (0.47, 0.55)
 
     intent = OrderIntent(market_id="kalshi:X", strategy_id="s1", side="yes", edge=0.10, confidence=1.0)
     await bus.publish("order_intents", intent)
@@ -79,6 +80,7 @@ async def test_execution_engine_persists_fill_to_db():
         adapters={"kalshi": adapter},
         global_config={"max_total_notional_usd": 100000, "daily_loss_limit_usd": -10000, "order_debounce_seconds": 0},
     )
+    engine._price_cache["kalshi:X"] = (0.47, 0.55)
 
     intent = OrderIntent(market_id="kalshi:X", strategy_id="s1", side="yes", edge=0.10, confidence=1.0)
     await bus.publish("order_intents", intent)

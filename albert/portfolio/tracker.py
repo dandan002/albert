@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import sqlite3
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 
 from albert.events import EventBus, FillEvent, MarketDataEvent
 
@@ -71,7 +71,7 @@ class PortfolioTracker:
                    VALUES (?, ?, ?, ?, ?, ?, 0, ?)""",
                 (fill.market_id, fill.strategy_id, fill.side,
                  fill.contracts, fill.fill_price, fill.fill_price,
-                 datetime.utcnow().isoformat()),
+                 datetime.now(timezone.utc).isoformat()),
             )
 
         self._conn.commit()
