@@ -128,3 +128,48 @@ async def test_closing_fill_records_realized_pnl():
     ).fetchone()
     assert pnl_row is not None
     assert pnl_row["realized_pnl"] == pytest.approx(0.50)
+
+
+async def test_partial_close_records_realized_pnl():
+    conn = get_connection(":memory:")
+    migrate(conn)
+    bus = EventBus()
+    tracker = PortfolioTracker(bus, conn)
+    task = asyncio.create_task(tracker.run())
+    await asyncio.sleep(0.01)
+
+    # Open 10 contracts at 0.40
+    await bus.publish("fills", make_fill(contracts=10.0, price=0.40))
+    await asyncio.sleep(0.05)
+
+    # Partial close: sell 3 contracts at 0.55
+    partial_close = FillEvent(
+        fill_id="f3",
+        market_id="kalshi:X",
+        strategy_id="s1",
+        side="yes",
+        contracts=-3.0,
+        fill_price=0.55,
+        fee=0.0,
+        filled_at=datetime.utcnow(),
+    )
+    await bus.publish("fills", partial_close)
+    await asyncio.sleep(0.05)
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+    # 7 contracts should remain
+    row = conn.execute("SELECT contracts FROM positions WHERE market_id = 'kalshi:X'").fetchone()
+    assert row is not None
+    assert row["contracts"] == pytest.approx(7.0)
+
+    # Realized PnL: (0.55 - 0.40) * 3 = 0.45
+    today = date.today().isoformat()
+    pnl_row = conn.execute(
+        "SELECT realized_pnl FROM daily_pnl WHERE date = ? AND strategy_id = 's1'", (today,)
+    ).fetchone()
+    assert pnl_row is not None
+    assert pnl_row["realized_pnl"] == pytest.approx(0.45)

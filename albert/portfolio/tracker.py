@@ -38,13 +38,24 @@ class PortfolioTracker:
         if existing:
             new_contracts = existing["contracts"] + fill.contracts
             if new_contracts <= 0:
-                realized = (fill.fill_price - existing["avg_entry_price"]) * abs(fill.contracts)
+                # Exact close or flip — record realized PnL for all closed contracts, delete position
+                realized = (fill.fill_price - existing["avg_entry_price"]) * existing["contracts"]
                 self._conn.execute(
                     "DELETE FROM positions WHERE market_id = ? AND strategy_id = ?",
                     (fill.market_id, fill.strategy_id),
                 )
-                self._record_realized_pnl(fill.strategy_id, realized)
+                self._record_realized_pnl(fill.strategy_id, realized, commit=False)
+            elif fill.contracts < 0:
+                # Partial close — record realized PnL for the closed tranche, update remaining
+                closed = abs(fill.contracts)
+                realized = (fill.fill_price - existing["avg_entry_price"]) * closed
+                self._conn.execute(
+                    "UPDATE positions SET contracts = ? WHERE market_id = ? AND strategy_id = ?",
+                    (new_contracts, fill.market_id, fill.strategy_id),
+                )
+                self._record_realized_pnl(fill.strategy_id, realized, commit=False)
             else:
+                # Adding to position — update weighted average entry price
                 new_avg = (
                     existing["avg_entry_price"] * existing["contracts"]
                     + fill.fill_price * fill.contracts
@@ -84,7 +95,7 @@ class PortfolioTracker:
         if rows:
             self._conn.commit()
 
-    def _record_realized_pnl(self, strategy_id: str, realized_pnl: float) -> None:
+    def _record_realized_pnl(self, strategy_id: str, realized_pnl: float, commit: bool = True) -> None:
         today = date.today().isoformat()
         self._conn.execute(
             """INSERT INTO daily_pnl (date, strategy_id, realized_pnl, unrealized_pnl)
@@ -93,4 +104,5 @@ class PortfolioTracker:
                    realized_pnl = realized_pnl + excluded.realized_pnl""",
             (today, strategy_id, realized_pnl),
         )
-        self._conn.commit()
+        if commit:
+            self._conn.commit()
