@@ -12,6 +12,7 @@ def test_load_global_config_returns_defaults_when_no_file(tmp_path, monkeypatch)
     assert "daily_loss_limit_usd" in config
     assert "order_debounce_seconds" in config
     assert "orderbook_ttl_days" in config
+    assert "strategy_reload_interval" in config
 
 
 def test_load_global_config_reads_json_file(tmp_path, monkeypatch):

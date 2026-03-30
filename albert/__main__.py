@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import logging.handlers
+import os
 import sqlite3
 import sys
 from pathlib import Path
@@ -19,6 +20,21 @@ from albert.strategies.engine import StrategyEngine
 from albert.cli import cmd_status
 
 _LOG_FORMAT = '{"time": "%(asctime)s", "level": "%(levelname)s", "logger": "%(name)s", "msg": "%(message)s"}'
+
+_REQUIRED_ENV = [
+    "KALSHI_API_TOKEN",
+    "POLYMARKET_API_KEY",
+    "POLYMARKET_API_SECRET",
+    "POLYMARKET_API_PASSPHRASE",
+    "POLYMARKET_ADDRESS",
+]
+
+
+def _check_env() -> None:
+    missing = [v for v in _REQUIRED_ENV if not os.environ.get(v)]
+    if missing:
+        print(f"ERROR: missing required environment variables: {', '.join(missing)}", file=sys.stderr)
+        sys.exit(1)
 
 
 def _setup_logging() -> None:
@@ -72,6 +88,7 @@ if __name__ == "__main__":
         sys.exit(0)
 
     _setup_logging()
+    _check_env()
     conn = get_connection()
     migrate(conn)
     global_config = load_global_config()
