@@ -58,3 +58,9 @@ def test_load_strategy_class():
     assert cls == MomentumV1
     assert issubclass(cls, MomentumV1)
 
+
+@pytest.mark.asyncio
+async def test_run_backtest_with_no_snapshots(temp_db):
+    # market_id that doesn't exist
+    await run_backtest("non_existent:market", MomentumV1, {}, db_path=temp_db)
+    assert True
