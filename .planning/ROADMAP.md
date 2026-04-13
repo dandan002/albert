@@ -30,7 +30,9 @@
 2. Polymarket adapter registered in execution engine and responds to order intents
 3. WebSocket connection established and market data flowing to strategy engine
 
-**Plans:** TBD
+**Plans:** 1 plan
+
+- [ ] 01-01-PLAN.md — Implement Polymarket SDK authentication and register adapter
 
 ---
 
