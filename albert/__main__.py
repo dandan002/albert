@@ -11,6 +11,7 @@ from albert.config import load_global_config, load_project_env
 from albert.db import get_connection, migrate
 from albert.events import EventBus
 from albert.execution.adapters.kalshi import KalshiAdapter
+from albert.execution.adapters.polymarket import PolymarketAdapter
 from albert.execution.engine import ExecutionEngine
 from albert.ingestor.kalshi import KalshiIngestor
 from albert.ingestor.polymarket import PolymarketIngestor
@@ -23,6 +24,11 @@ _LOG_FORMAT = '{"time": "%(asctime)s", "level": "%(levelname)s", "logger": "%(na
 _REQUIRED_ENV = [
     "KALSHI_API_KEY_ID",
     "KALSHI_PRIVATE_KEY",
+]
+
+_OPTIONAL_ENV = [
+    "POLYMARKET_PRIVATE_KEY",
+    "POLYMARKET_CHAIN_ID",
 ]
 
 
@@ -61,6 +67,12 @@ async def _main(conn: sqlite3.Connection, global_config: dict) -> None:
     adapters = {
         "kalshi": KalshiAdapter(),
     }
+    if os.environ.get("POLYMARKET_PRIVATE_KEY"):
+        try:
+            adapters["polymarket"] = PolymarketAdapter()
+            logger.info("polymarket adapter initialized")
+        except Exception as e:
+            logger.warning("failed to initialize polymarket adapter: %s", e)
 
     reload_interval = global_config.get("strategy_reload_interval", 30.0)
 

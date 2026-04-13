@@ -326,3 +326,4 @@ Traceback (most recent call last):
   File "/Users/dandan/anaconda3/lib/python3.12/site-packages/websockets/client.py", line 151, in process_response
     raise InvalidStatus(response)
 websockets.exceptions.InvalidStatus: server rejected WebSocket connection: HTTP 401
+{"time": "2026-03-30 16:41:20,832", "level": "INFO", "logger": "albert.strategies.engine", "msg": "loaded strategy momentum_v1"}
