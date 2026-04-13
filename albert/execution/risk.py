@@ -1,18 +1,25 @@
 import logging
 import sqlite3
 import time
-from datetime import date
+from datetime import date, datetime, timezone
 
-from albert.events import OrderIntent
+from albert.events import EventBus, OrderIntent, StrategyHaltedEvent
 
 logger = logging.getLogger(__name__)
 
 
 class RiskChecker:
-    def __init__(self, conn: sqlite3.Connection, global_config: dict) -> None:
+    def __init__(
+        self,
+        conn: sqlite3.Connection,
+        global_config: dict,
+        bus: EventBus | None = None,
+    ) -> None:
         self._conn = conn
         self._config = global_config
+        self._bus = bus
         self._last_order_time: dict[tuple[str, str], float] = {}
+        self._loss_violation_count: dict[str, int] = {}
 
     def check(self, intent: OrderIntent, position_size_usd: float) -> bool:
         key = (intent.market_id, intent.strategy_id)
@@ -34,7 +41,28 @@ class RiskChecker:
         limit = self._config.get("daily_loss_limit_usd", -500.0)
         if daily_pnl < limit:
             logger.warning("risk:daily_loss_limit pnl=%.2f limit=%.2f", daily_pnl, limit)
+            # Track consecutive violations for circuit breaker
+            violation_count = self._loss_violation_count.get(intent.strategy_id, 0) + 1
+            self._loss_violation_count[intent.strategy_id] = violation_count
+            max_violations = self._config.get("circuit_breaker_violations", 2)
+            if violation_count >= max_violations:
+                logger.error(
+                    "risk:circuit_breaker_triggered strategy=%s violations=%d",
+                    intent.strategy_id, violation_count
+                )
+                if self._bus:
+                    self._bus.publish(
+                        "strategy_halted",
+                        StrategyHaltedEvent(
+                            strategy_id=intent.strategy_id,
+                            reason=f"circuit_breaker: daily loss limit reached {violation_count} times",
+                            timestamp=datetime.now(timezone.utc),
+                        ),
+                    )
             return False
+
+        # Clear violation count on successful check
+        self._loss_violation_count[intent.strategy_id] = 0
 
         row = self._conn.execute(
             "SELECT COALESCE(SUM(contracts * current_price), 0) AS notional FROM positions"

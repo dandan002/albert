@@ -3,6 +3,7 @@ import asyncio
 import logging
 import logging.handlers
 import os
+import signal
 import sqlite3
 import sys
 from pathlib import Path
@@ -21,6 +22,9 @@ from albert.cli import cmd_status
 
 _LOG_FORMAT = '{"time": "%(asctime)s", "level": "%(levelname)s", "logger": "%(name)s", "msg": "%(message)s"}'
 
+# Graceful shutdown event - set by signal handler
+shutdown_event = asyncio.Event()
+
 _REQUIRED_ENV = [
     "KALSHI_API_KEY_ID",
     "KALSHI_PRIVATE_KEY",
@@ -37,6 +41,14 @@ def _check_env() -> None:
     if missing:
         print(f"ERROR: missing required environment variables: {', '.join(missing)}", file=sys.stderr)
         sys.exit(1)
+
+
+def _signal_handler(signum, frame) -> None:
+    """Handle shutdown signals for graceful shutdown."""
+    logger = logging.getLogger(__name__)
+    sig_name = "SIGTERM" if signum == signal.SIGTERM else "SIGINT"
+    logger.info("shutdown:signal_received signal=%s", sig_name)
+    shutdown_event.set()
 
 
 def _setup_logging() -> None:
@@ -79,18 +91,29 @@ async def _main(conn: sqlite3.Connection, global_config: dict) -> None:
     await asyncio.gather(
         KalshiIngestor(bus, market_ids).run(),
         PolymarketIngestor(bus, market_ids).run(),
-        StrategyEngine(bus, conn, reload_interval=reload_interval).run(),
-        ExecutionEngine(bus, conn, adapters, global_config).run(),
-        PortfolioTracker(bus, conn).run(),
+        StrategyEngine(bus, conn, reload_interval=reload_interval, shutdown_event=shutdown_event).run(),
+        ExecutionEngine(bus, conn, adapters, global_config, shutdown_event).run(),
+        PortfolioTracker(bus, conn, shutdown_event=shutdown_event).run(),
         _ttl_cleanup(conn, global_config.get("orderbook_ttl_days", 7)),
     )
 
 
 if __name__ == "__main__":
+    # Register signal handlers for graceful shutdown
+    signal.signal(signal.SIGINT, _signal_handler)
+    signal.signal(signal.SIGTERM, _signal_handler)
+
     if len(sys.argv) > 1 and sys.argv[1] == "status":
         conn = get_connection()
         migrate(conn)
         cmd_status(conn)
+        sys.exit(0)
+
+    if len(sys.argv) > 1 and sys.argv[1] == "health":
+        conn = get_connection()
+        migrate(conn)
+        import json as json_mod
+        print(json_mod.dumps(cmd_health(conn)))
         sys.exit(0)
 
     _setup_logging()

@@ -9,9 +9,15 @@ logger = logging.getLogger(__name__)
 
 
 class PortfolioTracker:
-    def __init__(self, bus: EventBus, conn: sqlite3.Connection) -> None:
+    def __init__(
+        self,
+        bus: EventBus,
+        conn: sqlite3.Connection,
+        shutdown_event: asyncio.Event | None = None,
+    ) -> None:
         self._bus = bus
         self._conn = conn
+        self._shutdown_event = shutdown_event or asyncio.Event()
 
     async def run(self) -> None:
         fills_queue = self._bus.subscribe("fills")
@@ -19,6 +25,10 @@ class PortfolioTracker:
 
         async def handle_fills() -> None:
             while True:
+                # Check shutdown before processing each fill
+                if self._shutdown_event.is_set():
+                    logger.info("portfolio:shutdown fills_stopped")
+                    return
                 fill: FillEvent = await fills_queue.get()
                 self._handle_fill(fill)
 

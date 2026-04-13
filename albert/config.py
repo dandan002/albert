@@ -9,6 +9,9 @@ _DEFAULTS = {
     "order_debounce_seconds": 10,
     "orderbook_ttl_days": 7,
     "strategy_reload_interval": 30.0,
+    "circuit_breaker_violations": 2,
+    "health_check_interval_seconds": 60,
+    "shutdown_timeout_seconds": 30,
 }
 
 

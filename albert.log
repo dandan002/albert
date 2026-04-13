@@ -327,3 +327,5 @@ Traceback (most recent call last):
     raise InvalidStatus(response)
 websockets.exceptions.InvalidStatus: server rejected WebSocket connection: HTTP 401
 {"time": "2026-03-30 16:41:20,832", "level": "INFO", "logger": "albert.strategies.engine", "msg": "loaded strategy momentum_v1"}
+{"time": "2026-04-12 22:27:35,515", "level": "INFO", "logger": "albert.strategies.engine", "msg": "loaded strategy momentum_v1"}
+{"time": "2026-04-12 22:27:45,314", "level": "INFO", "logger": "__main__", "msg": "shutdown:signal_received signal=SIGINT"}

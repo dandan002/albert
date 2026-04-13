@@ -32,7 +32,7 @@
 
 **Plans:** 1 plan
 
-- [ ] 01-01-PLAN.md — Implement Polymarket SDK authentication and register adapter
+- [x] 01-01-PLAN.md — Implement Polymarket SDK authentication and register adapter
 
 ---
 
@@ -50,7 +50,9 @@
 2. User can query system health and receive status of all components
 3. Circuit breaker halts trading when daily loss limit is reached
 
-**Plans:** TBD
+**Plans:** 1 plan
+
+- [x] 02-01-PLAN.md — Implement graceful shutdown, health status, and circuit breaker
 
 ---
 
@@ -76,8 +78,8 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1 - Polymarket Production Readiness | 0/1 | Not started | - |
-| 2 - Observability & Resilience | 0/1 | Not started | - |
+| 1 - Polymarket Production Readiness | 1/1 | ✓ Complete | 2026-04-12 |
+| 2 - Observability & Resilience | 1/1 | ✓ Complete | 2026-04-13 |
 | 3 - Strategy Expansion | 0/1 | Not started | - |
 
 ---

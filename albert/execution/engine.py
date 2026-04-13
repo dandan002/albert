@@ -20,14 +20,16 @@ class ExecutionEngine:
         conn: sqlite3.Connection,
         adapters: dict[str, ExchangeAdapter],
         global_config: dict,
+        shutdown_event: asyncio.Event | None = None,
     ) -> None:
         self._bus = bus
         self._conn = conn
         self._adapters = adapters
-        self._risk = RiskChecker(conn, global_config)
+        self._risk = RiskChecker(conn, global_config, bus)
         self._order_queue = self._bus.subscribe("order_intents")
         self._market_data_queue = self._bus.subscribe("market_data")
         self._price_cache: dict[str, tuple[float | None, float | None]] = {}
+        self._shutdown_event = shutdown_event or asyncio.Event()
 
     async def run(self) -> None:
         async def handle_market_data() -> None:
@@ -38,6 +40,10 @@ class ExecutionEngine:
         async def handle_orders() -> None:
             while True:
                 intent: OrderIntent = await self._order_queue.get()
+                # Check for graceful shutdown before processing
+                if self._shutdown_event.is_set():
+                    logger.info("execution:shutdown order_skipped strategy=%s", intent.strategy_id)
+                    return
                 await self._handle_intent(intent)
 
         await asyncio.gather(handle_market_data(), handle_orders())
