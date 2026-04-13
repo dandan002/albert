@@ -10,7 +10,7 @@
 
 - [ ] **Phase 1: Polymarket Production Readiness** — Fix critical ECDSA authentication and adapter registration blockers
 - [ ] **Phase 2: Observability & Resilience** — Add health monitoring and graceful shutdown
-- [ ] **Phase 3: Strategy Expansion** — Add momentum and mean reversion strategies with edge calculation
+- [x] **Phase 3: Strategy Expansion** — Add momentum and mean reversion strategies with edge calculation
 
 ---
 
@@ -70,6 +70,23 @@
 2. User can load momentum strategy from configuration
 3. Strategies emit orders only when calculated edge exceeds configured threshold
 
+**Plans:** 1 plan
+
+- [x] 03-01-PLAN.md — Implement momentum and mean reversion strategies with edge calculation
+
+---
+
+### Phase 4: Strategy Backtesting
+**Goal:** Run strategies against historical orderbook snapshots to validate edge before live trading
+
+**Depends on:** Phase 3
+
+**Requirements:** STR-04, STR-05
+
+**Success Criteria** (what must be TRUE):
+1. User can run a backtest for a specific market and strategy using `python -m albert.backtest`
+2. Backtest produces a summary of total returns, win rate, and max drawdown
+
 **Plans:** TBD
 
 ---
@@ -80,7 +97,8 @@
 |-------|----------------|--------|-----------|
 | 1 - Polymarket Production Readiness | 1/1 | ✓ Complete | 2026-04-12 |
 | 2 - Observability & Resilience | 1/1 | ✓ Complete | 2026-04-13 |
-| 3 - Strategy Expansion | 0/1 | Not started | - |
+| 3 - Strategy Expansion | 1/1 | ✓ Complete | 2026-04-14 |
+| 4 - Strategy Backtesting | 0/1 | Not started | - |
 
 ---
 
