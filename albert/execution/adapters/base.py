@@ -26,6 +26,11 @@ class ExchangeAdapter(ABC):
         """Return available balance in USD."""
         ...
 
+    @abstractmethod
+    async def health_check(self) -> dict:
+        """Return health status dict with keys: status, latency_ms, error."""
+        ...
+
     async def _request_with_retry(
         self,
         func: Callable[..., Coroutine[Any, Any, Any]],

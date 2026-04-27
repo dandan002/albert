@@ -109,3 +109,13 @@ class KalshiAdapter(ExchangeAdapter):
     async def _delete(self, path: str) -> None:
         r = await self._client.delete(path)
         r.raise_for_status()
+
+    async def health_check(self) -> dict:
+        import time
+        start = time.perf_counter()
+        try:
+            await self._request_with_retry(self._get, "/portfolio/balance")
+            latency = time.perf_counter() - start
+            return {"status": "healthy", "latency_ms": round(latency * 1000, 2)}
+        except Exception as e:
+            return {"status": "unhealthy", "error": str(e)}
