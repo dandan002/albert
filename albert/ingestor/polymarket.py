@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -13,8 +14,8 @@ _WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
 
 
 class PolymarketIngestor(BaseIngestor):
-    def __init__(self, bus: EventBus, market_ids: list[str]) -> None:
-        super().__init__(bus)
+    def __init__(self, bus: EventBus, market_ids: list[str], shutdown_event: asyncio.Event | None = None) -> None:
+        super().__init__(bus, shutdown_event=shutdown_event)
         self._market_ids = [mid for mid in market_ids if mid.startswith("polymarket:")]
         self._token_to_market: dict[str, str] = {}
         for mid in self._market_ids:

@@ -34,13 +34,18 @@ class ExecutionEngine:
     async def run(self) -> None:
         async def handle_market_data() -> None:
             while True:
+                if self._shutdown_event.is_set():
+                    return
                 event: MarketDataEvent = await self._market_data_queue.get()
+                if self._shutdown_event.is_set():
+                    return
                 self._price_cache[event.market_id] = (event.yes_ask, event.no_ask)
 
         async def handle_orders() -> None:
             while True:
+                if self._shutdown_event.is_set():
+                    return
                 intent: OrderIntent = await self._order_queue.get()
-                # Check for graceful shutdown before processing
                 if self._shutdown_event.is_set():
                     logger.info("execution:shutdown order_skipped strategy=%s", intent.strategy_id)
                     return
@@ -84,7 +89,7 @@ class ExecutionEngine:
         if size_usd <= 0:
             return
 
-        if not self._risk.check(intent, size_usd):
+        if not await self._risk.check(intent, size_usd):
             return
 
         contracts = max(1, round(size_usd / ask_price))

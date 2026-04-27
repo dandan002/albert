@@ -65,6 +65,10 @@ class StrategyEngine:
 
             event: MarketDataEvent = await self._queue.get()
 
+            if self._shutdown_event.is_set():
+                logger.info("strategy:shutdown engine_stopped")
+                return
+
             now = loop.time()
             if now - self._last_reload >= self._reload_interval:
                 self._load_strategies()

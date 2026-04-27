@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import json
 import logging
@@ -19,8 +20,8 @@ _WS_PATH = "/trade-api/ws/v2"
 
 
 class KalshiIngestor(BaseIngestor):
-    def __init__(self, bus: EventBus, market_ids: list[str]) -> None:
-        super().__init__(bus)
+    def __init__(self, bus: EventBus, market_ids: list[str], shutdown_event: asyncio.Event | None = None) -> None:
+        super().__init__(bus, shutdown_event=shutdown_event)
         self._key_id = os.environ["KALSHI_API_KEY_ID"]
         self._private_key = _load_private_key(os.environ["KALSHI_PRIVATE_KEY"])
         self._tickers = [mid.removeprefix("kalshi:") for mid in market_ids if mid.startswith("kalshi:")]

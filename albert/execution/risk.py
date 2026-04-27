@@ -21,7 +21,7 @@ class RiskChecker:
         self._last_order_time: dict[tuple[str, str], float] = {}
         self._loss_violation_count: dict[str, int] = {}
 
-    def check(self, intent: OrderIntent, position_size_usd: float) -> bool:
+    async def check(self, intent: OrderIntent, position_size_usd: float) -> bool:
         key = (intent.market_id, intent.strategy_id)
         debounce = self._config.get("order_debounce_seconds", 10)
         now = time.monotonic()
@@ -51,7 +51,7 @@ class RiskChecker:
                     intent.strategy_id, violation_count
                 )
                 if self._bus:
-                    self._bus.publish(
+                    await self._bus.publish(
                         "strategy_halted",
                         StrategyHaltedEvent(
                             strategy_id=intent.strategy_id,

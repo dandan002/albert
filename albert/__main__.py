@@ -61,9 +61,13 @@ def _setup_logging() -> None:
     logging.basicConfig(level=logging.INFO, handlers=[handler, stream_handler])
 
 
-async def _ttl_cleanup(conn: sqlite3.Connection, ttl_days: int) -> None:
+async def _ttl_cleanup(conn: sqlite3.Connection, ttl_days: int, shutdown_event: asyncio.Event | None = None) -> None:
     while True:
+        if shutdown_event and shutdown_event.is_set():
+            return
         await asyncio.sleep(3600)  # run every hour
+        if shutdown_event and shutdown_event.is_set():
+            return
         conn.execute(
             "DELETE FROM orderbook_snapshots WHERE timestamp < datetime('now', '-' || ? || ' days')",
             (ttl_days,)
@@ -89,14 +93,21 @@ async def _main(conn: sqlite3.Connection, global_config: dict) -> None:
 
     reload_interval = global_config.get("strategy_reload_interval", 30.0)
 
-    await asyncio.gather(
-        KalshiIngestor(bus, market_ids).run(),
-        PolymarketIngestor(bus, market_ids).run(),
-        StrategyEngine(bus, conn, reload_interval=reload_interval, shutdown_event=shutdown_event).run(),
-        ExecutionEngine(bus, conn, adapters, global_config, shutdown_event).run(),
-        PortfolioTracker(bus, conn, shutdown_event=shutdown_event).run(),
-        _ttl_cleanup(conn, global_config.get("orderbook_ttl_days", 7)),
-    )
+    tasks = [
+        asyncio.create_task(KalshiIngestor(bus, market_ids, shutdown_event=shutdown_event).run()),
+        asyncio.create_task(PolymarketIngestor(bus, market_ids, shutdown_event=shutdown_event).run()),
+        asyncio.create_task(StrategyEngine(bus, conn, reload_interval=reload_interval, shutdown_event=shutdown_event).run()),
+        asyncio.create_task(ExecutionEngine(bus, conn, adapters, global_config, shutdown_event).run()),
+        asyncio.create_task(PortfolioTracker(bus, conn, shutdown_event=shutdown_event).run()),
+        asyncio.create_task(_ttl_cleanup(conn, global_config.get("orderbook_ttl_days", 7), shutdown_event)),
+    ]
+
+    await shutdown_event.wait()
+
+    for task in tasks:
+        task.cancel()
+
+    await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=5.0)
 
 
 if __name__ == "__main__":

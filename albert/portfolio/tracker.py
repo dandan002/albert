@@ -25,16 +25,22 @@ class PortfolioTracker:
 
         async def handle_fills() -> None:
             while True:
-                # Check shutdown before processing each fill
                 if self._shutdown_event.is_set():
                     logger.info("portfolio:shutdown fills_stopped")
                     return
                 fill: FillEvent = await fills_queue.get()
+                if self._shutdown_event.is_set():
+                    logger.info("portfolio:shutdown fills_stopped")
+                    return
                 self._handle_fill(fill)
 
         async def handle_market_data() -> None:
             while True:
+                if self._shutdown_event.is_set():
+                    return
                 event: MarketDataEvent = await market_data_queue.get()
+                if self._shutdown_event.is_set():
+                    return
                 self._handle_market_data(event)
 
         await asyncio.gather(handle_fills(), handle_market_data())

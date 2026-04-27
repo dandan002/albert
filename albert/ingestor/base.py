@@ -8,13 +8,16 @@ logger = logging.getLogger(__name__)
 
 
 class BaseIngestor(ABC):
-    def __init__(self, bus: EventBus, reconnect_delay: float = 5.0) -> None:
+    def __init__(self, bus: EventBus, reconnect_delay: float = 5.0, shutdown_event: asyncio.Event | None = None) -> None:
         self._bus = bus
         self._reconnect_delay = reconnect_delay
+        self._shutdown_event = shutdown_event
 
     async def run(self) -> None:
         """Connect and stream indefinitely, reconnecting on failure."""
         while True:
+            if self._shutdown_event and self._shutdown_event.is_set():
+                return
             try:
                 await self._connect_and_stream()
             except asyncio.CancelledError:
