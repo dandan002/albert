@@ -128,8 +128,8 @@
 
 **Plans:** 2 plans
 
-- [ ] 06-01-PLAN.md — Build core health monitoring infrastructure (adapter checks, ingestor tracking, HealthMonitor)
-- [ ] 06-02-PLAN.md — Wire HealthMonitor into main loop and update health CLI
+- [x] 06-01-PLAN.md — Build core health monitoring infrastructure (adapter checks, ingestor tracking, HealthMonitor)
+- [x] 06-02-PLAN.md — Wire HealthMonitor into main loop and update health CLI
 
 ---
 
@@ -160,7 +160,7 @@
 | 3 - Strategy Expansion | 1/1 | ✓ Complete | 2026-04-14 |
 | 4 - Strategy Backtesting | 0/1 | Not started | - |
 | 5 - Fix Critical Resilience Bugs | 2/2 | ✓ Complete | 2026-04-27 |
-| 6 - Complete Health Monitoring | 0/2 | Planned | - |
+| 6 - Complete Health Monitoring | 2/2 | ✓ Complete | 2026-04-27 |
 | 7 - Verify Polymarket Integration | 0/1 | Gap closure | - |
 
 ---
