@@ -62,6 +62,27 @@ def cmd_health(conn: sqlite3.Connection) -> dict:
     except Exception:
         pass
 
+    # Component health from health_status table
+    try:
+        rows = conn.execute(
+            "SELECT component, component_type, status, details, checked_at FROM health_status"
+        ).fetchall()
+        for row in rows:
+            comp_type = row["component_type"]
+            component = row["component"]
+            status = row["status"]
+            if comp_type == "adapter":
+                adapter_name = component.removeprefix("adapter:")
+                health["adapters"][adapter_name] = {"status": status}
+            elif comp_type == "ingestor":
+                ingestor_name = component.removeprefix("ingestor:")
+                health.setdefault("ingestors", {})[ingestor_name] = {"status": status}
+            elif comp_type == "engine":
+                engine_name = component.removeprefix("engine:")
+                health.setdefault("engines", {})[engine_name] = {"status": status}
+    except Exception:
+        pass
+
     return health
 
 

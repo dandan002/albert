@@ -44,3 +44,57 @@ def test_status_empty_db_prints_totals(capsys):
     out = capsys.readouterr().out
     assert "TOTAL" in out
     assert "0" in out
+
+
+from albert.cli import cmd_health
+
+
+def test_health_includes_adapter_status():
+    conn = get_connection(":memory:")
+    migrate(conn)
+    conn.execute(
+        "INSERT INTO health_status (component, component_type, status, details, checked_at) VALUES (?, ?, ?, ?, ?)",
+        ("adapter:kalshi", "adapter", "healthy", '{"latency_ms": 42}', "2024-01-01T00:00:00+00:00")
+    )
+    conn.commit()
+    health = cmd_health(conn)
+    assert "adapters" in health
+    assert health["adapters"]["kalshi"]["status"] == "healthy"
+
+
+def test_health_includes_ingestor_status():
+    conn = get_connection(":memory:")
+    migrate(conn)
+    conn.execute(
+        "INSERT INTO health_status (component, component_type, status, details, checked_at) VALUES (?, ?, ?, ?, ?)",
+        ("ingestor:kalshi", "ingestor", "healthy", '{"connected": true}', "2024-01-01T00:00:00+00:00")
+    )
+    conn.commit()
+    health = cmd_health(conn)
+    assert "ingestors" in health
+    assert health["ingestors"]["kalshi"]["status"] == "healthy"
+
+
+def test_health_includes_engine_status():
+    conn = get_connection(":memory:")
+    migrate(conn)
+    conn.execute(
+        "INSERT INTO health_status (component, component_type, status, details, checked_at) VALUES (?, ?, ?, ?, ?)",
+        ("engine:strategy", "engine", "healthy", '{"done": false}', "2024-01-01T00:00:00+00:00")
+    )
+    conn.commit()
+    health = cmd_health(conn)
+    assert "engines" in health
+    assert health["engines"]["strategy"]["status"] == "healthy"
+
+
+def test_health_empty_db_has_expected_keys():
+    conn = get_connection(":memory:")
+    migrate(conn)
+    health = cmd_health(conn)
+    assert "database" in health
+    assert "adapters" in health
+    assert "strategies" in health
+    assert "positions" in health
+    assert "daily_pnl" in health
+    assert "market_data" in health
