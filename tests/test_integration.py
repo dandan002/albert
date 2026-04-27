@@ -10,6 +10,7 @@ from albert.execution.engine import ExecutionEngine
 from albert.execution.risk import RiskChecker
 from albert.portfolio.tracker import PortfolioTracker
 from albert.strategies.engine import StrategyEngine
+from albert.ingestor.base import BaseIngestor
 from albert.db import migrate, get_connection
 
 @pytest.mark.asyncio
@@ -124,6 +125,111 @@ async def test_full_pipeline_ingest_to_execution(tmp_path):
     except asyncio.TimeoutError:
         strat_task.cancel()
         exec_task.cancel()
+    conn.close()
+
+
+@pytest.mark.asyncio
+async def test_health_monitor_writes_component_status():
+    conn = get_connection(":memory:")
+    migrate(conn)
+
+    mock_adapter = MagicMock()
+    mock_adapter.health_check = AsyncMock(return_value={"status": "healthy", "latency_ms": 42.0})
+
+    class DummyIngestor(BaseIngestor):
+        async def _connect_and_stream(self) -> None:
+            pass
+
+        def _normalize(self, raw: dict):
+            return None
+
+    bus = EventBus()
+    ingestor = DummyIngestor(bus=bus)
+    ingestor._connected = True
+
+    async def dummy_engine():
+        await asyncio.sleep(999)
+
+    engine_task = asyncio.create_task(dummy_engine())
+
+    from albert.health import HealthMonitor
+    monitor = HealthMonitor(
+        adapters={"kalshi": mock_adapter},
+        ingestors={"kalshi": ingestor},
+        conn=conn,
+        interval=1.0,
+        engine_tasks={"strategy": engine_task},
+    )
+
+    await monitor._check_all()
+
+    rows = conn.execute("SELECT * FROM health_status").fetchall()
+    components = {row["component"]: row for row in rows}
+
+    assert "adapter:kalshi" in components
+    assert components["adapter:kalshi"]["status"] == "healthy"
+    assert "42.0" in components["adapter:kalshi"]["details"]
+
+    assert "ingestor:kalshi" in components
+    assert components["ingestor:kalshi"]["status"] == "healthy"
+
+    assert "engine:strategy" in components
+    assert components["engine:strategy"]["status"] == "healthy"
+
+    engine_task.cancel()
+    try:
+        await engine_task
+    except asyncio.CancelledError:
+        pass
+    conn.close()
+
+
+@pytest.mark.asyncio
+async def test_health_monitor_detects_unhealthy_adapter():
+    conn = get_connection(":memory:")
+    migrate(conn)
+
+    mock_adapter = MagicMock()
+    mock_adapter.health_check = AsyncMock(side_effect=Exception("API down"))
+
+    from albert.health import HealthMonitor
+    monitor = HealthMonitor(
+        adapters={"kalshi": mock_adapter},
+        ingestors={},
+        conn=conn,
+        interval=1.0,
+    )
+
+    await monitor._check_all()
+
+    row = conn.execute("SELECT * FROM health_status WHERE component = 'adapter:kalshi'").fetchone()
+    assert row["status"] == "unhealthy"
+    assert "API down" in row["details"]
+    conn.close()
+
+
+@pytest.mark.asyncio
+async def test_health_monitor_detects_dead_engine():
+    conn = get_connection(":memory:")
+    migrate(conn)
+
+    done_task = asyncio.create_task(asyncio.sleep(0))
+    await done_task
+
+    from albert.health import HealthMonitor
+    monitor = HealthMonitor(
+        adapters={},
+        ingestors={},
+        conn=conn,
+        interval=1.0,
+        engine_tasks={"strategy": done_task},
+    )
+
+    await monitor._check_all()
+
+    row = conn.execute("SELECT * FROM health_status WHERE component = 'engine:strategy'").fetchone()
+    assert row["status"] == "unhealthy"
+    assert '"done": true' in row["details"]
     conn.close()
 
 
