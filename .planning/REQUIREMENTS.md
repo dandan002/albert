@@ -59,16 +59,16 @@ Deferred to future release.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PM-01 | Phase 1: Polymarket Production Readiness | Pending |
-| PM-02 | Phase 1: Polymarket Production Readiness | Pending |
-| PM-03 | Phase 1: Polymarket Production Readiness | Pending |
-| RES-01 | Phase 2: Observability & Resilience | Pending |
-| RES-02 | Phase 2: Observability & Resilience | Pending |
-| RES-03 | Phase 2: Observability & Resilience | Pending |
+| PM-01 | Phase 7: Verify Polymarket Integration | Pending |
+| PM-02 | Phase 7: Verify Polymarket Integration | Pending |
+| PM-03 | Phase 7: Verify Polymarket Integration | Pending |
+| RES-01 | Phase 5: Fix Critical Resilience Bugs | Pending |
+| RES-02 | Phase 6: Complete Health Monitoring | Pending |
+| RES-03 | Phase 5: Fix Critical Resilience Bugs | Pending |
 | STR-01 | Phase 3: Strategy Expansion | Pending |
 | STR-02 | Phase 3: Strategy Expansion | Pending |
 | STR-03 | Phase 3: Strategy Expansion | Pending |
 
 ---
 *Requirements defined: 2026-04-12*
-*Last updated: 2026-04-12 after initial definition*
+*Last updated: 2026-04-27 after gap closure phase assignment*

@@ -91,6 +91,60 @@
 
 ---
 
+### Phase 5: Fix Critical Resilience Bugs
+**Goal:** Close critical gaps where graceful shutdown hangs and circuit breaker never fires
+
+**Depends on:** Phase 2
+
+**Requirements:** RES-01, RES-03
+
+**Gap Closure:** Closes gaps from v1.0 milestone audit
+
+**Success Criteria** (what must be TRUE):
+1. SIGINT/SIGTERM causes all ingestors and engine tasks to exit cleanly within 5 seconds
+2. `RiskChecker.check()` is async and `await`s `EventBus.publish()`, delivering `StrategyHaltedEvent`
+3. All integration tests for shutdown and circuit breaker pass
+
+**Plans:** TBD
+
+---
+
+### Phase 6: Complete Health Monitoring
+**Goal:** Populate health check with adapter liveness, ingestor connectivity, and engine task status
+
+**Depends on:** Phase 5
+
+**Requirements:** RES-02
+
+**Gap Closure:** Closes gaps from v1.0 milestone audit
+
+**Success Criteria** (what must be TRUE):
+1. `python -m albert health` reports adapter connectivity to exchanges
+2. Health output includes ingestor WebSocket connection status
+3. Health output includes whether StrategyEngine, ExecutionEngine, and PortfolioTracker tasks are alive
+
+**Plans:** TBD
+
+---
+
+### Phase 7: Verify Polymarket Integration
+**Goal:** Create formal verification artifacts and complete pending UAT for Polymarket adapter and ingestor
+
+**Depends on:** Phase 1
+
+**Requirements:** PM-01, PM-02, PM-03
+
+**Gap Closure:** Closes gaps from v1.0 milestone audit
+
+**Success Criteria** (what must be TRUE):
+1. `VERIFICATION.md` exists for Phase 1 with evidence of SDK auth, adapter registration, and ingestor wiring
+2. All 5 pending UAT tests in `UAT.md` are executed and pass
+3. REQUIREMENTS.md checkboxes for PM-01, PM-02, PM-03 are checked
+
+**Plans:** TBD
+
+---
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -99,6 +153,9 @@
 | 2 - Observability & Resilience | 1/1 | ✓ Complete | 2026-04-13 |
 | 3 - Strategy Expansion | 1/1 | ✓ Complete | 2026-04-14 |
 | 4 - Strategy Backtesting | 0/1 | Not started | - |
+| 5 - Fix Critical Resilience Bugs | 0/1 | Gap closure | - |
+| 6 - Complete Health Monitoring | 0/1 | Gap closure | - |
+| 7 - Verify Polymarket Integration | 0/1 | Gap closure | - |
 
 ---
 
