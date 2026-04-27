@@ -64,6 +64,14 @@ CREATE TABLE IF NOT EXISTS daily_pnl (
     unrealized_pnl  REAL NOT NULL DEFAULT 0,
     PRIMARY KEY (date, strategy_id)
 );
+
+CREATE TABLE IF NOT EXISTS health_status (
+    component       TEXT PRIMARY KEY,
+    component_type  TEXT NOT NULL,
+    status          TEXT NOT NULL,
+    details         TEXT,
+    checked_at      TEXT NOT NULL
+);
 """
 
 
