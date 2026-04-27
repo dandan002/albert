@@ -18,12 +18,14 @@ class HealthMonitor:
         conn: sqlite3.Connection,
         interval: float = 60.0,
         shutdown_event: asyncio.Event | None = None,
+        engine_tasks: dict[str, asyncio.Task] | None = None,
     ) -> None:
         self._adapters = adapters
         self._ingestors = ingestors
         self._conn = conn
         self._interval = interval
         self._shutdown_event = shutdown_event or asyncio.Event()
+        self._engine_tasks = engine_tasks or {}
 
     async def run(self) -> None:
         while True:
@@ -54,6 +56,11 @@ class HealthMonitor:
             status = "healthy" if connected else "unhealthy"
             details = json.dumps({"connected": connected})
             self._persist(f"ingestor:{name}", "ingestor", status, details, now)
+
+        for name, task in self._engine_tasks.items():
+            status = "healthy" if not task.done() else "unhealthy"
+            details = json.dumps({"done": task.done(), "cancelled": task.cancelled()})
+            self._persist(f"engine:{name}", "engine", status, details, now)
 
     def _persist(self, component: str, component_type: str, status: str, details: str, checked_at: str) -> None:
         self._conn.execute(

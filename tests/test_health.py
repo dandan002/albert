@@ -120,3 +120,55 @@ async def test_health_status_table_schema(in_memory_db):
     assert "status" in columns
     assert "details" in columns
     assert "checked_at" in columns
+
+
+async def test_health_monitor_checks_engine_tasks(in_memory_db):
+    conn = in_memory_db
+
+    async def dummy():
+        await asyncio.sleep(999)
+
+    task = asyncio.create_task(dummy())
+
+    monitor = HealthMonitor(
+        adapters={},
+        ingestors={},
+        conn=conn,
+        interval=1.0,
+        engine_tasks={"strategy": task},
+    )
+
+    await monitor._check_all()
+
+    row = conn.execute("SELECT * FROM health_status WHERE component = 'engine:strategy'").fetchone()
+    assert row is not None
+    assert row["status"] == "healthy"
+    assert row["component_type"] == "engine"
+
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
+async def test_health_monitor_detects_dead_engine_task(in_memory_db):
+    conn = in_memory_db
+
+    done_task = asyncio.create_task(asyncio.sleep(0))
+    await done_task
+
+    monitor = HealthMonitor(
+        adapters={},
+        ingestors={},
+        conn=conn,
+        interval=1.0,
+        engine_tasks={"strategy": done_task},
+    )
+
+    await monitor._check_all()
+
+    row = conn.execute("SELECT * FROM health_status WHERE component = 'engine:strategy'").fetchone()
+    assert row is not None
+    assert row["status"] == "unhealthy"
+    assert '"done": true' in row["details"]

@@ -30,8 +30,10 @@ class ExecutionEngine:
         self._market_data_queue = self._bus.subscribe("market_data")
         self._price_cache: dict[str, tuple[float | None, float | None]] = {}
         self._shutdown_event = shutdown_event or asyncio.Event()
+        self._started_at: datetime | None = None
 
     async def run(self) -> None:
+        self._started_at = datetime.now(timezone.utc)
         async def handle_market_data() -> None:
             while True:
                 if self._shutdown_event.is_set():

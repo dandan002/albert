@@ -173,3 +173,20 @@ async def test_partial_close_records_realized_pnl():
     ).fetchone()
     assert pnl_row is not None
     assert pnl_row["realized_pnl"] == pytest.approx(0.45)
+
+
+async def test_portfolio_tracker_sets_started_at():
+    conn = get_connection(":memory:")
+    migrate(conn)
+    bus = EventBus()
+    tracker = PortfolioTracker(bus, conn)
+
+    assert tracker._started_at is None
+    task = asyncio.create_task(tracker.run())
+    await asyncio.sleep(0.01)
+    assert tracker._started_at is not None
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass

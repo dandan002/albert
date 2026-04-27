@@ -3,6 +3,7 @@ import importlib
 import json
 import logging
 import sqlite3
+from datetime import datetime, timezone
 
 from albert.events import EventBus, MarketDataEvent
 from albert.strategies.base import BaseStrategy
@@ -25,6 +26,7 @@ class StrategyEngine:
         self._last_reload: float = -1.0
         self._queue = bus.subscribe("market_data")
         self._shutdown_event = shutdown_event or asyncio.Event()
+        self._started_at: datetime | None = None
 
     def _load_strategies(self) -> None:
         rows = self._conn.execute(
@@ -53,6 +55,7 @@ class StrategyEngine:
                 self._strategies[sid].config = config
 
     async def run(self) -> None:
+        self._started_at = datetime.now(timezone.utc)
         loop = asyncio.get_running_loop()
         self._load_strategies()
         self._last_reload = loop.time()

@@ -18,8 +18,10 @@ class PortfolioTracker:
         self._bus = bus
         self._conn = conn
         self._shutdown_event = shutdown_event or asyncio.Event()
+        self._started_at: datetime | None = None
 
     async def run(self) -> None:
+        self._started_at = datetime.now(timezone.utc)
         fills_queue = self._bus.subscribe("fills")
         market_data_queue = self._bus.subscribe("market_data")
 

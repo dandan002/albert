@@ -18,6 +18,7 @@ from albert.ingestor.kalshi import KalshiIngestor
 from albert.ingestor.polymarket import PolymarketIngestor
 from albert.portfolio.tracker import PortfolioTracker
 from albert.strategies.engine import StrategyEngine
+from albert.health import HealthMonitor
 from albert.cli import cmd_health, cmd_status
 
 _LOG_FORMAT = '{"time": "%(asctime)s", "level": "%(levelname)s", "logger": "%(name)s", "msg": "%(message)s"}'
@@ -93,14 +94,30 @@ async def _main(conn: sqlite3.Connection, global_config: dict) -> None:
 
     reload_interval = global_config.get("strategy_reload_interval", 30.0)
 
-    tasks = [
-        asyncio.create_task(KalshiIngestor(bus, market_ids, shutdown_event=shutdown_event).run()),
-        asyncio.create_task(PolymarketIngestor(bus, market_ids, shutdown_event=shutdown_event).run()),
-        asyncio.create_task(StrategyEngine(bus, conn, reload_interval=reload_interval, shutdown_event=shutdown_event).run()),
-        asyncio.create_task(ExecutionEngine(bus, conn, adapters, global_config, shutdown_event).run()),
-        asyncio.create_task(PortfolioTracker(bus, conn, shutdown_event=shutdown_event).run()),
-        asyncio.create_task(_ttl_cleanup(conn, global_config.get("orderbook_ttl_days", 7), shutdown_event)),
-    ]
+    kalshi_ingestor = KalshiIngestor(bus, market_ids, shutdown_event=shutdown_event)
+    polymarket_ingestor = PolymarketIngestor(bus, market_ids, shutdown_event=shutdown_event)
+    strategy_engine = StrategyEngine(bus, conn, reload_interval=reload_interval, shutdown_event=shutdown_event)
+    execution_engine = ExecutionEngine(bus, conn, adapters, global_config, shutdown_event)
+    portfolio_tracker = PortfolioTracker(bus, conn, shutdown_event=shutdown_event)
+
+    kalshi_task = asyncio.create_task(kalshi_ingestor.run())
+    polymarket_task = asyncio.create_task(polymarket_ingestor.run())
+    strategy_task = asyncio.create_task(strategy_engine.run())
+    execution_task = asyncio.create_task(execution_engine.run())
+    portfolio_task = asyncio.create_task(portfolio_tracker.run())
+    ttl_task = asyncio.create_task(_ttl_cleanup(conn, global_config.get("orderbook_ttl_days", 7), shutdown_event))
+
+    health_monitor = HealthMonitor(
+        adapters=adapters,
+        ingestors={"kalshi": kalshi_ingestor, "polymarket": polymarket_ingestor},
+        engine_tasks={"strategy": strategy_task, "execution": execution_task, "portfolio": portfolio_task},
+        conn=conn,
+        interval=global_config.get("health_check_interval_seconds", 60),
+        shutdown_event=shutdown_event,
+    )
+    health_task = asyncio.create_task(health_monitor.run())
+
+    tasks = [kalshi_task, polymarket_task, strategy_task, execution_task, portfolio_task, ttl_task, health_task]
 
     await shutdown_event.wait()
 

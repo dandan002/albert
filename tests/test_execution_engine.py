@@ -117,3 +117,20 @@ async def test_execution_engine_skips_unknown_exchange():
 
     assert fills_queue.empty()
     adapter.place_order.assert_not_awaited()
+
+
+async def test_execution_engine_sets_started_at():
+    conn = make_db_with_strategy()
+    bus = EventBus()
+    engine = ExecutionEngine(
+        bus=bus,
+        conn=conn,
+        adapters={"kalshi": make_mock_adapter()},
+        global_config={"max_total_notional_usd": 100000, "daily_loss_limit_usd": -10000, "order_debounce_seconds": 0},
+    )
+
+    assert engine._started_at is None
+    task = asyncio.create_task(engine.run())
+    await asyncio.sleep(0.01)
+    assert engine._started_at is not None
+    task.cancel()

@@ -93,3 +93,16 @@ async def test_engine_hot_reloads_config():
     engine_task.cancel()
 
     assert intents_queue.empty()
+
+
+@pytest.mark.asyncio
+async def test_strategy_engine_sets_started_at():
+    conn = make_db()
+    bus = EventBus()
+    engine = StrategyEngine(bus, conn, reload_interval=999)
+
+    assert engine._started_at is None
+    engine_task = asyncio.create_task(engine.run())
+    await asyncio.sleep(0.01)
+    assert engine._started_at is not None
+    engine_task.cancel()
