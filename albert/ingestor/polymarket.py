@@ -25,18 +25,22 @@ class PolymarketIngestor(BaseIngestor):
 
     async def _connect_and_stream(self) -> None:
         async with websockets.connect(_WS_URL) as ws:
-            await ws.send(json.dumps({
-                "type": "subscribe",
-                "assets_ids": list(self._token_to_market.keys()),
-                "channel": "price_change",
-            }))
-            async for raw_message in ws:
-                data = json.loads(raw_message)
-                items = data if isinstance(data, list) else [data]
-                for item in items:
-                    event = self._normalize(item)
-                    if event:
-                        await self._bus.publish("market_data", event)
+            self._connected = True
+            try:
+                await ws.send(json.dumps({
+                    "type": "subscribe",
+                    "assets_ids": list(self._token_to_market.keys()),
+                    "channel": "price_change",
+                }))
+                async for raw_message in ws:
+                    data = json.loads(raw_message)
+                    items = data if isinstance(data, list) else [data]
+                    for item in items:
+                        event = self._normalize(item)
+                        if event:
+                            await self._bus.publish("market_data", event)
+            finally:
+                self._connected = False
 
     def _normalize(self, raw: dict) -> MarketDataEvent | None:
         asset_id = raw.get("asset_id")

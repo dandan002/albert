@@ -12,6 +12,11 @@ class BaseIngestor(ABC):
         self._bus = bus
         self._reconnect_delay = reconnect_delay
         self._shutdown_event = shutdown_event
+        self._connected = False
+
+    @property
+    def is_connected(self) -> bool:
+        return self._connected
 
     async def run(self) -> None:
         """Connect and stream indefinitely, reconnecting on failure."""
@@ -23,6 +28,7 @@ class BaseIngestor(ABC):
             except asyncio.CancelledError:
                 raise
             except Exception:
+                self._connected = False
                 logger.exception(
                     "%s disconnected, reconnecting in %.1fs",
                     self.__class__.__name__, self._reconnect_delay,

@@ -45,20 +45,24 @@ class KalshiIngestor(BaseIngestor):
             _WS_URL,
             additional_headers=self._make_auth_headers(),
         ) as ws:
-            for ticker in self._tickers:
-                await ws.send(json.dumps({
-                    "id": 1,
-                    "cmd": "subscribe",
-                    "params": {
-                        "channels": ["orderbook_delta"],
-                        "market_tickers": [ticker],
-                    },
-                }))
-            async for raw_message in ws:
-                data = json.loads(raw_message)
-                event = self._normalize(data)
-                if event:
-                    await self._bus.publish("market_data", event)
+            self._connected = True
+            try:
+                for ticker in self._tickers:
+                    await ws.send(json.dumps({
+                        "id": 1,
+                        "cmd": "subscribe",
+                        "params": {
+                            "channels": ["orderbook_delta"],
+                            "market_tickers": [ticker],
+                        },
+                    }))
+                async for raw_message in ws:
+                    data = json.loads(raw_message)
+                    event = self._normalize(data)
+                    if event:
+                        await self._bus.publish("market_data", event)
+            finally:
+                self._connected = False
 
     def _normalize(self, raw: dict) -> MarketDataEvent | None:
         if raw.get("type") not in ("orderbook_snapshot", "orderbook_delta"):
