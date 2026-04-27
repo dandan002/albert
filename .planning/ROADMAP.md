@@ -107,8 +107,8 @@
 
 **Plans:** 2 plans
 
-- [ ] 05-01-PLAN.md — Fix graceful shutdown propagation and RiskChecker async publish bug
-- [ ] 05-02-PLAN.md — Add integration tests for shutdown and circuit breaker
+- [x] 05-01-PLAN.md — Fix graceful shutdown propagation and RiskChecker async publish bug
+- [x] 05-02-PLAN.md — Add integration tests for shutdown and circuit breaker
 
 ---
 
@@ -156,7 +156,7 @@
 | 2 - Observability & Resilience | 1/1 | ✓ Complete | 2026-04-13 |
 | 3 - Strategy Expansion | 1/1 | ✓ Complete | 2026-04-14 |
 | 4 - Strategy Backtesting | 0/1 | Not started | - |
-| 5 - Fix Critical Resilience Bugs | 0/2 | Gap closure | - |
+| 5 - Fix Critical Resilience Bugs | 2/2 | ✓ Complete | 2026-04-27 |
 | 6 - Complete Health Monitoring | 0/1 | Gap closure | - |
 | 7 - Verify Polymarket Integration | 0/1 | Gap closure | - |
 
