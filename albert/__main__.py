@@ -18,7 +18,7 @@ from albert.ingestor.kalshi import KalshiIngestor
 from albert.ingestor.polymarket import PolymarketIngestor
 from albert.portfolio.tracker import PortfolioTracker
 from albert.strategies.engine import StrategyEngine
-from albert.cli import cmd_status
+from albert.cli import cmd_health, cmd_status
 
 _LOG_FORMAT = '{"time": "%(asctime)s", "level": "%(levelname)s", "logger": "%(name)s", "msg": "%(message)s"}'
 
@@ -65,7 +65,8 @@ async def _ttl_cleanup(conn: sqlite3.Connection, ttl_days: int) -> None:
     while True:
         await asyncio.sleep(3600)  # run every hour
         conn.execute(
-            f"DELETE FROM orderbook_snapshots WHERE timestamp < datetime('now', '-{ttl_days} days')"
+            "DELETE FROM orderbook_snapshots WHERE timestamp < datetime('now', '-' || ? || ' days')",
+            (ttl_days,)
         )
         conn.commit()
 

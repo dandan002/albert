@@ -8,8 +8,6 @@ from .base import ExchangeAdapter
 
 logger = logging.getLogger(__name__)
 
-_MAX_RETRIES = 3
-
 
 def _create_client():
     """Create and return authenticated ClobClient using py-clob-client SDK."""
@@ -55,7 +53,7 @@ class PolymarketAdapter(ExchangeAdapter):
         )
 
         signed = await self._client.create_order(order_args)
-        posted = await self._client.post_order(signed, OrderType.GTC)
+        posted = await self._request_with_retry(self._client.post_order, signed, OrderType.GTC)
 
         return FillEvent(
             fill_id=posted.get("orderID", "unknown"),
@@ -69,24 +67,10 @@ class PolymarketAdapter(ExchangeAdapter):
         )
 
     async def cancel_order(self, order_id: str) -> None:
-        last_exc: Exception | None = None
-        for attempt in range(_MAX_RETRIES):
-            try:
-                await self._client.cancel_order(order_id)
-                return
-            except Exception as e:
-                last_exc = e
-                logger.warning("polymarket cancel %s attempt %d failed: %s", order_id, attempt + 1, e)
-                if attempt < _MAX_RETRIES - 1:
-                    await asyncio.sleep(2 ** attempt)
-        raise last_exc
+        await self._request_with_retry(self._client.cancel_order, order_id)
 
     async def get_bankroll(self) -> float:
-        try:
-            balance = await self._client.get_balance()
-            if isinstance(balance, dict):
-                return float(balance.get("balance", 0))
-            return 0.0
-        except Exception as e:
-            logger.warning("polymarket get_bankroll failed: %s", e)
-            return 0.0
+        balance = await self._request_with_retry(self._client.get_balance)
+        if isinstance(balance, dict):
+            return float(balance.get("balance", 0))
+        return 0.0

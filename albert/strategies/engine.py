@@ -53,7 +53,7 @@ class StrategyEngine:
                 self._strategies[sid].config = config
 
     async def run(self) -> None:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         self._load_strategies()
         self._last_reload = loop.time()
 

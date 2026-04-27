@@ -55,5 +55,8 @@ class EventBus:
         return q
 
     async def publish(self, channel: str, event: object) -> None:
-        for q in self._queues.get(channel, []):
+        queues = self._queues.get(channel, [])
+        if not queues:
+            return
+        for q in queues:
             await q.put(event)

@@ -15,7 +15,6 @@ from .base import ExchangeAdapter
 logger = logging.getLogger(__name__)
 
 _BASE_URL = "https://api.elections.kalshi.com/trade-api/v2"
-_MAX_RETRIES = 3
 
 
 def _load_private_key(key_str: str):
@@ -76,7 +75,7 @@ class KalshiAdapter(ExchangeAdapter):
             "type": "limit",
             f"{intent.side}_price": price_cents,
         }
-        data = await self._post_with_retry("/portfolio/orders", payload)
+        data = await self._request_with_retry(self._post, "/portfolio/orders", payload)
         order = data["order"]
         fill_price = order.get(f"{intent.side}_price", price_cents) / 100
         return FillEvent(
@@ -91,31 +90,22 @@ class KalshiAdapter(ExchangeAdapter):
         )
 
     async def cancel_order(self, order_id: str) -> None:
-        for attempt in range(_MAX_RETRIES):
-            try:
-                r = await self._client.delete(f"/portfolio/orders/{order_id}")
-                r.raise_for_status()
-                return
-            except httpx.HTTPError as e:
-                if attempt == _MAX_RETRIES - 1:
-                    raise
-                await asyncio.sleep(2 ** attempt)
+        await self._request_with_retry(self._delete, f"/portfolio/orders/{order_id}")
 
     async def get_bankroll(self) -> float:
-        r = await self._client.get("/portfolio/balance")
-        r.raise_for_status()
-        return r.json()["balance"]["available"] / 100
+        data = await self._request_with_retry(self._get, "/portfolio/balance")
+        return data["balance"]["available"] / 100
 
-    async def _post_with_retry(self, path: str, payload: dict) -> dict:
-        last_exc: Exception | None = None
-        for attempt in range(_MAX_RETRIES):
-            try:
-                r = await self._client.post(path, json=payload)
-                r.raise_for_status()
-                return r.json()
-            except httpx.HTTPError as e:
-                last_exc = e
-                logger.warning("kalshi POST %s attempt %d failed: %s", path, attempt + 1, e)
-                if attempt < _MAX_RETRIES - 1:
-                    await asyncio.sleep(2 ** attempt)
-        raise last_exc  # type: ignore[misc]
+    async def _post(self, path: str, payload: dict) -> dict:
+        r = await self._client.post(path, json=payload)
+        r.raise_for_status()
+        return r.json()
+
+    async def _get(self, path: str) -> dict:
+        r = await self._client.get(path)
+        r.raise_for_status()
+        return r.json()
+
+    async def _delete(self, path: str) -> None:
+        r = await self._client.delete(path)
+        r.raise_for_status()

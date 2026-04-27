@@ -63,3 +63,52 @@ async def test_momentum_strategy_returns_none_above_threshold():
     s = MomentumV1(strategy_id="momentum_v1", config={"min_edge": 0.05})
     intents = await s.on_market_data(make_event(0.50))
     assert intents is None
+
+
+async def test_mean_reversion_strategy_emits_when_price_below_mean():
+    from albert.strategies.examples.mean_reversion import MeanReversionStrategy
+    s = MeanReversionStrategy(
+        strategy_id="mean_rev_v1",
+        config={"window_size": 10, "min_edge": 0.02}
+    )
+    # Add initial prices to populate window
+    for price in [0.50, 0.52, 0.48, 0.51, 0.49, 0.50, 0.51, 0.49, 0.50, 0.51]:
+        s.estimate_edge(MarketDataEvent(
+            market_id="kalshi:X",
+            exchange="kalshi",
+            timestamp=datetime.now(timezone.utc),
+            yes_bid=price - 0.01,
+            yes_ask=price,
+            no_bid=0.0,
+            no_ask=0.0,
+            last_price=price,
+            volume=0.0,
+        ))
+    # Now price drops below mean - should emit
+    intents = await s.on_market_data(make_event(0.30))
+    assert intents is not None
+    assert intents[0].side == "yes"
+
+
+async def test_mean_reversion_strategy_returns_none_above_mean():
+    from albert.strategies.examples.mean_reversion import MeanReversionStrategy
+    s = MeanReversionStrategy(
+        strategy_id="mean_rev_v1",
+        config={"window_size": 10, "min_edge": 0.02}
+    )
+    # Add prices
+    for price in [0.40, 0.42, 0.38, 0.41, 0.39, 0.40]:
+        s.estimate_edge(MarketDataEvent(
+            market_id="kalshi:X",
+            exchange="kalshi",
+            timestamp=datetime.now(timezone.utc),
+            yes_bid=price - 0.01,
+            yes_ask=price,
+            no_bid=0.0,
+            no_ask=0.0,
+            last_price=price,
+            volume=0.0,
+        ))
+    # Now price rises above mean - should return None
+    intents = await s.on_market_data(make_event(0.60))
+    assert intents is None
