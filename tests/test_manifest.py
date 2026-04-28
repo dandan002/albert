@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from albert.cache import normalized_cache_path, raw_cache_path, run_manifest_path
 from albert.manifest import (
     OutputMetadata,
     RunManifest,
@@ -191,3 +192,68 @@ def test_write_manifest_creates_deterministic_json_file(tmp_path: Path) -> None:
     assert payload.endswith("\n")
     assert '"config_path"' in payload
     assert '"config_hash"' in payload
+
+
+def test_cache_paths_can_be_written_to_run_manifest(tmp_path: Path) -> None:
+    raw_path = raw_cache_path(
+        tmp_path / "cache",
+        "kalshi",
+        "markets",
+        {"ticker": "KXBTCD-26APR281200"},
+    )
+    normalized_path = normalized_cache_path(
+        tmp_path / "cache",
+        "kalshi",
+        "markets",
+        {"date": "2026-04-28"},
+    )
+    manifest_path = run_manifest_path(tmp_path / "runs", "test-run")
+    config_hash = config_hash_from_mapping(
+        {
+            "cache_dir": str(tmp_path / "cache"),
+            "run_dir": str(tmp_path / "runs"),
+            "timezone": "UTC",
+        }
+    )
+    manifest = RunManifest(
+        run_id="test-run",
+        created_at=NOW,
+        command="albert ingest kalshi",
+        parameters={"limit": 100},
+        config_path=tmp_path / "config" / "albert.toml",
+        config_hash=config_hash,
+        cache_root=tmp_path / "cache",
+        run_root=tmp_path / "runs",
+        sources=[
+            SourceMetadata(
+                source="kalshi",
+                endpoint="markets",
+                parameters={"ticker": "KXBTCD-26APR281200"},
+                fetched_at=NOW,
+                covered_start=NOW,
+                covered_end=NOW,
+                raw_path=raw_path,
+            )
+        ],
+        outputs=[
+            OutputMetadata(
+                kind="normalized_parquet",
+                source="kalshi",
+                table="markets",
+                path=normalized_path,
+                row_count=1,
+            )
+        ],
+    )
+
+    write_manifest(manifest, manifest_path)
+
+    assert manifest_path.is_relative_to(tmp_path / "runs")
+    payload = manifest_path.read_text(encoding="utf-8")
+    assert '"config_path"' in payload
+    assert '"config_hash"' in payload
+    assert '"endpoint": "markets"' in payload
+    assert '"normalized_parquet"' in payload
+    assert '"raw_path"' in payload
+    assert "api_key" not in payload
+    assert "token" not in payload
