@@ -32,9 +32,9 @@ Albert v1 builds a reproducible research pipeline from source data to strategy e
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: Create Python project skeleton, packaging, CLI entrypoints, and config loading.
-- [ ] 01-02: Implement cache path conventions, run manifests, and source metadata models.
-- [ ] 01-03: Add test harness, fixtures, and baseline CI-style verification commands.
+- [ ] 01-01-PLAN.md — Create Python project skeleton, packaging, CLI entrypoints, and config loading.
+- [ ] 01-02-PLAN.md — Implement cache path conventions, run manifests, and source metadata models.
+- [ ] 01-03-PLAN.md — Add test harness, fixtures, and baseline CI-style verification commands.
 
 ### Phase 2: Kalshi Market Data
 **Goal**: Kalshi 15-minute Bitcoin markets can be discovered, fetched, cached, normalized, and linked to outcomes.
