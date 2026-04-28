@@ -373,22 +373,19 @@ source = SourceMetadata(
 | A2 | Old trade retrieval errors from `/historical/fills` would look authentication/user-fill-shaped. | Common Pitfalls | If wrong, tests should still catch route mismatch through fixture shape and endpoint assertions. |
 | A3 | The research should be treated as valid for 7 days for Kalshi API/package details and 30 days for project-local architecture contracts. | Metadata | If wrong, planner may either over-refresh stable facts or under-refresh fast-moving API/package details. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Exact eligible BTC series filter**
+1. **RESOLVED: Exact eligible BTC series filter**
    - What we know: public market URLs and third-party indexed pages identify `KXBTC15M` as a Kalshi BTC 15-minute up/down series. [CITED: https://kalshi.com/markets/kxbtc15m/bitcoin-price-up-down/kxbtc15m-25dec242215] [VERIFIED: WebSearch]
-   - What's unclear: the implementation should not assume the series is immutable without fixture/live API confirmation because product listings can change. [CITED: https://help.kalshi.com/markets/market-maker-program]
-   - Recommendation: make `--series-ticker` default to `KXBTC15M` but allow override, and record excluded markets in `kalshi_skipped_markets`. [VERIFIED: .planning/phases/02-kalshi-market-data/02-CONTEXT.md]
+   - Resolution: default the CLI `--series-ticker` to `KXBTC15M`, allow user override, and record excluded or ambiguous markets in `kalshi_skipped_markets` with explicit skip reasons. This implements D-01, D-03, and D-16 without assuming the series is immutable. [VERIFIED: .planning/phases/02-kalshi-market-data/02-CONTEXT.md]
 
-2. **Settlement outcome source field**
+2. **RESOLVED: Settlement outcome source field**
    - What we know: Phase 2 must link markets to outcomes and keep rows with missing outcomes. [VERIFIED: .planning/phases/02-kalshi-market-data/02-CONTEXT.md]
-   - What's unclear: the official docs snippets checked here do not expose every child field of the market response in extracted text. [CITED: https://docs.kalshi.com/api-reference/market/get-markets]
-   - Recommendation: add fixtures for settled market metadata containing the observed outcome/result field before finalizing normalized `kalshi_outcomes`. [VERIFIED: tests/fixtures]
+   - Resolution: add fixture-backed support for observed settlement outcome fields `result`, `settlement_value_dollars`, and `settlement_ts` before finalizing normalized `kalshi_outcomes`; when none of those fields is available, keep the market row and emit `outcome_missing=True`. This implements D-14 and D-16 while preserving raw unknown fields only in cached payloads. [VERIFIED: .planning/phases/02-kalshi-market-data/02-CONTEXT.md]
 
-3. **Historical orderbook depth**
+3. **RESOLVED: Historical orderbook depth**
    - What we know: official historical endpoints checked here do not list historical orderbook snapshots. [CITED: https://docs.kalshi.com/getting_started/historical_data]
-   - What's unclear: whether a paid export, websocket archive, or undocumented endpoint exists is not established by first-party docs checked here. [CITED: https://docs.kalshi.com/getting_started/historical_data]
-   - Recommendation: Phase 2 should not synthesize historical depth; it should normalize current snapshots where fetched and set `missing_orderbook` quality flags for older markets. [VERIFIED: .planning/phases/02-kalshi-market-data/02-CONTEXT.md]
+   - Resolution: do not synthesize historical orderbook depth. Normalize current orderbook snapshots when available and set missing-orderbook quality flags for unavailable historical depth. This implements D-09, D-10, and D-12 conservatively for downstream backtests. [VERIFIED: .planning/phases/02-kalshi-market-data/02-CONTEXT.md]
 
 ## Environment Availability
 

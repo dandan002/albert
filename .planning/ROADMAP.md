@@ -46,12 +46,15 @@ Plans:
   2. User can fetch metadata, trades, bid/ask pricing data, order-book data where available, and settlement outcomes.
   3. User can route older data through historical endpoints when required.
   4. Normalized Kalshi tables include market ticker, event/series identifiers, open/close/settlement times, prices, liquidity fields, and outcome.
-**Plans**: 3 plans
+**Plans**: 6 plans
 
 Plans:
-- [ ] 02-01: Build Kalshi client, pagination, retry/time-window handling, and raw cache writes.
-- [ ] 02-02: Implement live versus historical endpoint selection and fixture-based response normalization.
-- [ ] 02-03: Add market discovery command and data-quality checks for missing outcomes or price history.
+- [ ] 02-00-PLAN.md — Add Phase 2 dependencies, Kalshi package marker, and dependency import verification.
+- [ ] 02-04-PLAN.md — Create Kalshi fixture payloads for live/historical data, outcomes, missing data, and ambiguous markets.
+- [ ] 02-05-PLAN.md — Create contract tests for client, routing, normalization, CLI, cache, manifest, and quality behavior.
+- [ ] 02-01-PLAN.md — Build Kalshi client, pagination, retry/time-window handling, and raw cache writes.
+- [ ] 02-02-PLAN.md — Implement live versus historical endpoint selection and fixture-based response normalization.
+- [ ] 02-03-PLAN.md — Add market discovery command and data-quality checks for missing outcomes or price history.
 
 ### Phase 3: Deribit Derivatives Data
 **Goal**: Deribit BTC futures/options data can be fetched, cached, and normalized for Kalshi contract windows.
@@ -127,7 +130,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Research CLI Foundation | 3/3 | Complete | 2026-04-28 |
-| 2. Kalshi Market Data | 0/3 | Not started | - |
+| 2. Kalshi Market Data | 0/6 | Not started | - |
 | 3. Deribit Derivatives Data | 0/2 | Not started | - |
 | 4. Probability Model | 0/3 | Not started | - |
 | 5. Conservative Backtester | 0/3 | Not started | - |

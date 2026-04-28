@@ -38,7 +38,9 @@ created: 2026-04-28
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 02-00-01 | 00 | 0 | DATA-01, DATA-02 | T-02-04 | Fixture payloads cover live/historical schema drift without live network calls | fixture | `python -m pytest tests/test_kalshi_routing.py tests/test_kalshi_normalize.py -q` | ❌ W0 | ⬜ pending |
+| 02-00-01 | 00 | 0 | DATA-01, DATA-02 | T-02-03 | Phase 2 dependencies install and import before Polars-backed tests run | dependency | `python -c 'import httpx, polars, pyarrow'` | ❌ W0 | ⬜ pending |
+| 02-04-01 | 04 | 0 | DATA-01, DATA-02 | T-02-04 | Fixture payloads cover live/historical schema drift without live network calls | fixture | `python -m json.tool tests/fixtures/kalshi/live_markets_page.json` | ❌ W0 | ⬜ pending |
+| 02-05-01 | 05 | 0 | DATA-01, DATA-02 | T-02-04 | Contract tests encode client, routing, normalization, CLI, cache, and manifest behavior | unit | `python -m pytest tests/test_kalshi_routing.py tests/test_kalshi_normalize.py -q` | ❌ W0 | ⬜ pending |
 | 02-01-01 | 01 | 1 | DATA-01, DATA-02 | T-02-01, T-02-02 | Raw request pages are written only through cache helpers and manifests reject secret-like params | unit | `python -m pytest tests/test_kalshi_client.py -q` | ❌ W0 | ⬜ pending |
 | 02-01-02 | 01 | 1 | DATA-01, DATA-02 | T-02-03 | Live and historical windows are split by the correct cutoff field for each data family | unit | `python -m pytest tests/test_kalshi_routing.py -q` | ❌ W0 | ⬜ pending |
 | 02-02-01 | 02 | 1 | DATA-01 | T-02-04 | Ambiguous BTC or interval mappings are skipped with explicit reasons | unit | `python -m pytest tests/test_kalshi_normalize.py::test_records_ambiguous_btc_markets_as_skipped -q` | ❌ W0 | ⬜ pending |
@@ -52,13 +54,14 @@ created: 2026-04-28
 
 ## Wave 0 Requirements
 
-- [ ] `tests/fixtures/kalshi/*.json` — live/historical markets, candlesticks, trades, orderbooks, missing outcome, missing history, and ambiguous BTC market cases
+- [ ] `pyproject.toml` — dependencies include `httpx`, `polars`, and `pyarrow`, followed by `python -c 'import httpx, polars, pyarrow'`
+- [ ] `src/albert/kalshi/__init__.py` — package marker for Kalshi modules
+- [ ] `tests/fixtures/kalshi/*.json` — live/historical markets, candlesticks, trades, orderbooks, missing outcome, missing history, observed outcome fields (`result`, `settlement_value_dollars`, `settlement_ts`), unavailable historical orderbook depth, and ambiguous BTC market cases
 - [ ] `tests/test_kalshi_routing.py` — cutoff field selection and spanning-window splits for markets/candlesticks/trades
 - [ ] `tests/test_kalshi_normalize.py` — strict schema normalization for markets, price observations, trades, orderbooks, outcomes, skipped markets, and quality summaries
 - [ ] `tests/test_kalshi_client.py` — pagination, timeout/retry status handling, and raw cache path writes with mocked HTTP transport
 - [ ] `tests/test_kalshi_discovery_cli.py` — Typer command arguments, output paths, summary text, and manifest creation
 - [ ] `tests/test_kalshi_cache_manifest.py` — raw pages, normalized Parquet outputs, and manifest source/output metadata
-- [ ] `pyproject.toml` — dependencies include `httpx`, `polars`, and `pyarrow`
 
 ---
 
