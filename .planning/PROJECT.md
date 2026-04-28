@@ -15,10 +15,11 @@ Produce a reproducible, conservative backtest showing whether derivatives-implie
 ### Validated
 
 - [x] Phase 1 validated cache/config/run-manifest foundations for DATA-04: raw and normalized cache path helpers, provenance-rich run manifests, deterministic config hashing, and local verification commands.
+- [x] Phase 2 validated Kalshi market data ingestion for DATA-01 and DATA-02: CLI discovery command, cursor-paginated trade retrieval, strict normalization with quality assessment, and schema-preserving Parquet outputs.
 
 ### Active
 
-- [ ] Discover and retrieve Kalshi 15-minute Bitcoin markets, pricing, order books, trades, candlesticks, and settlement outcomes.
+- [ ] Retrieve Deribit BTC futures/options data needed to estimate short-horizon terminal probabilities.
 - [ ] Retrieve Deribit BTC futures/options data needed to estimate short-horizon terminal probabilities.
 - [ ] Compute derivatives-implied probabilities for eligible Kalshi contracts before the simulated decision time.
 - [ ] Backtest trades using conservative fills, fees, liquidity assumptions, and explicit risk limits.
@@ -36,7 +37,7 @@ Produce a reproducible, conservative backtest showing whether derivatives-implie
 
 The initial strategy hypothesis is that short-dated crypto derivatives prices contain enough information about near-term Bitcoin movement to price Kalshi's 15-minute Bitcoin contracts better than the market. The first user-facing artifact should be a command-line research workflow that can fetch/cache data, run backtests, and emit tables and plots.
 
-Phase 1 is complete. The repository now has an installable Python package, Typer CLI skeleton, deterministic config loading, safe cache path helpers, provenance manifest models, reusable fixtures, and Makefile verification commands. Phase 2 starts Kalshi market data ingestion on top of those contracts.
+Phase 1 is complete. The repository now has an installable Python package, Typer CLI skeleton, deterministic config loading, safe cache path helpers, provenance manifest models, reusable fixtures, and Makefile verification commands. Phase 2 is complete — Kalshi market data ingestion, normalization, cursor-paginated trade retrieval, and schema-preserving Parquet writes are all implemented and verified. Phase 3 starts Deribit derivatives data ingestion.
 
 Relevant ecosystem facts as of 2026-04-28:
 
@@ -83,4 +84,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-28 after Phase 1 completion*
+*Last updated: 2026-04-28 after Phase 2 completion*
