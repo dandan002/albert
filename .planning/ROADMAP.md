@@ -46,7 +46,7 @@ Plans:
   2. User can fetch metadata, trades, bid/ask pricing data, order-book data where available, and settlement outcomes.
   3. User can route older data through historical endpoints when required.
   4. Normalized Kalshi tables include market ticker, event/series identifiers, open/close/settlement times, prices, liquidity fields, and outcome.
-**Plans**: 6 plans
+**Plans**: 7 plans
 
 Plans:
 - [x] 02-00-PLAN.md — Add Phase 2 dependencies, Kalshi package marker, and dependency import verification.
@@ -55,6 +55,7 @@ Plans:
 - [x] 02-01-PLAN.md — Build Kalshi client, pagination, retry/time-window handling, and raw cache writes.
 - [x] 02-02-PLAN.md — Implement live versus historical endpoint selection and fixture-based response normalization.
 - [x] 02-03-PLAN.md — Add market discovery command and data-quality checks for missing outcomes or price history.
+- [ ] 02-06-PLAN.md — Close verification gaps for trade cursor pagination and empty normalized table schemas.
 
 ### Phase 3: Deribit Derivatives Data
 **Goal**: Deribit BTC futures/options data can be fetched, cached, and normalized for Kalshi contract windows.
