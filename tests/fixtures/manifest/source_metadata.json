@@ -1,0 +1,11 @@
+{
+  "source": "kalshi",
+  "endpoint": "markets",
+  "parameters": {
+    "ticker": "KXBTCD-26APR281200"
+  },
+  "fetched_at": "2026-04-28T12:00:00Z",
+  "covered_start": "2026-04-28T12:00:00Z",
+  "covered_end": "2026-04-28T12:15:00Z",
+  "raw_path": "cache/raw/kalshi/markets/example.json"
+}
