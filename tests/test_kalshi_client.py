@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
@@ -15,7 +15,7 @@ BASE_URL = "https://kalshi.test/trade-api/v2"
 
 
 def _dt(hour: int) -> datetime:
-    return datetime(2026, 4, 1, hour, tzinfo=UTC)
+    return datetime(2026, 4, 1, tzinfo=UTC) + timedelta(hours=hour)
 
 
 def test_allowed_endpoint_segments_are_phase_two_contract() -> None:
