@@ -10,7 +10,7 @@ Albert v1 builds a reproducible research pipeline from source data to strategy e
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: Research CLI Foundation** - Create the Python project skeleton, CLI, config, cache layout, manifests, and test harness.
+- [x] **Phase 1: Research CLI Foundation** - Create the Python project skeleton, CLI, config, cache layout, manifests, and test harness.
 - [ ] **Phase 2: Kalshi Market Data** - Discover and normalize Kalshi 15-minute Bitcoin markets and outcomes across the target history.
 - [ ] **Phase 3: Deribit Derivatives Data** - Retrieve and normalize Deribit BTC futures/options data for the same windows.
 - [ ] **Phase 4: Probability Model** - Align data by decision time and compute/calibrate contract probabilities.
@@ -34,7 +34,7 @@ Albert v1 builds a reproducible research pipeline from source data to strategy e
 Plans:
 - [x] 01-01-PLAN.md — Create Python project skeleton, packaging, CLI entrypoints, and config loading.
 - [x] 01-02-PLAN.md — Implement cache path conventions, run manifests, and source metadata models.
-- [ ] 01-03-PLAN.md — Add test harness, fixtures, and baseline CI-style verification commands.
+- [x] 01-03-PLAN.md — Add test harness, fixtures, and baseline CI-style verification commands.
 
 ### Phase 2: Kalshi Market Data
 **Goal**: Kalshi 15-minute Bitcoin markets can be discovered, fetched, cached, normalized, and linked to outcomes.
@@ -126,7 +126,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Research CLI Foundation | 0/3 | Not started | - |
+| 1. Research CLI Foundation | 3/3 | Complete | 2026-04-28 |
 | 2. Kalshi Market Data | 0/3 | Not started | - |
 | 3. Deribit Derivatives Data | 0/2 | Not started | - |
 | 4. Probability Model | 0/3 | Not started | - |
