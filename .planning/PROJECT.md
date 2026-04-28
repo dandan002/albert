@@ -14,13 +14,12 @@ Produce a reproducible, conservative backtest showing whether derivatives-implie
 
 ### Validated
 
-(None yet - ship to validate)
+- [x] Phase 1 validated cache/config/run-manifest foundations for DATA-04: raw and normalized cache path helpers, provenance-rich run manifests, deterministic config hashing, and local verification commands.
 
 ### Active
 
 - [ ] Discover and retrieve Kalshi 15-minute Bitcoin markets, pricing, order books, trades, candlesticks, and settlement outcomes.
 - [ ] Retrieve Deribit BTC futures/options data needed to estimate short-horizon terminal probabilities.
-- [ ] Cache raw and normalized data with enough metadata to reproduce every backtest run.
 - [ ] Compute derivatives-implied probabilities for eligible Kalshi contracts before the simulated decision time.
 - [ ] Backtest trades using conservative fills, fees, liquidity assumptions, and explicit risk limits.
 - [ ] Report PnL, calibration, drawdown, turnover, exposure, and per-contract attribution.
@@ -37,7 +36,7 @@ Produce a reproducible, conservative backtest showing whether derivatives-implie
 
 The initial strategy hypothesis is that short-dated crypto derivatives prices contain enough information about near-term Bitcoin movement to price Kalshi's 15-minute Bitcoin contracts better than the market. The first user-facing artifact should be a command-line research workflow that can fetch/cache data, run backtests, and emit tables and plots.
 
-The project is greenfield. The repository currently contains no application code, so the roadmap starts with project scaffolding and data contracts before modeling.
+Phase 1 is complete. The repository now has an installable Python package, Typer CLI skeleton, deterministic config loading, safe cache path helpers, provenance manifest models, reusable fixtures, and Makefile verification commands. Phase 2 starts Kalshi market data ingestion on top of those contracts.
 
 Relevant ecosystem facts as of 2026-04-28:
 
@@ -84,4 +83,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-28 after initialization*
+*Last updated: 2026-04-28 after Phase 1 completion*
