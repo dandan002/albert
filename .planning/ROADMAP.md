@@ -33,7 +33,7 @@ Albert v1 builds a reproducible research pipeline from source data to strategy e
 
 Plans:
 - [x] 01-01-PLAN.md — Create Python project skeleton, packaging, CLI entrypoints, and config loading.
-- [ ] 01-02-PLAN.md — Implement cache path conventions, run manifests, and source metadata models.
+- [x] 01-02-PLAN.md — Implement cache path conventions, run manifests, and source metadata models.
 - [ ] 01-03-PLAN.md — Add test harness, fixtures, and baseline CI-style verification commands.
 
 ### Phase 2: Kalshi Market Data
