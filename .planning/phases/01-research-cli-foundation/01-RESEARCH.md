@@ -313,6 +313,7 @@ class SourceMetadata(BaseModel):
 class RunManifest(BaseModel):
     run_id: str
     config_path: Path
+    config_hash: str
     output_dir: Path
     sources: list[SourceMetadata]
 
@@ -320,6 +321,7 @@ class RunManifest(BaseModel):
 manifest = RunManifest(
     run_id="test-run",
     config_path=Path("configs/example.toml"),
+    config_hash="0" * 64,
     output_dir=Path("runs/test-run"),
     sources=[
         SourceMetadata(
@@ -375,17 +377,17 @@ def test_raw_cache_path_uses_configured_root(tmp_path):
 | A1 | Manifest code often becomes non-deterministic when current time is called inside constructors. | Common Pitfalls | Planner should still require deterministic clock injection because the phase goal explicitly requires deterministic research commands. |
 | A2 | A single `cache/` helper without namespaces tends to mix raw and normalized outputs. | Common Pitfalls | Planner can remove this assumption if it creates explicit raw/normalized namespaces from the start. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should Phase 1 include real Parquet writes?** [VERIFIED: DATA-04 mentions normalized Parquet; VERIFIED: Phase 1 success criteria mention cached paths]
+   - RESOLVED: Phase 1 should not include real Parquet writes. It should provide normalized Parquet path contracts and manifest references only. Real polars/pyarrow writes belong to the first ingestion phase that emits normalized tables. [VERIFIED: revision decision 2026-04-28]
    - What we know: The phase success criteria require write/read helpers for raw and normalized data paths, not source-specific normalized records. [VERIFIED: .planning/ROADMAP.md]
-   - What's unclear: Whether the user expects a tiny Parquet smoke file in Phase 1. [ASSUMED]
-   - Recommendation: Treat real Parquet writes as Phase 2/3 work unless the planner adds a very small smoke test with polars/pyarrow. [VERIFIED: .planning/ROADMAP.md]
+   - Plan impact: Phase 1 tests should assert deterministic `.parquet` path construction and manifest output references, without installing polars/pyarrow or writing dataframe files. [VERIFIED: revision decision 2026-04-28]
 
 2. **What config file path should be the default?** [VERIFIED: Phase 1 includes config loading]
+   - RESOLVED: When no config file is present, default config should use platformdirs-derived cache, config, and run roots. `load_config(path)` may read explicit TOML, and `ALBERT_` environment variables may override validated config values. Phase 1 must not require a repo-local `configs/default.toml` file to exist. [VERIFIED: revision decision 2026-04-28; CITED: https://platformdirs.readthedocs.io/en/latest/api.html]
    - What we know: Project constraints require reproducibility and local CLI usage. [VERIFIED: AGENTS.md]
-   - What's unclear: Whether the user wants repo-local `configs/default.toml`, OS config dirs, or both. [ASSUMED]
-   - Recommendation: Use explicit `--config` first, fallback to `configs/default.toml` if present, and only then use platformdirs for user-level defaults. [CITED: https://platformdirs.readthedocs.io/en/latest/api.html]
+   - Plan impact: `default_config()` should be sufficient on a clean checkout. Tests may create explicit temporary TOML files, but Phase 1 should not create or depend on `configs/default.toml`. [VERIFIED: revision decision 2026-04-28]
 
 ## Environment Availability
 
@@ -426,7 +428,7 @@ def test_raw_cache_path_uses_configured_root(tmp_path):
 |--------|----------|-----------|-------------------|--------------|
 | DATA-04 | Config loading resolves explicit TOML values and default cache/output roots. [VERIFIED: .planning/ROADMAP.md] | unit | `python -m pytest tests/test_config.py -q` | no - Wave 0 [VERIFIED: repo scan] |
 | DATA-04 | Raw and normalized cache path helpers construct deterministic paths under the configured root. [VERIFIED: .planning/ROADMAP.md] | unit | `python -m pytest tests/test_cache.py -q` | no - Wave 0 [VERIFIED: repo scan] |
-| DATA-04 | Run manifest records config path, source endpoint, parameters, fetch time, covered time range, and outputs. [VERIFIED: .planning/REQUIREMENTS.md] | unit | `python -m pytest tests/test_manifest.py -q` | no - Wave 0 [VERIFIED: repo scan] |
+| DATA-04 | Run manifest records config path, config hash, source endpoint, parameters, fetch time, covered time range, and outputs. [VERIFIED: .planning/REQUIREMENTS.md] | unit | `python -m pytest tests/test_manifest.py -q` | no - Wave 0 [VERIFIED: repo scan] |
 | DATA-04 | Root CLI help lists `ingest`, `model`, `backtest`, and `report`. [VERIFIED: .planning/ROADMAP.md] | unit/smoke | `python -m pytest tests/test_cli.py -q` | no - Wave 0 [VERIFIED: repo scan] |
 
 ### Sampling Rate
