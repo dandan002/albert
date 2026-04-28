@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A fully automated prediction market trading bot that connects to Kalshi and Polymarket exchanges, ingests real-time orderbook data via WebSockets, runs pluggable trading strategies with Kelly criterion position sizing, and tracks portfolio P&L.
+A fully automated prediction market trading bot that connects to Kalshi and Polymarket exchanges, ingests real-time orderbook data via WebSockets, runs pluggable trading strategies with Kelly criterion position sizing, tracks portfolio P&L, and provides health monitoring and backtesting capabilities.
 
 ## Core Value
 
@@ -12,37 +12,45 @@ Automated, risk-managed trading on prediction markets with pluggable strategies 
 
 ### Validated
 
-- ✓ Real-time market data ingestion via WebSocket (Kalshi, Polymarket) — existing
-- ✓ Strategy engine with hot-reloadable configs — existing
-- ✓ Kelly criterion position sizing — existing
-- ✓ Pre-trade risk checks (debounce, daily loss, max notional) — existing
-- ✓ Exchange adapters (KalshiAdapter, PolymarketAdapter) — existing
-- ✓ Portfolio tracking with positions and P&L — existing
-- ✓ SQLite persistence (markets, orderbook, positions, fills, strategies, daily_pnl) — existing
+- ✓ Real-time market data ingestion via WebSocket (Kalshi, Polymarket) — v1.0
+- ✓ Strategy engine with hot-reloadable configs — v1.0
+- ✓ Kelly criterion position sizing — v1.0
+- ✓ Pre-trade risk checks (debounce, daily loss, max notional) — v1.0
+- ✓ Exchange adapters (KalshiAdapter, PolymarketAdapter with SDK auth) — v1.0
+- ✓ Portfolio tracking with positions and P&L — v1.0
+- ✓ SQLite persistence (markets, orderbook, positions, fills, strategies, daily_pnl, health_status) — v1.0
+- ✓ Graceful shutdown with bounded 5-second exit — v1.0 (Phase 5)
+- ✓ Circuit breaker that halts strategies via EventBus — v1.0 (Phase 5)
+- ✓ Health monitoring with adapter/ingestor/engine status — v1.0 (Phase 6)
+- ✓ Mean reversion and momentum strategies with edge calculation — v1.0 (Phase 3)
+- ✓ Backtesting engine against historical orderbook snapshots — v1.0 (Phase 4)
 
 ### Active
 
-- [ ] Add Polymarket as additional trading/data source (documented in design spec, current implementation has issues)
-- [ ] Improve Polymarket adapter to use official API authentication properly
-- [ ] Expand strategy library with additional trading strategies
-- [ ] Add backtesting capabilities
+- [ ] Paper trading mode with simulated execution
+- [ ] Whale alert system for large trades detection
+- [ ] TWAP/VWAP order types for large orders
+- [ ] Web dashboard for monitoring positions and P&L
+- [ ] Real-time position and P&L updates via dashboard
 
 ### Out of Scope
 
-- Web dashboard — for later milestone
-- Multi-account support — complexity not needed
+- Multi-account support — complexity not needed for personal trading
 - Cloud deployment — run locally for v1
+- Market creation — exchange handles this
+- Oracle integration — not part of core trading
+- NLP pipelines — overcomplex for v1
 
 ## Context
 
-**Existing Documentation:**
-- `docs/superpowers/plans/2026-03-29-albert-trading-system.md` — Implementation plan with detailed tasks
-- `docs/superpowers/specs/2026-03-29-trading-design.md` — Design spec approved 2026-03-29
+**Shipped v1.0:** 7 phases, 10 plans, ~3,782 LOC Python, 65 commits (2026-03-29 → 2026-04-28).
 
 **Current State:**
-- Core trading system implemented with test coverage
-- Polymarket integration partially working but needs improvement
-- CLI entry point: `python -m albert status`
+- Core trading system fully implemented with test coverage (84 tests passing)
+- Polymarket integration verified with formal verification artifact and 5/5 UAT tests
+- Critical resilience bugs fixed (graceful shutdown, circuit breaker async publish)
+- Health monitoring reports adapter connectivity, ingestor WebSocket status, and engine task liveness
+- CLI entry points: `python -m albert status`, `python -m albert health`
 
 **Technical Environment:**
 - Python 3.11+
@@ -61,10 +69,14 @@ Automated, risk-managed trading on prediction markets with pluggable strategies 
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Event-driven async architecture | Decouples ingestion, strategy, execution, and tracking | — Pending |
-| SQLite for all persistence | Simple, embedded, no external dependencies | ✓ Good |
-| Kelly criterion for position sizing | Mathematically optimal for edge-based betting | — Pending |
-| Pluggable strategy interface | Allows dynamic loading and hot-reload of strategies | — Pending |
+| Event-driven async architecture | Decouples ingestion, strategy, execution, and tracking | ✓ Good — scales cleanly to 7 subsystems |
+| SQLite for all persistence | Simple, embedded, no external dependencies | ✓ Good — WAL mode handles concurrent reads |
+| Kelly criterion for position sizing | Mathematically optimal for edge-based betting | ✓ Good — fractional Kelly (0.25) balances growth and safety |
+| Pluggable strategy interface | Allows dynamic loading and hot-reload of strategies | ✓ Good — importlib loading works for mean reversion and momentum |
+| Explicit task creation + cancel for shutdown | `asyncio.gather()` without timeouts can hang forever | ✓ Good — all tasks exit within 5 seconds on SIGINT |
+| Async RiskChecker.check() | Synchronous publish created garbage-collected coroutine, never delivering StrategyHaltedEvent | ✓ Good — circuit breaker now halts strategies correctly |
+| HealthMonitor with SQLite upserts | SQLite ON CONFLICT enables simple persistent health history | ✓ Good — `python -m albert health` reports full pipeline status |
+| time.perf_counter() for adapter latency | Sub-millisecond measurement for exchange reachability | ✓ Good — detects adapter health accurately |
 
 ## Evolution
 
@@ -84,4 +96,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-12 after project initialization*
+*Last updated: 2026-04-28 after v1.0 milestone completion*
