@@ -40,13 +40,13 @@ created: 2026-04-28
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
 | 02-00-01 | 00 | 0 | DATA-01, DATA-02 | T-02-03 | Phase 2 dependencies install and import before Polars-backed tests run | dependency | `python -c 'import httpx, polars, pyarrow'` | ❌ W0 | ⬜ pending |
 | 02-04-01 | 04 | 0 | DATA-01, DATA-02 | T-02-04 | Fixture payloads cover live/historical schema drift without live network calls | fixture | `python -m json.tool tests/fixtures/kalshi/live_markets_page.json` | ❌ W0 | ⬜ pending |
-| 02-05-01 | 05 | 0 | DATA-01, DATA-02 | T-02-04 | Contract tests encode client, routing, normalization, CLI, cache, and manifest behavior | unit | `python -m pytest tests/test_kalshi_routing.py tests/test_kalshi_normalize.py -q` | ❌ W0 | ⬜ pending |
-| 02-01-01 | 01 | 1 | DATA-01, DATA-02 | T-02-01, T-02-02 | Raw request pages are written only through cache helpers and manifests reject secret-like params | unit | `python -m pytest tests/test_kalshi_client.py -q` | ❌ W0 | ⬜ pending |
-| 02-01-02 | 01 | 1 | DATA-01, DATA-02 | T-02-03 | Live and historical windows are split by the correct cutoff field for each data family | unit | `python -m pytest tests/test_kalshi_routing.py -q` | ❌ W0 | ⬜ pending |
-| 02-02-01 | 02 | 1 | DATA-01 | T-02-04 | Ambiguous BTC or interval mappings are skipped with explicit reasons | unit | `python -m pytest tests/test_kalshi_normalize.py::test_records_ambiguous_btc_markets_as_skipped -q` | ❌ W0 | ⬜ pending |
-| 02-02-02 | 02 | 1 | DATA-02 | T-02-04 | Normalizers parse fixed-point strings without float conversion and preserve endpoint provenance | unit | `python -m pytest tests/test_kalshi_normalize.py -q` | ❌ W0 | ⬜ pending |
-| 02-03-01 | 03 | 2 | DATA-01 | T-02-03 | CLI requires explicit UTC date ranges and writes discovery outputs plus manifest metadata | CLI | `python -m pytest tests/test_kalshi_discovery_cli.py -q` | ❌ W0 | ⬜ pending |
-| 02-03-02 | 03 | 2 | DATA-02 | T-02-04 | Missing outcomes, missing price history, and unavailable orderbooks are reported as quality flags | integration | `python -m pytest tests/test_kalshi_cache_manifest.py -q` | ❌ W0 | ⬜ pending |
+| 02-05-01 | 05 | 1 | DATA-01, DATA-02 | T-02-04 | Contract tests encode client, routing, normalization, CLI, cache, and manifest behavior | unit | `python -m pytest tests/test_kalshi_routing.py tests/test_kalshi_normalize.py -q` | ❌ W1 | ⬜ pending |
+| 02-01-01 | 01 | 2 | DATA-01, DATA-02 | T-02-01, T-02-02 | Raw request pages are written only through cache helpers and manifests reject secret-like params | unit | `python -m pytest tests/test_kalshi_client.py -q` | ❌ W1 | ⬜ pending |
+| 02-01-02 | 01 | 2 | DATA-01, DATA-02 | T-02-03 | Live and historical windows are split by the correct cutoff field for each data family | unit | `python -m pytest tests/test_kalshi_routing.py -q` | ❌ W1 | ⬜ pending |
+| 02-02-01 | 02 | 2 | DATA-01 | T-02-04 | Ambiguous BTC or interval mappings are skipped with explicit reasons | unit | `python -m pytest tests/test_kalshi_normalize.py::test_records_ambiguous_btc_markets_as_skipped -q` | ❌ W1 | ⬜ pending |
+| 02-02-02 | 02 | 2 | DATA-02 | T-02-04 | Normalizers parse fixed-point strings without float conversion and preserve endpoint provenance | unit | `python -m pytest tests/test_kalshi_normalize.py -q` | ❌ W1 | ⬜ pending |
+| 02-03-01 | 03 | 3 | DATA-01 | T-02-03 | CLI requires explicit UTC date ranges and writes discovery outputs plus manifest metadata | CLI | `python -m pytest tests/test_kalshi_discovery_cli.py -q` | ❌ W2 | ⬜ pending |
+| 02-03-02 | 03 | 3 | DATA-02 | T-02-04 | Missing outcomes, missing price history, and unavailable orderbooks are reported as quality flags | integration | `python -m pytest tests/test_kalshi_cache_manifest.py -q` | ❌ W2 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
