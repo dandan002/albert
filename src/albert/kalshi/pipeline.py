@@ -51,6 +51,100 @@ TABLES = (
     TABLE_QUALITY_SUMMARY,
 )
 
+TABLE_SCHEMAS: dict[str, dict[str, pl.DataType]] = {
+    TABLE_MARKETS: {
+        "market_ticker": pl.String,
+        "event_ticker": pl.String,
+        "series_ticker": pl.String,
+        "title": pl.String,
+        "subtitle": pl.String,
+        "status": pl.String,
+        "open_time_utc": pl.String,
+        "close_time_utc": pl.String,
+        "settlement_time_utc": pl.String,
+        "expiration_time_utc": pl.String,
+        "can_close_early": pl.Boolean,
+        "price_level_structure": pl.String,
+        "fractional_trading_enabled": pl.Boolean,
+        "source_endpoint": pl.String,
+        "source_raw_path": pl.String,
+    },
+    TABLE_PRICE_OBSERVATIONS: {
+        "market_ticker": pl.String,
+        "series_ticker": pl.String,
+        "observed_at_utc": pl.String,
+        "period_interval_minutes": pl.Int64,
+        "yes_bid_open": pl.String,
+        "yes_bid_high": pl.String,
+        "yes_bid_low": pl.String,
+        "yes_bid_close": pl.String,
+        "yes_ask_open": pl.String,
+        "yes_ask_high": pl.String,
+        "yes_ask_low": pl.String,
+        "yes_ask_close": pl.String,
+        "last_price_open": pl.String,
+        "last_price_close": pl.String,
+        "volume_contracts": pl.String,
+        "open_interest_contracts": pl.String,
+        "source_endpoint": pl.String,
+        "source_raw_path": pl.String,
+    },
+    TABLE_TRADES: {
+        "trade_id": pl.String,
+        "market_ticker": pl.String,
+        "created_time_utc": pl.String,
+        "count_contracts": pl.String,
+        "yes_price": pl.String,
+        "no_price": pl.String,
+        "taker_side": pl.String,
+        "source_endpoint": pl.String,
+        "source_raw_path": pl.String,
+    },
+    TABLE_ORDERBOOK_OBSERVATIONS: {
+        "market_ticker": pl.String,
+        "snapshot_time_utc": pl.String,
+        "side": pl.String,
+        "level_index": pl.Int64,
+        "bid_price": pl.String,
+        "bid_count_contracts": pl.String,
+        "implied_ask_price": pl.String,
+        "source_endpoint": pl.String,
+        "source_raw_path": pl.String,
+    },
+    TABLE_OUTCOMES: {
+        "market_ticker": pl.String,
+        "settlement_time_utc": pl.String,
+        "outcome": pl.String,
+        "result": pl.String,
+        "settlement_value_dollars": pl.String,
+        "settlement_ts": pl.String,
+        "outcome_missing": pl.Boolean,
+        "source_endpoint": pl.String,
+        "source_raw_path": pl.String,
+    },
+    TABLE_SKIPPED_MARKETS: {
+        "market_ticker": pl.String,
+        "event_ticker": pl.String,
+        "series_ticker": pl.String,
+        "skip_reason": pl.String,
+        "raw_title": pl.String,
+        "raw_subtitle": pl.String,
+        "source_endpoint": pl.String,
+        "source_raw_path": pl.String,
+    },
+    TABLE_QUALITY_SUMMARY: {
+        "run_id": pl.String,
+        "market_count": pl.Int64,
+        "eligible_market_count": pl.Int64,
+        "skipped_market_count": pl.Int64,
+        "missing_outcome_count": pl.Int64,
+        "missing_price_history_count": pl.Int64,
+        "missing_orderbook_count": pl.Int64,
+        "historical_window_count": pl.Int64,
+        "live_window_count": pl.Int64,
+    },
+}
+
 
 @dataclass(frozen=True)
 class KalshiDiscoveryResult:
@@ -271,24 +365,25 @@ def _fetch_trades(
 ) -> list[KalshiTradeRow]:
     rows: list[KalshiTradeRow] = []
     for window in plan_trade_windows(start, end, cutoff):
-        page = client.get_json_page(
+        for page in client.iter_cursor_pages(
             endpoint_segment=window.endpoint_segment,
             path=window.path,
             parameters=_window_parameters(
                 window,
                 {"series_ticker": series_ticker, "limit": 1000},
             ),
+            collection_key="trades",
             covered_start=window.start,
             covered_end=window.end,
-        )
-        pages.append(page)
-        rows.extend(
-            normalize_trades_page(
-                page.payload,
-                source_endpoint=page.endpoint_segment,
-                source_raw_path=page.raw_path,
+        ):
+            pages.append(page)
+            rows.extend(
+                normalize_trades_page(
+                    page.payload,
+                    source_endpoint=page.endpoint_segment,
+                    source_raw_path=page.raw_path,
+                )
             )
-        )
     return rows
 
 
@@ -343,9 +438,15 @@ def _write_normalized_outputs(
         rows = table_rows[table_name]
         path = normalized_cache_path(cache_root, "kalshi", table_name, parameters)
         path.parent.mkdir(parents=True, exist_ok=True)
-        pl.DataFrame([_row_dict(row) for row in rows]).write_parquet(path)
+        _rows_dataframe(table_name, rows).write_parquet(path)
         output_paths[table_name] = path
     return output_paths
+
+
+def _rows_dataframe(table_name: str, rows: list[BaseModel]) -> pl.DataFrame:
+    if rows:
+        return pl.DataFrame([_row_dict(row) for row in rows], schema=TABLE_SCHEMAS[table_name])
+    return pl.DataFrame(schema=TABLE_SCHEMAS[table_name])
 
 
 def _row_dict(row: BaseModel) -> dict[str, Any]:
