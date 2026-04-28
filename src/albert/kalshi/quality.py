@@ -34,3 +34,14 @@ def assess_market_quality(
         "missing_price_history_count": missing_price_history_count,
         "missing_orderbook_count": missing_orderbook_count,
     }
+
+
+def quality_summary_text(result: object) -> str:
+    return (
+        f"missing_outcome_count={getattr(result, 'missing_outcome_count')} "
+        f"missing_price_history_count={getattr(result, 'missing_price_history_count')} "
+        f"missing_orderbook_count={getattr(result, 'missing_orderbook_count')}"
+    )
+
+
+__all__ = ["assess_market_quality", "quality_summary_text"]
