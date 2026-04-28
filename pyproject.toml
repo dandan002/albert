@@ -11,6 +11,9 @@ dependencies = [
     "pydantic>=2.13.3",
     "pydantic-settings>=2.14.0",
     "platformdirs>=4.9.6",
+    "httpx>=0.28.1",
+    "polars>=1.40.1",
+    "pyarrow>=24.0.0",
 ]
 
 [project.optional-dependencies]
