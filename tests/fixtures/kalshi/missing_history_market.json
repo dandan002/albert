@@ -1,0 +1,28 @@
+{
+  "market": {
+    "ticker": "KXBTC15M-26FEB030315",
+    "event_ticker": "KXBTC15M-26FEB030315",
+    "series_ticker": "KXBTC15M",
+    "market_type": "binary",
+    "title": "Bitcoin higher than $99,250 at Feb 03, 2026 03:30 UTC?",
+    "subtitle": "BTC 15-minute settlement window: 2026-02-03T03:15:00Z to 2026-02-03T03:30:00Z",
+    "status": "settled",
+    "open_time": "2026-02-03T03:15:00Z",
+    "close_time": "2026-02-03T03:29:30Z",
+    "settlement_time": "2026-02-03T03:30:09Z",
+    "expiration_time": "2026-02-03T03:30:00Z",
+    "result": "yes",
+    "settlement_value_dollars": "99388.42",
+    "settlement_ts": "2026-02-03T03:30:00Z"
+  },
+  "availability": {
+    "candlesticks_available": false,
+    "trades_available": false,
+    "orderbook_snapshot_available": false,
+    "historical_orderbook_depth_available": false
+  },
+  "quality_expectations": {
+    "missing_price_history": true,
+    "missing_orderbook": true
+  }
+}

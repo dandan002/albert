@@ -1,0 +1,19 @@
+{
+  "market": {
+    "ticker": "KXBTCD-26APR28",
+    "event_ticker": "KXBTCD-26APR28",
+    "series_ticker": "KXBTCD",
+    "market_type": "binary",
+    "title": "Bitcoin price above $95,000 on Apr 28, 2026?",
+    "subtitle": "Daily BTC range market without a clean 15-minute settlement window",
+    "status": "open",
+    "open_time": "2026-04-28T00:00:00Z",
+    "close_time": "2026-04-28T23:59:00Z",
+    "expiration_time": "2026-04-29T00:00:00Z"
+  },
+  "skip_reason": "series_ticker_not_kxbtc15m_or_interval_not_15m",
+  "quality_expectations": {
+    "record_in": "kalshi_skipped_markets",
+    "eligible": false
+  }
+}
