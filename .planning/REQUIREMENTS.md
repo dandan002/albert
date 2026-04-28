@@ -10,7 +10,7 @@
 - [ ] **DATA-01**: User can run a CLI command that discovers Kalshi 15-minute Bitcoin markets over a requested date range.
 - [ ] **DATA-02**: User can retrieve Kalshi market metadata, order-book snapshots or bid/ask candles, trades, and settlement outcomes for discovered markets.
 - [ ] **DATA-03**: User can retrieve Deribit BTC futures/options observations needed for short-horizon probability modeling.
-- [ ] **DATA-04**: User can cache raw source responses and normalized Parquet tables with run manifests that record endpoint, parameters, fetch time, and covered time range.
+- [x] **DATA-04**: User can cache raw source responses and normalized Parquet tables with run manifests that record endpoint, parameters, fetch time, and covered time range.
 
 ### Modeling
 
@@ -63,7 +63,7 @@
 | DATA-01 | Phase 2 | Pending |
 | DATA-02 | Phase 2 | Pending |
 | DATA-03 | Phase 3 | Pending |
-| DATA-04 | Phase 1 | Pending |
+| DATA-04 | Phase 1 | Complete |
 | MODEL-01 | Phase 4 | Pending |
 | MODEL-02 | Phase 4 | Pending |
 | MODEL-03 | Phase 4 | Pending |
