@@ -1,142 +1,115 @@
 ---
 phase: 02-kalshi-market-data
-reviewed: 2026-04-28T20:04:59Z
-depth: standard
-files_reviewed: 14
+reviewed: 2026-04-28T12:00:00Z
+depth: quick
+files_reviewed: 12
 files_reviewed_list:
-  - src/albert/kalshi/client.py
-  - src/albert/kalshi/routing.py
-  - src/albert/kalshi/schemas.py
-  - src/albert/kalshi/normalize.py
-  - src/albert/kalshi/quality.py
   - src/albert/kalshi/pipeline.py
+  - src/albert/kalshi/client.py
+  - src/albert/kalshi/normalize.py
+  - src/albert/kalshi/schemas.py
+  - src/albert/kalshi/routing.py
+  - src/albert/kalshi/quality.py
   - src/albert/commands/ingest.py
-  - src/albert/cache.py
-  - src/albert/manifest.py
-  - tests/test_kalshi_client.py
-  - tests/test_kalshi_routing.py
-  - tests/test_kalshi_normalize.py
-  - tests/test_kalshi_discovery_cli.py
   - tests/test_kalshi_cache_manifest.py
+  - tests/test_kalshi_client.py
+  - tests/test_kalshi_discovery_cli.py
+  - tests/test_kalshi_normalize.py
+  - tests/test_kalshi_routing.py
 findings:
   critical: 0
-  warning: 4
-  info: 1
-  total: 5
+  warning: 1
+  info: 3
+  total: 4
 status: issues_found
 ---
 
 # Phase 02: Code Review Report
 
-**Reviewed:** 2026-04-28T20:04:59Z
-**Depth:** standard
-**Files Reviewed:** 14
+**Reviewed:** 2026-04-28T12:00:00Z
+**Depth:** quick
+**Files Reviewed:** 12
 **Status:** issues_found
 
 ## Summary
 
-Reviewed the Kalshi client, routing, normalization, discovery pipeline, cache/manifest helpers, CLI wiring, and fixture-backed tests. The path and manifest helpers are generally conservative, and focused Kalshi verification passed locally. The main risks are correctness and data completeness issues in pagination, URL construction for source-derived tickers, and normalized Parquet schema stability.
+Reviewed 12 files across the Kalshi market data ingestion pipeline — client, routing, normalization, schemas, quality assessment, pipeline orchestration, CLI command, and their tests. The codebase is well-structured with strong schema validation (Pydantic `StrictRow` with `extra="forbid"`), proper timezone-aware datetime handling, endpoint segment allowlisting, and comprehensive test coverage including fixture-driven integration tests.
 
-Verification run during review:
-
-```bash
-python -m pytest tests/test_kalshi_client.py tests/test_kalshi_routing.py tests/test_kalshi_normalize.py tests/test_kalshi_discovery_cli.py tests/test_kalshi_cache_manifest.py -q
-# 21 passed in 0.25s
-
-python -m ruff check src/albert/kalshi src/albert/commands/ingest.py src/albert/cache.py src/albert/manifest.py tests/test_kalshi_client.py tests/test_kalshi_routing.py tests/test_kalshi_normalize.py tests/test_kalshi_discovery_cli.py tests/test_kalshi_cache_manifest.py
-# All checks passed
-```
+No critical security vulnerabilities or crash-causing bugs were found. One warning-level issue concerns silent data loss in quality assessment due to dict key collision, and three info-level items note dead code, missing retry backoff, and unvalidated URL interpolation.
 
 ## Warnings
 
-### WR-01: Cursor pagination drops falsey but valid cursor tokens
+### WR-01: Duplicate market_ticker silently overwrites outcome in quality assessment
 
-**File:** `src/albert/kalshi/client.py:106`
-
-**Issue:** `iter_cursor_pages()` only adds the cursor parameter when `if cursor:` is truthy. A cursor token such as `0` or `"0"` can be valid in paginated APIs but would be skipped, causing the client to refetch the first page or stop making forward progress depending on the API response.
-
-**Fix:**
+**File:** `src/albert/kalshi/quality.py:16`
+**Issue:** `outcome_by_ticker = {outcome.market_ticker: outcome for outcome in outcomes}` builds a dict from outcome rows keyed by `market_ticker`. If the API ever returns multiple outcome records for the same ticker (e.g., due to a data anomaly or schema change), later entries silently overwrite earlier ones. The quality check then operates on a subset of outcomes, potentially under-reporting `missing_outcome_count`. While Kalshi market tickers are expected to be unique per response, there is no assertion or guard making this invariant explicit.
+**Fix:** Add a deduplication check after building the dict, or use a list-based lookup instead:
 
 ```python
-if cursor is not None and cursor != "":
-    page_parameters["cursor"] = cursor
+outcome_by_ticker: dict[str, KalshiOutcomeRow] = {}
+for outcome in outcomes:
+    if outcome.market_ticker in outcome_by_ticker:
+        # Log or count duplicates instead of silent overwrite
+        continue
+    outcome_by_ticker[outcome.market_ticker] = outcome
 ```
 
-Add a test with `cursor=0` or `"0"` to lock the behavior.
-
-### WR-02: Trade ingestion fetches only one page despite cursor-capable payloads
-
-**File:** `src/albert/kalshi/pipeline.py:273`
-
-**Issue:** `_fetch_trades()` calls `get_json_page()` once per historical/live trade window and never follows `cursor`. The live trade fixture already contains `"cursor": "live-trades-page-2"`, so real discovery runs can silently miss all subsequent trade pages. That directly affects trade completeness and any downstream liquidity or execution analysis.
-
-**Fix:** Use cursor iteration for trades the same way market discovery does.
+Alternatively, if uniqueness is guaranteed by API contract, add an assertion:
 
 ```python
-for page in client.iter_cursor_pages(
-    endpoint_segment=window.endpoint_segment,
-    path=window.path,
-    parameters=_window_parameters(window, {"series_ticker": series_ticker, "limit": 1000}),
-    collection_key="trades",
-    covered_start=window.start,
-    covered_end=window.end,
-):
-    pages.append(page)
-    rows.extend(
-        normalize_trades_page(
-            page.payload,
-            source_endpoint=page.endpoint_segment,
-            source_raw_path=page.raw_path,
-        )
-    )
+outcome_by_ticker = {o.market_ticker: o for o in outcomes}
+assert len(outcome_by_ticker) == len(outcomes), "Duplicate market_ticker in outcomes"
 ```
-
-### WR-03: Source-derived ticker is interpolated into request paths without escaping
-
-**File:** `src/albert/kalshi/routing.py:128`
-
-**Issue:** `plan_candlestick_windows()` builds URL paths with `f"/markets/{ticker}/candlesticks"`. The ticker comes from source payloads before being used for another request. If a malformed or unexpected ticker contains `/`, `?`, or other reserved URL characters, the client can request a different path than intended while still using the trusted Kalshi host. This weakens endpoint provenance and path safety.
-
-**Fix:** URL-encode dynamic path segments before interpolation.
-
-```python
-from urllib.parse import quote
-
-safe_ticker = quote(ticker, safe="")
-historical_path = f"/historical/markets/{safe_ticker}/candlesticks"
-live_path = f"/markets/{safe_ticker}/candlesticks"
-```
-
-Add a routing test for a ticker containing `/` or `?` to verify the path remains a single segment.
-
-### WR-04: Empty normalized tables are written without schema
-
-**File:** `src/albert/kalshi/pipeline.py:346`
-
-**Issue:** `pl.DataFrame([_row_dict(row) for row in rows]).write_parquet(path)` produces a zero-column Parquet file when `rows` is empty. Empty trade, skipped-market, or orderbook outputs are plausible in real windows; downstream readers expecting the Phase 2 table contract will not see the expected columns.
-
-**Fix:** Define per-table Polars schemas or derive expected columns from the Pydantic models, and use them when `rows` is empty.
-
-```python
-records = [_row_dict(row) for row in rows]
-frame = pl.DataFrame(records) if records else pl.DataFrame(schema=TABLE_SCHEMAS[table_name])
-frame.write_parquet(path)
-```
-
-Add a test that runs discovery with an empty table and asserts the Parquet file has the expected columns.
 
 ## Info
 
-### IN-01: Pipeline test double masks trade pagination bug
+### IN-01: Unreachable RuntimeError fallback in client retry loop
 
-**File:** `tests/test_kalshi_cache_manifest.py:89`
+**File:** `src/albert/kalshi/client.py:143-145`
+**Issue:** The `RuntimeError("Kalshi request failed without a response")` at line 145 is unreachable. The `for` loop always terminates either via `return payload` (success), `raise_for_status()` raising `HTTPStatusError` (non-retryable HTTP error on any attempt, or retryable error on last attempt), or re-raising `TransportError` on the last attempt. The post-loop `if last_error is not None` branch can never be reached because `TransportError` is always re-raised on the final attempt inside the loop, and successful responses return early.
+**Fix:** Consider removing the dead code or restructuring to make intent clearer. If kept as a safety net, add a comment explaining that it's defensive:
 
-**Issue:** `FixtureKalshiClient.iter_cursor_pages()` only supports market pagination, while the trade path in the fixture payload has a non-null cursor. Because `_fetch_trades()` uses `get_json_page()`, the current integration test cannot detect missed trade pages.
+```python
+# Defensive: should be unreachable given loop logic above
+if last_error is not None:
+    raise last_error
+raise RuntimeError("Kalshi request failed without a response")
+```
 
-**Fix:** Extend the fake client to support cursor iteration for trades and assert that multiple trade pages are represented in manifest sources and normalized output row counts.
+### IN-02: No backoff or delay between HTTP retries
+
+**File:** `src/albert/kalshi/client.py:132`
+**Issue:** The retry loop in `_request_json` immediately retries on retryable status codes (429, 500, 502, 503, 504) with no sleep or exponential backoff between attempts. For 429 (rate limiting) responses specifically, hammering the API immediately may worsen the rate limit condition and reduce the chance of recovery. The project's constraints mention "conservative" execution behavior.
+**Fix:** Add a small backoff between retries:
+
+```python
+import time
+
+for attempt in range(1, self._max_retries + 1):
+    try:
+        response = self._http.get(url, params=parameters)
+        if response.status_code in RETRY_STATUSES and attempt < self._max_retries:
+            time.sleep(0.5 * attempt)  # linear backoff
+            continue
+        response.raise_for_status()
+        ...
+```
+
+### IN-03: URL path interpolation without ticker format validation
+
+**File:** `src/albert/kalshi/routing.py:128-129`
+**Issue:** `plan_candlestick_windows` interpolates the `ticker` parameter directly into URL paths (`f"/historical/markets/{ticker}/candlesticks"` and `f"/markets/{ticker}/candlesticks"`). While `ticker` originates from `market.market_ticker` (a Kalshi API field that should be alphanumeric), there is no explicit validation that it doesn't contain path traversal characters (e.g., `../`). The `KalshiClient._url_for` method validates that the path starts with `/`, but doesn't check for path traversal within the path.
+**Fix:** Add a runtime check or use `sanitize_segment` (already used for endpoint segments) to validate the ticker doesn't contain `/`, `..`, or other path traversal sequences:
+
+```python
+def plan_candlestick_windows(ticker: str, ...) -> list[EndpointWindow]:
+    if "/" in ticker or ".." in ticker:
+        raise ValueError(f"Invalid ticker for URL path: {ticker!r}")
+    ...
+```
 
 ---
 
-_Reviewed: 2026-04-28T20:04:59Z_
-_Reviewer: Codex (gsd-code-reviewer)_
-_Depth: standard_
+_Reviewed: 2026-04-28T12:00:00Z_
+_Reviewer: the agent (gsd-code-reviewer)_
+_Depth: quick_
