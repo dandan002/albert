@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling>=1.29.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "albert"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "typer>=0.25.0",
+    "pydantic>=2.13.3",
+    "pydantic-settings>=2.14.0",
+    "platformdirs>=4.9.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0.3",
+    "ruff>=0.15.12",
+]
+
+[project.scripts]
+albert = "albert.cli:app"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
