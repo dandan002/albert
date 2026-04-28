@@ -1,0 +1,23 @@
+{
+  "cursor": null,
+  "trades": [
+    {
+      "trade_id": "hist-trade-0001",
+      "ticker": "KXBTC15M-26JAN151200",
+      "created_time": "2026-01-15T12:00:22.219Z",
+      "count": "24.5",
+      "yes_price": "0.41",
+      "no_price": "0.59",
+      "taker_side": "yes"
+    },
+    {
+      "trade_id": "hist-trade-0002",
+      "ticker": "KXBTC15M-26JAN151200",
+      "created_time": "2026-01-15T12:01:45.002Z",
+      "count": "18.0",
+      "yes_price": "0.45",
+      "no_price": "0.55",
+      "taker_side": "yes"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "ticker": "KXBTC15M-26JAN151200",
+  "period_interval": 1,
+  "candlesticks": [
+    {
+      "start_period_ts": "2026-01-15T12:00:00Z",
+      "end_period_ts": "2026-01-15T12:01:00Z",
+      "yes_bid": {
+        "open": "0.36",
+        "high": "0.40",
+        "low": "0.34",
+        "close": "0.39"
+      },
+      "yes_ask": {
+        "open": "0.41",
+        "high": "0.45",
+        "low": "0.39",
+        "close": "0.43"
+      },
+      "price": {
+        "open": "0.38",
+        "high": "0.42",
+        "low": "0.36",
+        "close": "0.41"
+      },
+      "volume": "218.5",
+      "open_interest": "1240.0"
+    },
+    {
+      "start_period_ts": "2026-01-15T12:01:00Z",
+      "end_period_ts": "2026-01-15T12:02:00Z",
+      "yes_bid": {
+        "open": "0.39",
+        "high": "0.44",
+        "low": "0.38",
+        "close": "0.43"
+      },
+      "yes_ask": {
+        "open": "0.43",
+        "high": "0.48",
+        "low": "0.42",
+        "close": "0.47"
+      },
+      "price": {
+        "open": "0.41",
+        "high": "0.46",
+        "low": "0.40",
+        "close": "0.45"
+      },
+      "volume": "244.25",
+      "open_interest": "1268.0"
+    }
+  ],
+  "quality_expectations": {
+    "uses_historical_endpoint": true,
+    "historical_orderbook_depth_available": false
+  }
+}
