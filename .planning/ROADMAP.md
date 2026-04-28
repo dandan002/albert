@@ -55,7 +55,7 @@ Plans:
 - [x] 02-01-PLAN.md — Build Kalshi client, pagination, retry/time-window handling, and raw cache writes.
 - [x] 02-02-PLAN.md — Implement live versus historical endpoint selection and fixture-based response normalization.
 - [x] 02-03-PLAN.md — Add market discovery command and data-quality checks for missing outcomes or price history.
-- [ ] 02-06-PLAN.md — Close verification gaps for trade cursor pagination and empty normalized table schemas.
+- [x] 02-06-PLAN.md — Close verification gaps for trade cursor pagination and empty normalized table schemas.
 
 ### Phase 3: Deribit Derivatives Data
 **Goal**: Deribit BTC futures/options data can be fetched, cached, and normalized for Kalshi contract windows.
