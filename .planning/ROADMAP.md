@@ -49,12 +49,12 @@ Plans:
 **Plans**: 6 plans
 
 Plans:
-- [ ] 02-00-PLAN.md — Add Phase 2 dependencies, Kalshi package marker, and dependency import verification.
-- [ ] 02-04-PLAN.md — Create Kalshi fixture payloads for live/historical data, outcomes, missing data, and ambiguous markets.
-- [ ] 02-05-PLAN.md — Create contract tests for client, routing, normalization, CLI, cache, manifest, and quality behavior.
-- [ ] 02-01-PLAN.md — Build Kalshi client, pagination, retry/time-window handling, and raw cache writes.
-- [ ] 02-02-PLAN.md — Implement live versus historical endpoint selection and fixture-based response normalization.
-- [ ] 02-03-PLAN.md — Add market discovery command and data-quality checks for missing outcomes or price history.
+- [x] 02-00-PLAN.md — Add Phase 2 dependencies, Kalshi package marker, and dependency import verification.
+- [x] 02-04-PLAN.md — Create Kalshi fixture payloads for live/historical data, outcomes, missing data, and ambiguous markets.
+- [x] 02-05-PLAN.md — Create contract tests for client, routing, normalization, CLI, cache, manifest, and quality behavior.
+- [x] 02-01-PLAN.md — Build Kalshi client, pagination, retry/time-window handling, and raw cache writes.
+- [x] 02-02-PLAN.md — Implement live versus historical endpoint selection and fixture-based response normalization.
+- [x] 02-03-PLAN.md — Add market discovery command and data-quality checks for missing outcomes or price history.
 
 ### Phase 3: Deribit Derivatives Data
 **Goal**: Deribit BTC futures/options data can be fetched, cached, and normalized for Kalshi contract windows.

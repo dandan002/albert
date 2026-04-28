@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 2 context gathered
-last_updated: "2026-04-28T17:55:48.141Z"
-last_activity: 2026-04-28 -- Phase 02 planning complete
+status: blocked
+stopped_at: Phase 02 verification gaps
+last_updated: "2026-04-28T20:11:36.202Z"
+last_activity: 2026-04-28 -- Phase 02 verification found gaps
 progress:
   total_phases: 6
   completed_phases: 1
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-28)
 
 **Core value:** Produce a reproducible, conservative backtest showing whether derivatives-implied Bitcoin probabilities create positive expected value on Kalshi after costs.
-**Current focus:** Phase 2: Kalshi Market Data
+**Current focus:** Phase 02 — kalshi-market-data gap closure
 
 ## Current Position
 
-Phase: 2 of 6 (Kalshi Market Data)
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-28 -- Phase 02 planning complete
+Phase: 02 (kalshi-market-data) — GAPS FOUND
+Plan: 6 of 6 executed
+Status: Verification gaps found; plan gap closure before marking complete
+Last activity: 2026-04-28 -- Phase 02 verification found gaps
 
 Progress: [██████████] 100%
 
@@ -82,11 +82,12 @@ None yet.
 
 ### Blockers/Concerns
 
+- Phase 02 verification found two blockers: trade pagination uses a single page per window, and empty normalized Parquet tables lose their declared schema.
 - Kalshi 12-month backtests may require historical endpoint stitching and careful schema normalization.
 - BTC reference-price differences between Deribit data and Kalshi settlement methodology must be measured before trusting calibration.
 
 ## Session Continuity
 
 Last session: 2026-04-28T17:18:43.772Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-kalshi-market-data/02-CONTEXT.md
+Stopped at: Phase 02 verification gaps
+Resume file: .planning/phases/02-kalshi-market-data/02-VERIFICATION.md
