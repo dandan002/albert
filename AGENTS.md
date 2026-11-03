@@ -4,8 +4,9 @@
 (politics, sports, culture, weather, science/tech, and so on). It does quantitative research on market
 signals and on high-performing accounts, then runs systematic small-stake bets.
 
-- **Bankroll:** $100 to start. The objective is compounding growth, with ruin avoidance as a hard
-  constraint.
+- **Bankroll:** $100 to start. The objective (changed 2026-11-03) is **consistent, positive
+  returns**, not maximum growth: prefer many small, repeatable bets with stable month-to-month
+  results. Low-liquidity markets are fine (we trade small). Ruin avoidance is a hard constraint.
 - **Execution venues:** **Kalshi** (RSA-PSS signed API) and **Polymarket US** (the CFTC-regulated
   US exchange at docs.polymarket.us; Ed25519-signed API). The bankroll is split across both.
 - **Data-only venue:** **Polymarket international** (polymarket.com) supplies on-chain wallet trades,

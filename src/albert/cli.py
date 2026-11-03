@@ -66,6 +66,7 @@ def ingest_kalshi_detail(
     end: str = typer.Option(None, help="YYYY-MM-DD, with --series"),
     category: list[str] = typer.Option(None, help="Restrict --sample-per-category to these categories"),
     all_legs: bool = typer.Option(False, help="With --series: every leg of each event, not one"),
+    events_per_series: int = typer.Option(None, help="With --series: random (volume-blind) events per series"),
 ) -> None:
     """Trades/candles for a seeded sample of already-ingested settled Kalshi markets."""
     from albert.ingest import ingest_kalshi_detail as run
@@ -76,7 +77,7 @@ def ingest_kalshi_detail(
                  seed=seed, trades=trades, candles=candles, max_trade_pages=max_trade_pages,
                  series=series or None, start=_day(start) if start else None,
                  end=_day(end) if end else None, categories=category or None,
-                 all_legs=all_legs)
+                 all_legs=all_legs, events_per_series=events_per_series)
     typer.echo(result.summary())
 
 
@@ -87,13 +88,15 @@ def ingest_kalshi_trade_windows(
     end: str = typer.Option(..., help="YYYY-MM-DD, exclusive"),
     horizon: float = typer.Option(24.0, help="Maker order posted this many hours before scheduled expiry"),
     ttl: float = typer.Option(20.0, help="Maker order lifetime in hours"),
+    anchor: str = typer.Option("scheduled", help="scheduled (expiry) or start (ticker game start)"),
+    legs: str = typer.Option("population", help="population (one leg of every event) or sampled (legs with candles)"),
 ) -> None:
     """All trades inside each game's maker-order window (complete coverage, no volume bias)."""
     from albert.ingest import ingest_kalshi_trade_windows as run
 
     s, c = _clients()
     typer.echo(run(s, c, series=series, start=_day(start), end=_day(end), horizon_hours=horizon,
-                   ttl_hours=ttl).summary())
+                   ttl_hours=ttl, anchor=anchor, legs=legs).summary())
 
 
 @ingest_app.command("weather")
@@ -228,6 +231,18 @@ def research_gaps(half_spread: float = typer.Option(0.01, help="Assumed Polymark
     typer.echo(run(s, c, half_spread=half_spread))
 
 
+@research_app.command("sports")
+def research_sports(
+    series: list[str] = typer.Option(..., help="Kalshi series (with start times in tickers); repeatable"),
+    lead: list[float] = typer.Option([1.0, 0.25], help="Hours before the scheduled start"),
+    split: str = typer.Option("2026-10-01", help="Fit before, trade from"),
+) -> None:
+    """Pre-game calibration and a per-series recalibration strategy, volume-blind sample."""
+    from albert.pipeline import research_sports as run
+
+    typer.echo(run(settings(), series=series, leads=tuple(lead), split=_day(split)))
+
+
 @research_app.command("literature")
 def research_literature() -> None:
     """Re-test published effects: maker/taker, leg-sum arb, category slopes, reversion, moves."""
@@ -265,6 +280,8 @@ def backtest_maker(
     exclude_tickers: str = typer.Option(None, help="Parquet with a `ticker` column to exclude (holdout test)"),
     queue: str = typer.Option("any", help="any, join (1-tick markets only), improve (wider only)"),
     universe: str = typer.Option("sample", help="sample (random volume band; biased) or population (all games, windowed trades)"),
+    anchor: str = typer.Option("scheduled", help="scheduled (expiry - horizon) or start (ticker start - horizon)"),
+    series: list[str] = typer.Option(None, help="Restrict to these series"),
 ) -> None:
     """Resting bids on Kalshi favorites, filled only by later real trades into our price."""
     from pathlib import Path
@@ -274,7 +291,7 @@ def backtest_maker(
     typer.echo(run(settings(), horizons=tuple(horizon), size=size, cash=cash,
                    categories=tuple(category), lo=lo, hi=hi, ttl_hours=ttl,
                    exclude_tickers=Path(exclude_tickers) if exclude_tickers else None,
-                   queue=queue, universe=universe))
+                   queue=queue, universe=universe, anchor=anchor, series=series or None))
 
 
 @backtest_app.command("run")

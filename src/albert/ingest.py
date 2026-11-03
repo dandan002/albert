@@ -191,7 +191,8 @@ def ingest_kalshi_detail(s: Settings, c: Clients, *, sample_per_category: int = 
                          trades: bool = True, candles: bool = True, max_trade_pages: int = 10,
                          candle_minutes: int = 60, series: list[str] | None = None,
                          start: datetime | None = None, end: datetime | None = None,
-                         categories: list[str] | None = None, all_legs: bool = False) -> IngestResult:
+                         categories: list[str] | None = None, all_legs: bool = False,
+                         events_per_series: int | None = None) -> IngestResult:
     """Trades/candles for a reproducible *sample* of already-ingested settled markets.
 
     ``ingest kalshi --max-markets`` takes the top-N by volume, which over-represents a few huge
@@ -228,6 +229,12 @@ def ingest_kalshi_detail(s: Settings, c: Clients, *, sample_per_category: int = 
             full = full.filter(pl.col("close_time") < end)
         # One leg per event (games: both legs mirror each other) or every leg (bracket events
         # such as daily temperature, where each leg is a different outcome).
+        if events_per_series:
+            # Volume-blind random events per series (seeded): every event has the same chance.
+            evs = (full.select("series_ticker", "event_ticker").unique().sort("event_ticker")
+                   .sample(fraction=1.0, shuffle=True, seed=seed)
+                   .group_by("series_ticker", maintain_order=True).head(events_per_series))
+            full = full.filter(pl.col("event_ticker").is_in(evs["event_ticker"].implode()))
         parts.append(full if all_legs else
                      full.sort("ticker").unique("event_ticker", keep="first", maintain_order=True))
     if not parts:
@@ -244,7 +251,7 @@ def ingest_kalshi_detail(s: Settings, c: Clients, *, sample_per_category: int = 
         "max_volume": max_volume, "multi_events": multi_events, "max_outcomes": max_outcomes,
         "seed": seed, "trades": trades, "candles": candles, "max_trade_pages": max_trade_pages,
         "series": series, "start": start, "end": end, "categories": categories,
-        "all_legs": all_legs,
+        "all_legs": all_legs, "events_per_series": events_per_series,
     }, result.tables, result.raw_files)
     return result
 
@@ -284,28 +291,42 @@ WINDOW_SCHEMA = {"ticker": pl.String, "window_start": pl.Datetime("us", "UTC"),
 
 def ingest_kalshi_trade_windows(s: Settings, c: Clients, *, series: list[str], start: datetime,
                                 end: datetime, horizon_hours: float = 24.0,
-                                ttl_hours: float = 20.0, lead_hours: float = 1.0) -> IngestResult:
+                                ttl_hours: float = 20.0, lead_hours: float = 1.0,
+                                anchor: str = "scheduled", legs: str = "population") -> IngestResult:
     """*All* trades in each game's maker-order window, for one leg of every game in ``series``.
 
-    Window = [scheduled expiry - horizon - lead, scheduled expiry - horizon + ttl]. Unlike the
-    newest-N sample this has full coverage however busy the market is, so the maker backtest
-    is not restricted (and biased) to quiet markets. Coverage is recorded in
-    ``kalshi_trade_windows``.
+    Window = [anchor - horizon - lead, anchor - horizon + ttl], where anchor is the scheduled
+    expiry (``anchor="scheduled"``) or the game start in the ticker (``anchor="start"``).
+    Unlike the newest-N sample this has full coverage however busy the market is, so the
+    maker backtest is not restricted (and biased) to quiet markets. Coverage is recorded in
+    ``kalshi_trade_windows``. ``legs="population"`` takes one leg of every event in
+    ``series``; ``legs="sampled"`` takes the legs of those series that already have candles
+    (e.g. a volume-blind ``--events-per-series`` sample).
     """
     from albert.research.literature import full_population_legs
 
     result = IngestResult()
     markets = read_table(s.tables_dir, "kalshi_markets")
-    legs = full_population_legs(markets, tuple(series)).implode()
-    sel = markets.filter(pl.col("ticker").is_in(legs) & (pl.col("close_time") >= start)
+    if legs == "sampled":
+        have = read_table(s.tables_dir, "kalshi_candles")["ticker"].unique()
+        chosen = markets.filter(pl.col("series_ticker").is_in(series)
+                                & pl.col("ticker").is_in(have.implode()))["ticker"].implode()
+    else:
+        chosen = full_population_legs(markets, tuple(series)).implode()
+    sel = markets.filter(pl.col("ticker").is_in(chosen) & (pl.col("close_time") >= start)
                          & (pl.col("close_time") < end))
     cutoff = c.kalshi.cutoff()
     trade_rows: list[dict] = []
     windows: list[dict] = []
     for i, m in enumerate(sel.iter_rows(named=True), 1):
-        anchor = m["expected_expiration_time"] or m["close_time"]
-        lo = anchor - timedelta(hours=horizon_hours + lead_hours)
-        hi = anchor - timedelta(hours=horizon_hours) + timedelta(hours=ttl_hours)
+        if anchor == "start":
+            at = k.ticker_start(m["event_ticker"])
+            if at is None:
+                continue
+        else:
+            at = m["expected_expiration_time"] or m["close_time"]
+        lo = at - timedelta(hours=horizon_hours + lead_hours)
+        hi = at - timedelta(hours=horizon_hours) + timedelta(hours=ttl_hours)
         historical = bool(cutoff["trades_created_ts"] and m["close_time"] < cutoff["trades_created_ts"])
         n = 0
         try:
@@ -329,7 +350,8 @@ def ingest_kalshi_trade_windows(s: Settings, c: Clients, *, series: list[str], s
     result.tables["kalshi_trade_windows"] = len(windows)
     result.manifest = write_manifest(s.data_dir, "ingest kalshi-trade-windows", {
         "series": series, "start": start, "end": end, "horizon_hours": horizon_hours,
-        "ttl_hours": ttl_hours, "lead_hours": lead_hours}, result.tables, result.raw_files)
+        "ttl_hours": ttl_hours, "lead_hours": lead_hours, "anchor": anchor, "legs": legs},
+        result.tables, result.raw_files)
     return result
 
 

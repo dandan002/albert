@@ -313,7 +313,8 @@ def backtest_maker(s: Settings, *, horizons: tuple[float, ...] = (24.0, 6.0), si
                    cash: float = 50.0, categories: tuple[str, ...] = ("Climate and Weather", "Sports"),
                    lo: float = 0.50, hi: float = 0.95, ttl_hours: float | None = None,
                    exclude_tickers: Path | None = None, queue: str = "any",
-                   universe: str = "sample") -> Path:
+                   universe: str = "sample", anchor: str = "scheduled",
+                   series: list[str] | None = None) -> Path:
     """Resting-bid backtest on Kalshi favorites with a trade-driven fill model (backtest/maker.py)."""
     from albert.backtest import maker
 
@@ -332,6 +333,9 @@ def backtest_maker(s: Settings, *, horizons: tuple[float, ...] = (24.0, 6.0), si
         trades = read_table(s.tables_dir, "kalshi_trades").filter(pl.col("ticker").is_in(band))
     else:
         raise ValueError(f"unknown universe {universe!r}")
+    if series:
+        markets = markets.filter(pl.col("series_ticker").is_in(series))
+        trades = trades.filter(pl.col("ticker").is_in(markets["ticker"].implode()))
     holdout_note = ""
     if exclude_tickers is not None:
         # Holdout: drop every market an earlier (in-sample) run could have seen.
@@ -341,7 +345,7 @@ def backtest_maker(s: Settings, *, horizons: tuple[float, ...] = (24.0, 6.0), si
     r = Report(s.reports_dir, "backtest-maker")
     r.text("Setup", f"- categories {list(categories)}, favorite bid in [{lo}, {hi}], {size} contracts "
                     f"per order for the flat test, ttl {ttl_hours or 'until close'}, queue mode {queue}, "
-                    f"universe {universe}\n"
+                    f"universe {universe}, anchor {anchor}, series {series or 'all'}\n"
                     f"- {trades['ticker'].n_unique()} randomly sampled markets with trades "
                     "(volume 500-200k)\n- fill = later real taker trades selling into our price "
                     "(at it if we improved the best bid, through it if we joined); held to settlement; "
@@ -351,7 +355,7 @@ def backtest_maker(s: Settings, *, horizons: tuple[float, ...] = (24.0, 6.0), si
     for h in horizons:
         orders = maker.maker_orders(markets, candles, trades, horizon_hours=h, categories=categories,
                                     lo=lo, hi=hi, ttl_hours=ttl_hours, queue=queue,
-                                    windows=windows)
+                                    windows=windows, anchor=anchor)
         if orders.is_empty():
             continue
         fills = maker.with_pnl(maker.simulate_fills(orders, trades, size=size)).with_columns(
@@ -382,7 +386,7 @@ def backtest_maker(s: Settings, *, horizons: tuple[float, ...] = (24.0, 6.0), si
     for h in horizons:
         orders = maker.maker_orders(markets, candles, trades, horizon_hours=h, categories=categories,
                                     lo=lo, hi=hi, ttl_hours=ttl_hours, queue=queue,
-                                    windows=windows)
+                                    windows=windows, anchor=anchor)
         if orders.is_empty():
             continue
         b = maker.run_maker_bankroll(orders, trades, cash=cash)
@@ -390,6 +394,55 @@ def backtest_maker(s: Settings, *, horizons: tuple[float, ...] = (24.0, 6.0), si
                            "orders_placed": b.orders_placed, "orders_filled": b.orders_filled,
                            "skipped_no_cash": b.skipped_no_cash, "max_drawdown": round(b.max_drawdown, 4)}
     r.json(f"Bankroll simulation (${cash:g} Kalshi, 5% / $10 per order, 10% per event)", bank)
+    return r.save()
+
+
+def research_sports(s: Settings, *, series: list[str], leads: tuple[float, ...] = (1.0, 0.25),
+                    split: datetime = datetime(2026, 10, 1, tzinfo=UTC), min_edge: float = 0.03) -> Path:
+    """Pre-game pricing of (minor) sports series on a volume-blind sample.
+
+    Decision = ticker start time - lead. Only markets with a two-sided quote at that moment
+    are used, which is known at decision time (unlike final volume). Per series: calibration
+    slope, favourite residual (taker at the ask), and the per-series slope strategy fit before
+    ``split`` and traded after it (flat 1-contract bets, SEs clustered by date).
+    """
+    markets = read_table(s.tables_dir, "kalshi_markets").filter(pl.col("series_ticker").is_in(series))
+    candles = read_table(s.tables_dir, "kalshi_candles")
+    r = Report(s.reports_dir, "research-sports")
+    r.text("Setup", f"- series: {', '.join(series)}\n- decision = ticker start - lead; quote must be "
+                    f"two-sided with spread <= 10c\n- strategy: per-series logistic recalibration fit "
+                    f"before {split:%Y-%m-%d}, flat bets after it, edge >= {min_edge} after taker fee")
+    out = []
+    for lead in leads:
+        obs = cal.kalshi_observations(markets, candles, horizon_hours=lead, anchor="start",
+                                      staleness_hours=2.0).with_columns(
+            pl.col("market_id").str.split("-").list.first().alias("category"))
+        if obs.is_empty():
+            continue
+        slopes = lit.calibration_slopes(obs, min_n=80, boot=100)
+        fav = obs.with_columns(
+            pl.when(pl.col("mid") >= 0.5).then(pl.col("yes_ask")).otherwise(1 - pl.col("yes_bid")).alias("fav_price"),
+            pl.when(pl.col("mid") >= 0.5).then(pl.col("y")).otherwise(1 - pl.col("y")).alias("fav_win"),
+            pl.col("event_id").str.split("-").list.get(1).str.slice(0, 7).alias("date"))
+        favs = fav.group_by("category").agg(
+            pl.len().alias("n"), pl.col("fav_price").mean().alias("avg_fav_ask"),
+            (pl.col("fav_win") - pl.col("fav_price")).mean().alias("fav_edge_gross"),
+            ((pl.col("fav_win") - pl.col("fav_price")).std() / pl.len().sqrt()).alias("se"))
+        train, test = split_by_time(obs, split)
+        sig = lit.slope_signals(train, test, min_n=80)
+        rows = []
+        for (ser,), g in sig.group_by(pl.col("market_id").str.split("-").list.first()):
+            f = lit.flat_signal_returns(g, min_edge=min_edge,
+                                        cluster=pl.col("event_id").str.split("-").list.get(1).str.slice(0, 7))
+            if not f.is_empty():
+                rows.append({"category": ser, **{k_: f.row(0, named=True)[k_] for k_ in ("n", "clusters", "roi", "t")}})
+        strat = pl.DataFrame(rows) if rows else pl.DataFrame(schema={"category": pl.String})
+        table = slopes.join(favs, on="category", how="left").join(
+            strat.rename({c_: f"strat_{c_}" for c_ in strat.columns if c_ != "category"}), on="category", how="left")
+        r.table(f"Lead {lead:g}h before start", table.sort("n", descending=True, nulls_last=True), max_rows=40)
+        out.append(table.with_columns(pl.lit(lead).alias("lead_h")))
+    if out:
+        pl.concat(out, how="diagonal_relaxed").write_parquet(r.dir / "sports.parquet")
     return r.save()
 
 

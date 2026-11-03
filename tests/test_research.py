@@ -44,6 +44,24 @@ def test_decisions_anchor_on_scheduled_expiry_not_actual_close():
     assert leaky.filter(pl.col("market_id") == "EARLY")["yes_bid"][0] == 0.35
 
 
+def test_start_anchor_uses_ticker_game_time():
+    # KXKBOGAME-26OCT020430... starts 04:30 EDT = 08:30 UTC on Oct 2.
+    start = datetime(2026, 10, 2, 8, 30, tzinfo=UTC)
+    markets = pl.DataFrame([{"ticker": "KXKBOGAME-26OCT020430SAMKTW-SAM",
+                             "event_ticker": "KXKBOGAME-26OCT020430SAMKTW", "category": "Sports",
+                             "close_time": start + timedelta(hours=4), "result": "yes",
+                             "fee_type": "quadratic", "fee_multiplier": 1.0,
+                             "expected_expiration_time": start + timedelta(hours=3)}])
+    candles = pl.DataFrame([
+        {"ticker": "KXKBOGAME-26OCT020430SAMKTW-SAM", "end_ts": start - timedelta(hours=1, minutes=30),
+         "yes_bid_close": 0.55, "yes_ask_close": 0.57},
+        {"ticker": "KXKBOGAME-26OCT020430SAMKTW-SAM", "end_ts": start - timedelta(minutes=30),
+         "yes_bid_close": 0.80, "yes_ask_close": 0.82},  # after the 1h-lead decision
+    ])
+    obs = kalshi_observations(markets, candles, horizon_hours=1.0, anchor="start", staleness_hours=2)
+    assert obs.height == 1 and obs["yes_bid"][0] == 0.55
+
+
 def test_calibration_model_shrinks_to_market_price_without_data():
     empty = pl.DataFrame(schema={"category": pl.String, "mid": pl.Float64, "y": pl.Float64,
                                  "yes_ask": pl.Float64, "yes_bid": pl.Float64, "venue": pl.String,

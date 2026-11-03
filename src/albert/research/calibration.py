@@ -41,9 +41,17 @@ def kalshi_observations(markets: pl.DataFrame, candles: pl.DataFrame, *, horizon
     """One observation per market: the last candle closing at or before anchor - horizon.
 
     ``anchor="scheduled"`` uses ``expected_expiration_time`` (falling back to ``close_time``
-    when missing); ``anchor="close"`` reproduces the old, leaky behaviour for comparison.
+    when missing); ``anchor="start"`` uses the game start encoded in the ticker (markets
+    without one are dropped), so ``horizon_hours`` is the lead before the game;
+    ``anchor="close"`` reproduces the old, leaky behaviour for comparison.
     """
-    if anchor == "scheduled" and "expected_expiration_time" in markets.columns:
+    if anchor == "start":
+        from albert.venues.kalshi import ticker_start
+
+        markets = markets.with_columns(pl.col("event_ticker").map_elements(
+            ticker_start, return_dtype=pl.Datetime("us", "UTC")).alias("_start")).drop_nulls("_start")
+        anchor_col = pl.col("_start")
+    elif anchor == "scheduled" and "expected_expiration_time" in markets.columns:
         anchor_col = pl.coalesce("expected_expiration_time", "close_time")
     elif anchor in ("scheduled", "close"):
         anchor_col = pl.col("close_time")

@@ -6,7 +6,12 @@ git history before this restart.
 ## Goal
 
 Find and exploit repeatable edges in **non-financial** prediction markets with a **$100** starting
-bankroll, and compound the bankroll through systematic small bets.
+bankroll through systematic small bets.
+
+**Changed 2026-11-03:** the target is *consistent* returns (positive in most weeks/months,
+small drawdowns), not exponential growth. Market volume does not matter: thin, minor markets
+are in scope because our size is small. Current focus is sports, after major leagues, weather,
+wallets and cross-venue arbitrage all tested efficient (README "Results so far").
 
 ## Venues (decided 2026-11-03)
 

@@ -74,7 +74,7 @@ def maker_orders(markets: pl.DataFrame, candles: pl.DataFrame, trades: pl.DataFr
                  lo: float = 0.50, hi: float = 0.95, tick: float = 0.01, ttl_hours: float | None = None,
                  max_spread: float = 0.10, staleness_hours: float = 6.0,
                  start_buffer_minutes: float = 15.0, queue: str = "any",
-                 windows: pl.DataFrame | None = None) -> pl.DataFrame:
+                 windows: pl.DataFrame | None = None, anchor: str = "scheduled") -> pl.DataFrame:
     """One candidate maker order per market (see module docstring).
 
     Only markets with trades covering the whole order life are kept. With ``windows``
@@ -82,10 +82,13 @@ def maker_orders(markets: pl.DataFrame, candles: pl.DataFrame, trades: pl.DataFr
     exact. Without it, the trade sample is the newest N per market, so the decision must be
     after the first recorded trade, which quietly drops busy markets.
     """
-    m = markets.filter(pl.col("result").is_in(["yes", "no"]) & pl.col("category").is_in(list(categories))
-                       ).with_columns(
-        (pl.coalesce("expected_expiration_time", "close_time") - timedelta(hours=horizon_hours)
-         ).alias("decision_ts"))
+    m = markets.filter(pl.col("result").is_in(["yes", "no"]) & pl.col("category").is_in(list(categories)))
+    if anchor == "start":  # horizon = hours before the game start encoded in the ticker
+        m = m.with_columns(pl.col("event_ticker").map_elements(
+            ticker_start, return_dtype=pl.Datetime("us", "UTC")).alias("_anchor")).drop_nulls("_anchor")
+    else:
+        m = m.with_columns(pl.coalesce("expected_expiration_time", "close_time").alias("_anchor"))
+    m = m.with_columns((pl.col("_anchor") - timedelta(hours=horizon_hours)).alias("decision_ts")).drop("_anchor")
     m = m.filter(pl.col("decision_ts") < pl.col("close_time"))
     if windows is not None:
         m = m.join(windows.select("ticker", "window_start", "window_end"), on="ticker").filter(
