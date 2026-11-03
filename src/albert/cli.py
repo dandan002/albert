@@ -373,7 +373,7 @@ def paper_reset(kalshi_cash: float = typer.Option(50.0), pmus_cash: float = type
 
 @paper_app.command("run")
 def paper_run(
-    strategy: list[str] = typer.Option(["maker"], help="maker, longshot, wallet_follow, xvenue"),
+    strategy: list[str] = typer.Option(["maker"], help="maker, elo, longshot, wallet_follow, xvenue"),
     interval: float = typer.Option(60.0, help="Seconds between ticks"),
     iterations: int = typer.Option(0, help="Number of ticks (0 = run until stopped)"),
     horizon: float = typer.Option(2.0, help="longshot: hours before close"),
@@ -397,6 +397,15 @@ def paper_run(
                          prior=prior, maker_horizon=maker_horizon, maker_ttl=maker_ttl,
                          maker_size_dollars=maker_size)
     run_loop(trader, interval_seconds=interval, iterations=iterations)
+
+
+@paper_app.command("elo-bootstrap")
+def paper_elo_bootstrap(since: str = typer.Option("2026-08-01", help="Fetch settled results from this date")) -> None:
+    """Fetch settled results for the Elo series (needed once on a fresh machine/VM)."""
+    from albert.ingest import refresh_elo_markets
+
+    s, c = _clients()
+    typer.echo(f"elo_markets: {refresh_elo_markets(s, c, since=_day(since))} settled markets upserted")
 
 
 @paper_app.command("status")

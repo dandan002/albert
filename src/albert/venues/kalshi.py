@@ -182,6 +182,17 @@ class Kalshi:
             "period_interval": period_minutes,
         })
 
+    def series_markets(self, series: str, status: str, *, min_close: datetime | None = None,
+                       max_close: datetime | None = None, cache: bool = False) -> Iterator[Fetched]:
+        """All markets of one series with a status (``open``/``settled``), optionally by close."""
+        params: dict[str, Any] = {"series_ticker": series, "status": status, "limit": 1000,
+                                  "mve_filter": "exclude"}
+        if min_close is not None:
+            params["min_close_ts"] = int(min_close.timestamp())
+        if max_close is not None:
+            params["max_close_ts"] = int(max_close.timestamp())
+        yield from self._cursor_pages("/markets", params, "markets", cache=cache)
+
     def candles_batch(self, tickers: list[str], start: datetime, end: datetime,
                       period_minutes: int) -> Fetched:
         """Live (post-cutoff) candles for many markets in one request: ``{"markets": [{

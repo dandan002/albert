@@ -672,8 +672,11 @@ volume-blind sample (same settings) showed the same signs (+3.3% at 3c, +11.6% a
 **Caveats:** one test month, t ≈ 1, so this is not yet proof. By series, CS2 maps
 (+16.5%, t = 3.0) carry much of it. That is a subgroup, and LoL matches were negative.
 Fills are at the hourly candle's ask, and the displayed size in these markets is small,
-which suits our bet size. **Next: forward-test it in the paper trader with these exact
-coefficients.**
+which suits our bet size. **Forward test:** `albert paper run --strategy elo` uses these exact coefficients
+(`research/ratings.BLEND`). Ratings refresh hourly from settled results, and every 10 minutes
+it scans matches starting in about 1h, reads the live order book, and buys the side whose
+blend beats the ask plus fee by 3c (quarter Kelly, $10/5% caps). It has run alongside
+`maker` since 2026-11-03. On a new machine, run `albert paper elo-bootstrap` once.
 
 ### What this means for the $100 goal
 

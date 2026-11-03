@@ -29,8 +29,36 @@ def _sport(series: str) -> str:
     return series[:-3] + "GAME" if series.endswith("MAP") else series
 
 
+# Blend fit on Aug-Sep 2026 games (research elo) and frozen for forward testing.
+BLEND = (0.090, 0.978, 0.324)
+ELO_SERIES = ("KXCS2GAME", "KXLOLGAME", "KXDOTA2GAME", "KXVALORANTGAME", "KXTTELITEMATCH",
+              "KXTTSTARMATCH", "KXLIGAPROMATCH", "KXDARTSMATCH", "KXEBASKETBALLGAME", "KXCS2MAP",
+              "KXLOLMAP", "KXDOTA2MAP", "KXVALORANTMAP", "KXR6GAME", "KXKHLGAME", "KXKBOGAME",
+              "KXNPBGAME", "KXT20MATCH", "KXNCAAWVMATCH", "KXEFOOTBALLGAME")
+
+
+class Ratings:
+    """Current Elo state, for live predictions."""
+
+    def __init__(self, ratings: dict, games: dict, init: float = 1500.0) -> None:
+        self.ratings, self.games, self.init = ratings, games, init
+
+    def predict(self, series: str, name_a: str, name_b: str) -> tuple[float, int]:
+        """P(a beats b) and the smaller number of earlier rated games."""
+        sport = _sport(series)
+        a, b = (sport, _name(name_a)), (sport, _name(name_b))
+        ra, rb = self.ratings.get(a, self.init), self.ratings.get(b, self.init)
+        return 1 / (1 + 10 ** ((rb - ra) / 400)), min(self.games.get(a, 0), self.games.get(b, 0))
+
+
+def blend(mid: float, elo_p: float, coef: tuple[float, float, float] = BLEND) -> float:
+    a, b, c = coef
+    return 1 / (1 + math.exp(-(a + b * logit(mid) + c * logit(elo_p))))
+
+
 def elo_predictions(markets: pl.DataFrame, *, k: float = 32.0, k_new: float = 48.0,
-                    new_games: int = 10, init: float = 1500.0) -> pl.DataFrame:
+                    new_games: int = 10, init: float = 1500.0,
+                    state: dict | None = None) -> pl.DataFrame:
     """Pre-match P(first leg wins) for every settled two-leg event with a ticker start time.
 
     The "first leg" is the alphabetically first ticker, the same leg the volume-blind price
@@ -62,6 +90,8 @@ def elo_predictions(markets: pl.DataFrame, *, k: float = 32.0, k_new: float = 48
         ratings[a] = ra + step * (ya - p)
         ratings[b] = rb - step * (ya - p)
         games[a], games[b] = na + 1, nb + 1
+    if state is not None:  # hand the final ratings back for live use
+        state["ratings"] = Ratings(ratings, games, init)
     return pl.DataFrame(rows, schema=ELO_SCHEMA)
 
 

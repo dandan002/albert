@@ -419,6 +419,33 @@ def ingest_weather(s: Settings, c: Clients, start: datetime, end: datetime,
     return result
 
 
+def refresh_elo_markets(s: Settings, c: Clients, *, since: datetime,
+                        series: tuple[str, ...] | None = None) -> int:
+    """Upsert settled markets of the Elo series closing after ``since`` into ``elo_markets``.
+
+    The first call seeds the table from ``kalshi_markets`` if that exists (a laptop with
+    research data), so a fresh VM only needs ``albert paper elo-bootstrap``.
+    """
+    from albert.research.ratings import ELO_SERIES
+
+    series = series or ELO_SERIES
+    path_exists = (s.tables_dir / "elo_markets.parquet").exists()
+    if not path_exists and (s.tables_dir / "kalshi_markets.parquet").exists():
+        seed = read_table(s.tables_dir, "kalshi_markets").filter(pl.col("series_ticker").is_in(list(series)))
+        if seed.height:
+            write_table(s.tables_dir, "elo_markets", seed, key=["ticker"])
+    info = kalshi_series(s, c)
+    rows: list[dict] = []
+    for ser in series:
+        for page in c.kalshi.series_markets(ser, "settled", min_close=since):
+            rows.extend(k.market_rows(page.payload, info, "live"))
+    frame = k.markets_frame(rows).filter(pl.col("result").is_in(["yes", "no"])) if rows else None
+    if frame is not None and frame.height:
+        write_table(s.tables_dir, "elo_markets", frame, key=["ticker"])
+        return frame.height
+    return 0
+
+
 def ingest_kalshi_open(s: Settings, c: Clients) -> pl.DataFrame:
     """Snapshot open markets (for matching and paper trading). Not written as the settled table."""
     series_info = kalshi_series(s, c)

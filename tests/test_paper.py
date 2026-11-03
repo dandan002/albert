@@ -140,3 +140,33 @@ def test_game_key_groups_markets_on_the_same_match():
 
     assert _game_key("KXCS2SPREAD-26NOV040430PRVMOUZ") == _game_key("KXCS2GAME-26NOV040430PRVMOUZ")
     assert _game_key("KXHIGHNY-26NOV04") != _game_key("KXHIGHCHI-26NOV05")
+
+
+def test_elo_scan_buys_when_blend_beats_ask(trader, monkeypatch):
+    from datetime import UTC, datetime, timedelta
+    from types import SimpleNamespace
+    from zoneinfo import ZoneInfo
+
+    from albert import paper
+    from albert.research.ratings import Ratings
+
+    start = (datetime.now(UTC) + timedelta(hours=1)).astimezone(ZoneInfo("America/New_York"))
+    ev = "KXCS2MAP-" + start.strftime("%y%b%d%H%M").upper() + "AAABBB-1"
+    legs = [{"ticker": f"{ev}-AAA", "event_ticker": ev, "yes_sub_title": "Alpha", "fee_type": "quadratic",
+             "fee_multiplier": 1.0, "category": "Sports"},
+            {"ticker": f"{ev}-BBB", "event_ticker": ev, "yes_sub_title": "Bravo", "fee_type": "quadratic",
+             "fee_multiplier": 1.0, "category": "Sports"}]
+    pages = {"KXCS2MAP": [SimpleNamespace(payload=legs)]}
+    trader.c = SimpleNamespace(kalshi=SimpleNamespace(series_markets=lambda ser, status: pages.get(ser, [])))
+    monkeypatch.setattr(paper.k, "market_rows", lambda payload, info, src: payload)
+    trader._series = {}
+    trader._ratings = Ratings({("KXCS2GAME", "alpha"): 1800.0, ("KXCS2GAME", "bravo"): 1400.0},
+                              {("KXCS2GAME", "alpha"): 50, ("KXCS2GAME", "bravo"): 50})
+    trader._ratings_at = datetime.now(UTC)
+    monkeypatch.setattr(trader, "kalshi_quote", lambda t: {"yes_bid": 0.50, "yes_ask": 0.52,
+                                                            "yes_bid_size": 100.0, "yes_ask_size": 100.0})
+    assert trader.run_elo() == 1
+    pos = trader.state.positions[0]
+    assert (pos.strategy, pos.market_id, pos.side) == ("elo", f"{ev}-AAA", "yes")
+    assert pos.prob > 0.6  # Elo says Alpha is a strong favourite; the market mid is 0.51
+    assert trader.run_elo() == 0  # scans are throttled to every 10 minutes

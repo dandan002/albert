@@ -13,6 +13,10 @@ Strategies:
   moneyline, buy the same outcome on the cheaper of Kalshi or Polymarket US.
 * ``xvenue``: matched Kalshi / Polymarket US moneylines. Buy both sides when the combined
   cost plus fees is below $1.
+* ``elo``: minor-sports matches starting in ~``elo_lead`` hours. Elo ratings from all
+  settled Kalshi results (refreshed hourly) are blended with the live mid using the
+  coefficients frozen from the Aug-Sep fit (research/ratings.BLEND); the side whose blended
+  probability beats the ask plus fee by the risk config's ``min_edge`` is bought (taker).
 * ``maker``: resting bids on Kalshi Weather/Sports favorites posted ``maker_horizon`` hours
   before scheduled expiry and cancelled ``maker_ttl`` hours later. Uses the same order and fill
   rules as ``backtest maker``: a paper order fills only when a later *real* trade sells into
@@ -133,6 +137,10 @@ class PaperTrader:
         self.maker_size_dollars = maker_size_dollars
         self.maker_categories = maker_categories
         self.maker_scan_minutes = maker_scan_minutes
+        self.elo_lead = 1.0
+        self._ratings = None
+        self._ratings_at: datetime | None = None
+        self._elo_scan_at: datetime | None = None
         self.s, self.c, self.cfg = s, c, cfg
         self.strategies = strategies
         self.horizon = horizon_hours
@@ -333,6 +341,79 @@ class PaperTrader:
                                     available=avail, fee_type=m["fee_type"],
                                     multiplier=m["fee_multiplier"], note=f"{m['category']} mid->{prob:.3f}")
         self.log("scan", strategy="longshot", **scan)
+        return fills
+
+    # ---- strategy: elo ------------------------------------------------------------------------
+    def elo_ratings(self):
+        from albert.ingest import refresh_elo_markets
+        from albert.research.ratings import elo_predictions
+
+        now = _now()
+        if self._ratings is None or self._ratings_at is None or now - self._ratings_at > timedelta(hours=1):
+            n = refresh_elo_markets(self.s, self.c, since=now - timedelta(days=3))
+            state: dict = {}
+            elo_predictions(read_table(self.s.tables_dir, "elo_markets"), state=state)
+            self._ratings, self._ratings_at = state["ratings"], now
+            self.log("elo_refresh", settled_rows=n, rated=len(self._ratings.ratings))
+        return self._ratings
+
+    def run_elo(self, window_minutes: float = 15.0) -> int:
+        from albert.research.ratings import ELO_SERIES, blend
+
+        now = _now()
+        if self._elo_scan_at is not None and now - self._elo_scan_at < timedelta(minutes=10):
+            return 0
+        self._elo_scan_at = now
+        ratings = self.elo_ratings()
+        if self._series is None:
+            self._series = kalshi_series(self.s, self.c)
+        lo = now + timedelta(hours=self.elo_lead) - timedelta(minutes=window_minutes)
+        hi = now + timedelta(hours=self.elo_lead) + timedelta(minutes=window_minutes)
+        scan = {"open_events": 0, "in_window": 0, "rated": 0, "quoted": 0, "best_edge": None}
+        fills = 0
+        for ser in ELO_SERIES:
+            rows: list[dict] = []
+            for page in self.c.kalshi.series_markets(ser, "open"):
+                rows.extend(k.market_rows(page.payload, self._series, "live"))
+            by_event: dict[str, list[dict]] = {}
+            for r in rows:
+                by_event.setdefault(r["event_ticker"], []).append(r)
+            for ev, legs in by_event.items():
+                scan["open_events"] += 1
+                start = k.ticker_start(ev)
+                if len(legs) != 2 or start is None or not (lo <= start <= hi):
+                    continue
+                scan["in_window"] += 1
+                legs.sort(key=lambda r: r["ticker"])
+                first = legs[0]
+                if first["ticker"] in self._held():
+                    continue
+                p_elo, n = ratings.predict(ser, legs[0]["yes_sub_title"], legs[1]["yes_sub_title"])
+                if n < 10:
+                    continue
+                scan["rated"] += 1
+                q = self.kalshi_quote(first["ticker"])
+                if not q or q["yes_bid"] is None or q["yes_ask"] is None:
+                    continue
+                if not (0 < q["yes_ask"] - q["yes_bid"] <= 0.10):
+                    continue
+                scan["quoted"] += 1
+                p = blend((q["yes_bid"] + q["yes_ask"]) / 2, p_elo)
+                ft, fm = first["fee_type"], first["fee_multiplier"]
+                yes_edge = p - q["yes_ask"] - fee("kalshi", 100, q["yes_ask"], fee_type=ft, multiplier=fm) / 100
+                no_px = round(1 - q["yes_bid"], 4)
+                no_edge = (1 - p) - no_px - fee("kalshi", 100, no_px, fee_type=ft, multiplier=fm) / 100
+                best = round(max(yes_edge, no_edge), 4)
+                scan["best_edge"] = best if scan["best_edge"] is None else max(scan["best_edge"], best)
+                if yes_edge >= no_edge:
+                    side, price, prob, avail = "yes", q["yes_ask"], p, q["yes_ask_size"]
+                else:
+                    side, price, prob, avail = "no", no_px, 1 - p, q["yes_bid_size"]
+                fills += self._try_fill(strategy="elo", venue="kalshi", market_id=first["ticker"], side=side,
+                                        event_id=ev, price=price, prob=prob, available=avail,
+                                        fee_type=ft, multiplier=fm,
+                                        note=f"{ser} elo={p_elo:.3f} n={n} blend={p:.3f}")
+        self.log("scan", strategy="elo", **scan)
         return fills
 
     # ---- strategy: maker ----------------------------------------------------------------------

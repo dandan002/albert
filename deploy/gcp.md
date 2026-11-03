@@ -16,7 +16,8 @@ is a poor fit: it scales to zero and has no durable local disk.
 | Secrets (Phase 6 only) | Secret Manager -> env file on the VM at start-up; never in the image |
 
 Paper maker mode needs no research tables: it reads live Kalshi markets, order books and
-trades. Research and backtests can stay on a laptop, or run on the same VM with more disk.
+trades. The `elo` strategy needs settled results for its 20 series (`paper elo-bootstrap`,
+once; it then refreshes hourly into `/data/tables/elo_markets.parquet`). Research and backtests can stay on a laptop, or run on the same VM with more disk.
 
 ## One-time setup
 
@@ -46,7 +47,9 @@ gcloud compute ssh albert-paper --zone=$ZONE
 docker-credential-gcr configure-docker --registries=$REGION-docker.pkg.dev
 sudo mkdir -p /var/albert && sudo chown 10001 /var/albert
 docker run --rm -v /var/albert:/data $IMAGE paper reset --kalshi-cash 50 --pmus-cash 50 --yes
-docker run -d --name albert --restart unless-stopped -v /var/albert:/data $IMAGE
+docker run --rm -v /var/albert:/data $IMAGE paper elo-bootstrap --since 2026-08-01   # Elo history
+docker run -d --name albert --restart unless-stopped -v /var/albert:/data $IMAGE \
+  paper run --strategy maker --strategy elo --interval 60
 ```
 
 `/var/albert` on a COS boot disk survives reboots. For extra safety, snapshot the disk on a
