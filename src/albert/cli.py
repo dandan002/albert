@@ -50,6 +50,42 @@ def ingest_kalshi(
     typer.echo(result.summary())
 
 
+@ingest_app.command("kalshi-detail")
+def ingest_kalshi_detail(
+    sample_per_category: int = typer.Option(0, help="Random markets per category (trade study)"),
+    min_volume: float = typer.Option(500.0, help="Volume band low end for the sample"),
+    max_volume: float = typer.Option(200_000.0, help="Volume band high end for the sample"),
+    multi_events: int = typer.Option(0, help="Complete mutually-exclusive events to fetch"),
+    max_outcomes: int = typer.Option(12, help="Max legs per multi-outcome event"),
+    seed: int = typer.Option(7),
+    trades: bool = typer.Option(True),
+    candles: bool = typer.Option(True),
+    max_trade_pages: int = typer.Option(10, help="1000-trade pages per market (newest first)"),
+    series: list[str] = typer.Option(None, help="Every market of this series (one leg per event, no volume filter); repeatable"),
+    start: str = typer.Option(None, help="YYYY-MM-DD, with --series"),
+    end: str = typer.Option(None, help="YYYY-MM-DD, with --series"),
+) -> None:
+    """Trades/candles for a seeded sample of already-ingested settled Kalshi markets."""
+    from albert.ingest import ingest_kalshi_detail as run
+
+    s, c = _clients()
+    result = run(s, c, sample_per_category=sample_per_category, min_volume=min_volume,
+                 max_volume=max_volume, multi_events=multi_events, max_outcomes=max_outcomes,
+                 seed=seed, trades=trades, candles=candles, max_trade_pages=max_trade_pages,
+                 series=series or None, start=_day(start) if start else None,
+                 end=_day(end) if end else None)
+    typer.echo(result.summary())
+
+
+@ingest_app.command("kalshi-events")
+def ingest_kalshi_events(min_legs: int = typer.Option(3, help="Only events with >= N legs")) -> None:
+    """Event metadata (mutually_exclusive, leg count) for multi-leg events with candles."""
+    from albert.ingest import ingest_kalshi_events as run
+
+    s, c = _clients()
+    typer.echo(run(s, c, min_legs=min_legs).summary())
+
+
 @ingest_app.command("kalshi-open")
 def ingest_kalshi_open() -> None:
     """Snapshot currently open non-financial Kalshi markets."""
@@ -160,9 +196,17 @@ def research_gaps(half_spread: float = typer.Option(0.01, help="Assumed Polymark
     typer.echo(run(s, c, half_spread=half_spread))
 
 
+@research_app.command("literature")
+def research_literature() -> None:
+    """Re-test published effects: maker/taker, leg-sum arb, category slopes, reversion, moves."""
+    from albert.pipeline import research_literature as run
+
+    typer.echo(run(settings()))
+
+
 @backtest_app.command("run")
 def backtest_run(
-    strategy: list[str] = typer.Option(["longshot"], help="longshot and/or wallet_follow"),
+    strategy: list[str] = typer.Option(["longshot"], help="longshot, slope, and/or wallet_follow"),
     split: str = typer.Option(..., help="YYYY-MM-DD: train before, trade after"),
     kalshi_cash: float = typer.Option(50.0),
     pmus_cash: float = typer.Option(50.0),
@@ -173,6 +217,8 @@ def backtest_run(
     max_price: float = typer.Option(0.97, help="Skip contracts dearer than this"),
     horizon: float = typer.Option(2.0, help="longshot: hours before close"),
     prior: float = typer.Option(200.0, help="longshot: pseudo-observations at the market price"),
+    anchor: str = typer.Option("scheduled", help="Decision anchor: scheduled (no leak) or close (leaky, for comparison)"),
+    universe: str = typer.Option("all", help="Kalshi markets: all, or population (volume-blind game sample)"),
     delay: float = typer.Option(5.0, help="wallet_follow: minutes after the wallet's trade"),
     top_k: int = typer.Option(20, help="wallet_follow: wallets to copy"),
 ) -> None:
@@ -185,7 +231,8 @@ def backtest_run(
                      min_price=min_price, max_price=max_price)
     typer.echo(backtest(s, c, strategies=strategy, split=_day(split),
                         cash={"kalshi": kalshi_cash, "pmus": pmus_cash}, cfg=cfg,
-                        horizon_hours=horizon, delay_minutes=delay, top_k=top_k, prior=prior))
+                        horizon_hours=horizon, delay_minutes=delay, top_k=top_k, prior=prior,
+                        anchor=anchor, universe=universe))
 
 
 # ---- paper trading -------------------------------------------------------------------------------
@@ -237,6 +284,15 @@ def paper_status() -> None:
     from albert.paper import status
 
     typer.echo(status(settings()))
+
+
+@app.command("compact-raw")
+def compact_raw_cmd(min_age: float = typer.Option(60.0, help="Skip files younger than N seconds")) -> None:
+    """Compress legacy plain-JSON raw files to .json.zst (lossless, verified, in place)."""
+    from albert.http import compact_raw
+
+    files, before, after = compact_raw(settings().raw_dir, min_age_seconds=min_age)
+    typer.echo(f"compacted {files} files: {before / 1e9:.2f} GB -> {after / 1e9:.2f} GB")
 
 
 @app.command()

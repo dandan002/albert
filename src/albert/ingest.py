@@ -90,40 +90,145 @@ def ingest_kalshi(s: Settings, c: Clients, start: datetime, end: datetime, *,
     cutoff = c.kalshi.cutoff()
 
     if trades:
-        trade_rows: list[dict] = []
-        for m in selected.iter_rows(named=True):
-            historical = bool(cutoff["trades_created_ts"] and m["close_time"] < cutoff["trades_created_ts"])
-            for page in c.kalshi.trades(m["ticker"], historical):
-                result.raw_files.append(page.raw_path)
-                trade_rows.extend(k.trade_rows(page.payload))
-        frame = pl.DataFrame(trade_rows, schema=k.TRADE_SCHEMA)
-        write_table(s.tables_dir, "kalshi_trades", frame, key=["trade_id"])
-        result.tables["kalshi_trades"] = frame.height
-
+        _kalshi_trades(s, c, selected, cutoff, result)
     if candles:
-        candle_rows: list[dict] = []
-        for m in selected.iter_rows(named=True):
-            historical = bool(cutoff["market_settled_ts"] and m["close_time"] < cutoff["market_settled_ts"])
-            open_time = m["open_time"] or (m["close_time"] - timedelta(days=30))
-            # Kalshi caps candle requests at ~5000 periods; a 60-minute candle covers ~200 days.
-            open_time = max(open_time, m["close_time"] - timedelta(minutes=candle_minutes * 4900))
-            try:
-                page = c.kalshi.candles(m["ticker"], open_time, m["close_time"], candle_minutes,
-                                        historical)
-            except RuntimeError as error:  # one bad market should not kill a long run
-                print(f"skip candles {m['ticker']}: {error}")
-                continue
-            result.raw_files.append(page.raw_path)
-            candle_rows.extend(k.candle_rows(page.payload, m["ticker"], candle_minutes))
-        frame = pl.DataFrame(candle_rows, schema=k.CANDLE_SCHEMA)
-        write_table(s.tables_dir, "kalshi_candles", frame, key=["ticker", "end_ts", "period_minutes"])
-        result.tables["kalshi_candles"] = frame.height
+        _kalshi_candles(s, c, selected, cutoff, candle_minutes, result)
 
     result.manifest = write_manifest(s.data_dir, "ingest kalshi", {
         "start": start, "end": end, "categories": categories, "min_volume": min_volume,
         "trades": trades, "candles": candles, "candle_minutes": candle_minutes,
         "max_markets": max_markets, "per_category": per_category,
     }, result.tables, result.raw_files)
+    return result
+
+
+def _kalshi_trades(s: Settings, c: Clients, selected: pl.DataFrame, cutoff: dict,
+                   result: IngestResult, max_pages: int | None = None) -> None:
+    trade_rows: list[dict] = []
+    for i, m in enumerate(selected.iter_rows(named=True), 1):
+        historical = bool(cutoff["trades_created_ts"] and m["close_time"] < cutoff["trades_created_ts"])
+        try:
+            for page in c.kalshi.trades(m["ticker"], historical, max_pages=max_pages):
+                result.raw_files.append(page.raw_path)
+                trade_rows.extend(k.trade_rows(page.payload))
+        except RuntimeError as error:
+            print(f"skip trades {m['ticker']}: {error}")
+        if i % 250 == 0:
+            print(f"  trades: {i}/{selected.height} markets, {len(trade_rows)} rows")
+    frame = pl.DataFrame(trade_rows, schema=k.TRADE_SCHEMA)
+    _require_rows("kalshi_trades", frame)
+    write_table(s.tables_dir, "kalshi_trades", frame, key=["trade_id"])
+    result.tables["kalshi_trades"] = frame.height
+
+
+def _kalshi_candles(s: Settings, c: Clients, selected: pl.DataFrame, cutoff: dict,
+                    candle_minutes: int, result: IngestResult) -> None:
+    candle_rows: list[dict] = []
+    for i, m in enumerate(selected.iter_rows(named=True), 1):
+        historical = bool(cutoff["market_settled_ts"] and m["close_time"] < cutoff["market_settled_ts"])
+        open_time = m["open_time"] or (m["close_time"] - timedelta(days=30))
+        # Kalshi caps candle requests at ~5000 periods; a 60-minute candle covers ~200 days.
+        open_time = max(open_time, m["close_time"] - timedelta(minutes=candle_minutes * 4900))
+        try:
+            page = c.kalshi.candles(m["ticker"], open_time, m["close_time"], candle_minutes,
+                                    historical)
+        except RuntimeError as error:  # one bad market should not kill a long run
+            print(f"skip candles {m['ticker']}: {error}")
+            continue
+        result.raw_files.append(page.raw_path)
+        candle_rows.extend(k.candle_rows(page.payload, m["ticker"], candle_minutes))
+        if i % 250 == 0:
+            print(f"  candles: {i}/{selected.height} markets, {len(candle_rows)} rows")
+    frame = pl.DataFrame(candle_rows, schema=k.CANDLE_SCHEMA)
+    _require_rows("kalshi_candles", frame)
+    write_table(s.tables_dir, "kalshi_candles", frame, key=["ticker", "end_ts", "period_minutes"])
+    result.tables["kalshi_candles"] = frame.height
+
+
+def ingest_kalshi_detail(s: Settings, c: Clients, *, sample_per_category: int = 0,
+                         min_volume: float = 500.0, max_volume: float = 200_000.0,
+                         multi_events: int = 0, max_outcomes: int = 12, seed: int = 7,
+                         trades: bool = True, candles: bool = True, max_trade_pages: int = 10,
+                         candle_minutes: int = 60, series: list[str] | None = None,
+                         start: datetime | None = None, end: datetime | None = None
+                         ) -> IngestResult:
+    """Trades/candles for a reproducible *sample* of already-ingested settled markets.
+
+    ``ingest kalshi --max-markets`` takes the top-N by volume, which over-represents a few huge
+    markets. This draws a seeded random sample per category within a volume band (for
+    maker/taker return studies), plus every leg of ``multi_events`` mutually-exclusive events
+    (exactly one YES) so that sum-of-legs arbitrage can be checked across complete events.
+
+    ``series`` takes *every* settled market of those series closing in [start, end), one leg
+    per event (the first ticker alphabetically), with no volume filter. Choosing markets by
+    final volume is look-ahead: upsets draw heavy in-game trading, so a volume-ranked sample
+    over-represents them.
+    """
+    result = IngestResult()
+    markets = read_table(s.tables_dir, "kalshi_markets")
+    parts = []
+    if sample_per_category:
+        band = markets.filter(pl.col("volume").is_between(min_volume, max_volume))
+        parts.append(band.sample(fraction=1.0, shuffle=True, seed=seed)
+                     .group_by("category", maintain_order=True).head(sample_per_category)
+                     .select(markets.columns))
+    if multi_events:
+        ev = markets.group_by("event_ticker").agg(
+            n=pl.len(), yes=(pl.col("result") == "yes").sum(), vol=pl.col("volume").sum())
+        ev = ev.filter(pl.col("n").is_between(3, max_outcomes) & (pl.col("yes") == 1))
+        chosen = ev.sample(n=min(multi_events, ev.height), shuffle=True, seed=seed)["event_ticker"]
+        parts.append(markets.filter(pl.col("event_ticker").is_in(chosen.implode())))
+    if series:
+        full = markets.filter(pl.col("series_ticker").is_in(series))
+        if start:
+            full = full.filter(pl.col("close_time") >= start)
+        if end:
+            full = full.filter(pl.col("close_time") < end)
+        parts.append(full.sort("ticker").unique("event_ticker", keep="first", maintain_order=True))
+    if not parts:
+        raise ValueError("nothing selected: pass sample_per_category, multi_events or series")
+    selected = pl.concat(parts).unique("ticker", maintain_order=True)
+    print(f"detail ingest: {selected.height} markets")
+    cutoff = c.kalshi.cutoff()
+    if trades:
+        _kalshi_trades(s, c, selected, cutoff, result, max_pages=max_trade_pages)
+    if candles:
+        _kalshi_candles(s, c, selected, cutoff, candle_minutes, result)
+    result.manifest = write_manifest(s.data_dir, "ingest kalshi-detail", {
+        "sample_per_category": sample_per_category, "min_volume": min_volume,
+        "max_volume": max_volume, "multi_events": multi_events, "max_outcomes": max_outcomes,
+        "seed": seed, "trades": trades, "candles": candles, "max_trade_pages": max_trade_pages,
+        "series": series, "start": start, "end": end,
+    }, result.tables, result.raw_files)
+    return result
+
+
+def ingest_kalshi_events(s: Settings, c: Clients, *, min_legs: int = 3) -> IngestResult:
+    """Event metadata (``mutually_exclusive``, leg count) for multi-leg events that have candles.
+
+    Sum-of-legs arbitrage is only riskless when the legs are mutually exclusive *and* complete,
+    which the market table alone cannot tell us.
+    """
+    result = IngestResult()
+    markets = read_table(s.tables_dir, "kalshi_markets")
+    with_candles = read_table(s.tables_dir, "kalshi_candles")["ticker"].unique().implode()
+    ev = (markets.filter(pl.col("ticker").is_in(with_candles))
+          .group_by("event_ticker").agg(pl.len().alias("n")).filter(pl.col("n") >= min_legs))
+    rows = []
+    for e in ev["event_ticker"].to_list():
+        try:
+            page = c.kalshi.event(e)
+        except RuntimeError as error:
+            print(f"skip event {e}: {error}")
+            continue
+        result.raw_files.append(page.raw_path)
+        rows.append(k.event_row(page.payload))
+    frame = pl.DataFrame(rows, schema=k.EVENT_SCHEMA)
+    _require_rows("kalshi_events", frame)
+    write_table(s.tables_dir, "kalshi_events", frame, key=["event_ticker"])
+    result.tables["kalshi_events"] = frame.height
+    result.manifest = write_manifest(s.data_dir, "ingest kalshi-events", {"min_legs": min_legs},
+                                     result.tables, result.raw_files)
     return result
 
 

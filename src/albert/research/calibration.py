@@ -1,8 +1,14 @@
 """Calibration (favorite-longshot bias) research and the calibrated-price model.
 
 An *observation* is one market at one decision time: the executable YES ask and bid seen at
-``close_time - horizon`` and the realized outcome. Using the last candle at or before that
-time keeps everything strictly pre-decision (no look-ahead).
+``anchor - horizon`` and the realized outcome. Using the last candle at or before that time
+keeps prices strictly pre-decision.
+
+The anchor matters. A settled Kalshi market's ``close_time`` is when it *actually* closed
+(game over, word said, winner declared), which is not known in advance. Anchoring on it
+leaks the event's duration (a game still running 2h before its end is more often close),
+so the default anchor is ``expected_expiration_time``, fixed at listing. Markets that had
+already closed by the decision time are dropped.
 """
 
 from dataclasses import dataclass
@@ -30,10 +36,22 @@ OBS_SCHEMA = {
 
 
 def kalshi_observations(markets: pl.DataFrame, candles: pl.DataFrame, *, horizon_hours: float = 2.0,
-                        max_spread: float = 0.10, staleness_hours: float = 6.0) -> pl.DataFrame:
-    """One observation per market: the last candle closing at or before close - horizon."""
+                        max_spread: float = 0.10, staleness_hours: float = 6.0,
+                        anchor: str = "scheduled") -> pl.DataFrame:
+    """One observation per market: the last candle closing at or before anchor - horizon.
+
+    ``anchor="scheduled"`` uses ``expected_expiration_time`` (falling back to ``close_time``
+    when missing); ``anchor="close"`` reproduces the old, leaky behaviour for comparison.
+    """
+    if anchor == "scheduled" and "expected_expiration_time" in markets.columns:
+        anchor_col = pl.coalesce("expected_expiration_time", "close_time")
+    elif anchor in ("scheduled", "close"):
+        anchor_col = pl.col("close_time")
+    else:
+        raise ValueError(f"unknown anchor {anchor!r}")
     m = markets.filter(pl.col("result").is_in(["yes", "no"])).with_columns(
-        (pl.col("close_time") - timedelta(hours=horizon_hours)).alias("decision_ts"))
+        (anchor_col - timedelta(hours=horizon_hours)).alias("decision_ts")
+    ).filter(pl.col("decision_ts") < pl.col("close_time"))
     c = candles.filter(pl.col("yes_bid_close").is_not_null() & pl.col("yes_ask_close").is_not_null()
                        & (pl.col("yes_ask_close") > 0) & (pl.col("yes_bid_close") > 0)
                        & (pl.col("yes_ask_close") < 1)).sort("end_ts")

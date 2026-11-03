@@ -24,6 +24,26 @@ def test_calibration_uses_only_pre_decision_candles():
     assert obs["decision_ts"][0] <= T0 - timedelta(hours=2)
 
 
+def test_decisions_anchor_on_scheduled_expiry_not_actual_close():
+    base = {"event_ticker": "E", "category": "Sports", "result": "no", "fee_type": "quadratic",
+            "fee_multiplier": 1.0, "expected_expiration_time": T0}
+    markets = pl.DataFrame([
+        # Closed 1h early: decision must still be scheduled - 2h, not actual close - 2h.
+        {**base, "ticker": "EARLY", "close_time": T0 - timedelta(hours=1)},
+        # Closed before the decision time: no tradable observation exists.
+        {**base, "ticker": "GONE", "close_time": T0 - timedelta(hours=3)},
+    ])
+    candles = pl.DataFrame([
+        {"ticker": t, "end_ts": T0 - timedelta(hours=h), "yes_bid_close": b, "yes_ask_close": b + 0.02}
+        for t in ("EARLY", "GONE") for h, b in ((4, 0.30), (2, 0.40), (3, 0.35))
+    ])
+    obs = kalshi_observations(markets, candles, horizon_hours=2)
+    assert obs["market_id"].to_list() == ["EARLY"]
+    assert obs["decision_ts"][0] == T0 - timedelta(hours=2) and obs["yes_bid"][0] == 0.40
+    leaky = kalshi_observations(markets, candles, horizon_hours=2, anchor="close")
+    assert leaky.filter(pl.col("market_id") == "EARLY")["yes_bid"][0] == 0.35
+
+
 def test_calibration_model_shrinks_to_market_price_without_data():
     empty = pl.DataFrame(schema={"category": pl.String, "mid": pl.Float64, "y": pl.Float64,
                                  "yes_ask": pl.Float64, "yes_bid": pl.Float64, "venue": pl.String,

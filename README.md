@@ -90,7 +90,8 @@ albert research wallets --split 2026-08-15
 albert research gaps
 
 # 4. Backtests
-albert backtest run --strategy longshot --split 2026-10-01 --prior 20
+albert research literature
+albert backtest run --strategy longshot --split 2026-10-01 --prior 20 --universe population
 albert backtest run --strategy wallet_follow --split 2026-08-15 --delay 5
 
 # 5. Paper trading on live quotes
@@ -108,6 +109,8 @@ albert paper status
 | Command | What it does |
 |---|---|
 | `albert ingest kalshi` | Settled non-financial Kalshi markets that closed in `[start, end)`, routed across the live/historical cutoff. `--trades` and `--candles` fetch per-market history for the top `--max-markets` by volume (`--per-category` applies the limit within each category). |
+| `albert ingest kalshi-detail` | Trades/candles for a *seeded random* sample per category (`--sample-per-category`, volume band), every leg of `--multi-events` multi-outcome events, and/or *every* game of `--series` (one leg per event, no volume filter). Use this, not `--max-markets`, for research samples: ranking on final volume selects upsets. |
+| `albert ingest kalshi-events` | Event metadata (`mutually_exclusive`, leg count) for multi-leg events with candles. |
 | `albert ingest kalshi-open` | Snapshot of open non-financial Kalshi markets. |
 | `albert ingest pm-markets` | Polymarket intl events and markets with resolutions (`--open` for live markets). |
 | `albert ingest pm-wallets` | Leaderboard wallets (per category) and their trades, paged month by month, then backfills resolutions for every market they traded. |
@@ -116,8 +119,10 @@ albert paper status
 | `albert research calibration` | Favorite-longshot tables: hit rate vs price, after-fee edge of buying YES or NO, by category. |
 | `albert research wallets` | Wallet skill scores and an out-of-sample persistence test. |
 | `albert research gaps` | Kalshi vs Polymarket price gaps and locked-in opportunities on exact matches. |
-| `albert backtest run` | Runs one or more strategies through the backtester. Writes a report with metrics, Monte Carlo, fills and an equity curve. |
+| `albert research literature` | Re-tests five published effects on our data: maker vs taker returns, sum-of-legs arbitrage, calibration slope by category (plus a full-population sports check), rolling-minimum mean reversion, pre-close move reversal. |
+| `albert backtest run` | Runs `longshot`, `slope` and/or `wallet_follow` through the backtester. `--anchor scheduled` (default) places Kalshi decisions at scheduled expiry − horizon; `--anchor close` reproduces the old leaky timing for comparison. `--universe population` restricts Kalshi to the volume-blind game sample. Writes a report with metrics, Monte Carlo, fills and an equity curve. |
 | `albert paper reset/run/status` | Paper trading account (see [Paper trading](#5-paper-trading)). |
+| `albert compact-raw` | Compresses legacy plain-JSON raw cache files to `.json.zst` (lossless, verified). |
 | `albert capture` | Records small real API responses into `tests/fixtures/` for parser tests. |
 
 Every command prints where it wrote its outputs. Every ingest writes a run manifest
@@ -132,7 +137,7 @@ read or wrote.
              ┌──────────── venues/ ────────────┐
  HTTP ──────▶│ kalshi.py  polymarket.py  polymarket_us.py │── normalizers ──▶ data/tables/*.parquet
  (http.py)   └─────────────────────────────────┘                              │
-   │ append-only raw cache: data/raw/<venue>/<sha256(url+params)>.json        │
+   │ append-only raw cache: data/raw/<venue>/<sha256(url+params)>.json.zst    │
    ▼                                                                          ▼
  data/runs/*.json (manifests)               matching.py ──▶ match_kalshi_pm, match_pmus_pm
                                                                               │
@@ -255,8 +260,10 @@ appended to `data/paper/ledger.jsonl`.
 
 | Strategy | Hypothesis | Venue | Status |
 |---|---|---|---|
-| `longshot` | Prices are miscalibrated in some category × price buckets (classic favorite-longshot bias). | Kalshi | research + backtest + paper |
-| `wallet_follow` | Some wallets have persistent skill that survives a copy delay. | Kalshi or Polymarket US (cheaper) | research + backtest + paper |
+| `longshot` | Prices are miscalibrated in some category × price buckets (classic favorite-longshot bias). | Kalshi | research + backtest + paper. **No edge** once look-ahead and volume selection are fixed (Results §3). |
+| `slope` | Per-category logistic recalibration (prices too close to / too far from 50%, arXiv:2602.19520). | Kalshi | research + backtest. **No edge** on clean data (Results §3). |
+| maker favorites | Resting bids on ≥ 50c contracts earn the maker premium (Bürgi et al. 2025). | Kalshi | research only (Results §3a). Next to build: maker paper mode. |
+| `wallet_follow` | Some wallets have persistent skill that survives a copy delay. | Kalshi or Polymarket US (cheaper) | research + backtest + paper. **No edge** (Results §1-2). |
 | `xvenue` | The same game is priced differently on Kalshi and Polymarket US by more than fees. | both | research (indicative) + paper |
 
 ---
@@ -302,15 +309,24 @@ re-checked after rounding.
 
 ```
 data/
-  raw/<venue>/<key>.json          every API response + the request that produced it
+  raw/<venue>/<key>.json.zst      every API response + the request that produced it (zstd JSON)
   tables/*.parquet                typed tables (see below)
   runs/*.json                     ingest manifests (params, row counts, raw files used)
   reports/<name>-<ts>/            report.md + parquet extracts + equity.png
   paper/state.json, ledger.jsonl  paper account and full audit log
 ```
 
+**Storage formats.** Analysis tables are Parquet (columnar, compressed, fast to scan). The raw
+cache stays one file per API response so any run can be replayed byte-for-byte from its
+manifest, but each file is zstd-compressed JSON: about 20x smaller than plain JSON (the
+cache was 20 GB uncompressed) and no slower to read, because there is less disk I/O.
+Caches written before this change are plain `.json`. They are still read, and
+`albert compact-raw` converts them losslessly (each file is verified before the original is
+removed). Old manifests that list `.json` paths still resolve.
+
 | Table | Key | Contents |
 |---|---|---|
+| `kalshi_events` | event_ticker | mutually_exclusive flag and listed leg count (for sum-of-legs arbitrage) |
 | `kalshi_series` | series_ticker | category, fee_type, fee_multiplier |
 | `kalshi_markets` | ticker | settled non-financial markets: times, result, last/bid/ask, volume, category, fee params |
 | `kalshi_trades` | trade_id | price, size, taker side |
@@ -335,8 +351,10 @@ tradeable edge yet.** Read it as "what survived a first honest test".
 
 | Source | Rows | Window |
 |---|---|---|
-| Kalshi settled non-financial markets | 469,608 (94% Sports) | 2026-08-15 to 2026-11-01 |
-| Kalshi hourly candles | 1.30M for 4,200 markets (top 600 per category) | same |
+| Kalshi settled non-financial markets | 1,298,805 (all volumes; 94%+ Sports) | 2026-08-15 to 2026-11-01 |
+| Kalshi hourly candles | 2.01M for 9,523 markets: top 600 per category by volume (biased, see below), a seeded random sample of 300 per category, all legs of 400 multi-outcome events, and one leg of every NFL/NBA/NCAAF/MLB/NHL/WNBA game | same |
+| Kalshi trades | 2.45M (newest 5,000 per market) for 3,615 markets: 3,515 in the random volume band (used) + 20 top-volume (excluded from the maker study) | 2026-07-30 to 2026-10-31 |
+| Kalshi events | 993 multi-leg events (552 mutually exclusive) | same |
 | Polymarket intl wallet trades | 743,781 from 134 leaderboard wallets (88% on resolved markets) | 2026-05-01 to 2026-11-02 |
 | Polymarket intl markets | ~140k with resolutions | mostly 2026-05 to 2026-11 |
 | Polymarket US markets | 17,429 (moneylines + politics/culture/science) | 2026-10-20 to 2026-11-02 |
@@ -373,41 +391,77 @@ The model expected a +14.6% edge per trade, and the realized edge was about zero
 **Verdict: do not copy-trade.** The 1-minute and 5-minute rows both use 5-minute price buckets,
 so their difference is noise.
 
-### 3. Calibration / favorite-longshot bias: small, fragile signal
+### 3. Calibration / favorite-longshot bias: the earlier edge was two biases
 
-`albert research calibration` (2,068 markets at close − 2h; 2,817 at close − 24h):
+The first version of this section reported a "small, fragile" favorite-longshot edge
+(longshot strategy: $109-119 from $100 at 2h before close). **That result does not survive
+two corrections found on 2026-11-03, and is withdrawn:**
 
-- Across all categories, prices are close to calibrated. The Brier score of the market mid is
-  0.118 at 2h and 0.155 at 24h. No all-category price bucket reaches |t| > 3 (the largest is
-  3.0), and these standard errors are too small because markets within one event are
-  correlated.
-- **Tails outside sports:** in Elections, Entertainment, Mentions, Politics and
-  Science/Tech, contracts priced 95c+ resolved YES 100% of the time (30-90 markets per bucket),
-  and the matching 1-5c longshots never hit. After fees, buying the favorite earned +1.0 to
-  +2.5c per contract. **This is not proven**: one upset costs about 97c, so the edge only
-  holds if the true upset rate is under about 1%, which 50-90 observations cannot establish.
+1. **Look-ahead in the decision time.** Observations were taken at `close_time − horizon`.
+   For a settled Kalshi market, `close_time` is when it *actually* closed: the game ended, the
+   word was said, a winner was declared. 30-45% of Sports, Politics and Mentions markets close
+   more than an hour away from schedule, so "2h before close" leaked the event's duration (a
+   game still running 2h before its end is more often close, which favors the underdog). The
+   default is now `expected_expiration_time − horizon`, which is fixed at listing, and markets
+   that had already closed by the decision time are dropped. Elections and Mentions have no
+   short-horizon scheduled time (their expected expiration is a backstop weeks out), so they
+   drop out of short-horizon tests entirely.
+2. **Selection on volume.** The candle sample was the top 600 markets per category by
+   *final* volume. Upsets draw heavy in-game trading, so the sample was full of upsets: 92% of
+   its sports favorites were above their series' median volume, and favorites in the top
+   volume quartile under-performed their price by 14c versus 3-5c in the bottom half. A
+   volume-blind sample (one leg of *every* game in six leagues, `ingest kalshi-detail
+   --series`) fixes this.
 
-Longshot strategy backtest (train before 2026-10-01, trade October, Kalshi $50):
+On the clean sample, Kalshi game prices are calibrated (`albert research literature`,
+section 3b; 2,286 games, Aug 15 to Oct 31):
 
-| Horizon | Model prior k | Risk | Trades | End equity ($100 total) | ROI per $ | Monte Carlo P(loss) |
-|---|---|---|---|---|---|---|
-| 2h / 24h | 200 (default) | either | 0 | $100.00 | n/a (model defers to the market) | n/a |
-| 2h | 20 | default | 92 | $109.12 | +11.1% | 37% |
-| 2h | 20 | tails allowed | 206 | $118.87 | +7.8% | 23% |
-| 2h | 50 | default | 11 | $104.04 | +67.8% (11 trades) | 35% |
-| 2h | 50 | tails allowed | 56 | $103.73 | +10.0% | 39% |
-| 24h | 20 | default | 229 | $87.37 | −7.3% | 79% |
-| 24h | 20 | tails allowed | 322 | $90.04 | −4.8% | 77% |
-| 24h | 50 | default | 91 | $103.11 | +5.6% | 39% |
-| 24h | 50 | tails allowed | 174 | $104.89 | +5.8% | 35% |
+| Horizon | Sample | Markets | Calibration slope (1 = calibrated) | Favorite win rate − price |
+|---|---|---|---|---|
+| 24h before scheduled expiry | full population | 2,286 | **1.006** ± 0.060 | +0.2c |
+| 24h | volume-selected | 221 | 0.380 ± 0.153 | −11.2c |
+| 6h | full population | 2,286 | **1.014** ± 0.055 | +1.2c |
+| 6h | volume-selected | 224 | 0.412 ± 0.153 | −9.6c |
 
-"Tails allowed" means `--min-edge 0.01 --max-price 0.99`. All of the profit and loss is on the
-$50 Kalshi bankroll; the Polymarket US $50 sits idle.
+Backtests (train before 2026-10-01, trade October, $50 per venue, `--prior 20` for longshot):
 
-The 2h-before-close version is positive in every configuration tried. The 24h version is
-mixed. **Twelve configurations were tried on one month of test data**, so the best rows are
-flattered by selection. This is the strategy most worth paper trading, with a weak prior
-(`--prior 20`), not one to fund.
+| Strategy | Timing / universe | Trades | End equity ($100 total) | ROI per $ |
+|---|---|---|---|---|
+| longshot 2h | old leaky `close` anchor, biased sample | 206 | $172.94 | +32.9% |
+| slope 24h | `scheduled` anchor, biased sample | 254 | $343.50 | +33.2% |
+| longshot 2h | `scheduled`, population | 217 | **$88.14** | −4.4% |
+| longshot 24h | `scheduled`, population | 244 | **$98.28** | −0.8% |
+| slope 2h / 24h | `scheduled`, population | 4 / 0 | $97.28 / $100.00 | n/a |
+| longshot 2h / 24h | `scheduled`, all markets | 140 / 145 | $79.85 / $81.32 | −16.0% / −15.6% |
+
+The first two rows show how large the biases are: an apparent 3.4x on the bankroll in one
+month, from nothing. **No calibration strategy has an edge once both are fixed.**
+
+### 3a. Strategies from the literature, re-tested (`albert research literature`)
+
+I searched arXiv and the web for published prediction-market strategies and re-tested the
+five that our data can test, after fees, with standard errors clustered by event:
+
+| # | Source | Claim | Our result |
+|---|---|---|---|
+| 1 | Bürgi, Deng & Whelan, *Makers and Takers: The Economics of the Kalshi Prediction Market* (CEPR DP20631, 2025) | Makers earn more than takers; makers buying at ≥ 50c earn about +2.6% | **Replicates.** Makers +1.0% per $ (t = 1.4), takers −2.7% (t = −3.5). Makers buying ≥ 50c: Weather +3.0% (t = 4.0; +1.6/+2.9/+3.4% in Aug/Sep/Oct), Sports +4.1% (t = 3.1; +6.6/+2.7/+4.2%). Elections −12%, Politics −1%, others noise. |
+| 2 | Saguillo et al., *Unravelling the Probabilistic Forest: Arbitrage in Prediction Markets* (arXiv:2508.03474) | In multi-outcome events the legs' prices should sum to $1; deviations were worth about $40M on Polymarket | **Not on Kalshi.** In 258 complete mutually-exclusive events (23,935 event-hours) the guaranteed side (buy every NO) cleared fees in 15 hours of 5 events, at most 2.8c. The "buy every YES below $1" cases are not riskless: Kalshi's `mutually_exclusive` means *at most* one leg wins, and one such event resolved with no winner (−60c). |
+| 3 | *Calibration is conditional* (arXiv:2602.19520) | Political markets are under-confident (favorites cheap) | Leans that way, not significant: Politics slope 1.08 (24h) to 1.35 (2h) ± 0.12-0.25. Polymarket intl overall 0.97 ± 0.07. Sports is calibrated once sampling is fixed (above). |
+| 4 | Quantpedia, *Exploiting Mean-Reversion in Decentralized Prediction Markets* (Polymarket) | Buy at the X-day rolling low, hold Y days | **Loses heavily as a taker.** −13.5% to −15.3% per $ for every lookback/hold tried (24-72h / 6-72h), t ≈ −26 to −33. Crossing the spread twice costs more than the bounce. The author also says it needs passive (maker) fills. |
+| 5 | Moskowitz, *Asset Pricing and Sports Betting* (J. Finance 2021) | Pre-event moves over-react and are reversed by the outcome | Nothing robust. All-category slope −0.04 (t = −1.2) for moves from 26h to 2h, −0.05 (t = −1.1) from 72h to 24h. Isolated cells (Mentions, Elections) at |t| ≈ 2-3 among ~15 tested, which is what chance produces. |
+
+**The one survivor is structural: be the maker, not the taker.** Makers who posted resting
+bids that got filled on favorites (≥ 50c) in Weather and Sports earned 3-4% per dollar, every
+month. This measures *other people's realized maker fills*, so it already includes their
+adverse selection. It does not show that a new order would get filled at the same rate:
+queue position, cancellations and fill probability are not modeled. Testing it needs a
+**maker paper-trading mode** (post bids, count a fill only when later trades print through
+our price) before any real money.
+
+Other ideas from the search that we could not test with this data: weather-forecast models
+against Kalshi temperature brackets (needs archived NWS/GFS forecasts; practitioners report
+that the market already prices the forecast and the bracket edges are easy to get wrong), and
+Polymarket on-chain combinatorial arbitrage (not tradable from the US).
 
 ### 4. Cross-venue gaps: venues agree; no free money
 
@@ -424,8 +478,8 @@ flattered by selection. This is the strategy most worth paper trading, with a we
 The paper trader runs all three strategies against live quotes. On the first ticks (overnight
 US time) it scanned 60 Kalshi markets closing in the window, 20 followed wallets and 46 matched
 games, and found nothing above threshold. That is the expected behavior given results 1-4.
-It needs at least 2 weeks of running (`albert paper run --prior 20`) before any comparison with
-the backtest means anything.
+Its `longshot` strategy is now known to have no edge (section 3), so running it is only
+useful as a plumbing test. The next paper-trading work is a maker mode (section 3a).
 
 ### What this means for the $100 goal
 
@@ -433,18 +487,25 @@ Nothing found so far supports "exponential growth". The honest summary:
 
 - **The insider/high-win-rate thesis fails** on this data: skill does not persist out of
   sample, and copying it after a realistic delay loses money.
-- **Cross-venue arbitrage** between Kalshi and Polymarket US is priced out by fees most of
-  the time.
-- **The calibration edge is the only live candidate.** It is a few cents per contract on
-  short-horizon, non-sports markets, which is incompatible with small-bankroll exponential
-  growth: a 5-10% monthly return on $50 is a few dollars, and fee rounding takes a large share.
-- The best use of the $100 right now is paper trading until the calibration edge either holds
-  up for a few hundred live signals or disappears.
+- **Cross-venue and sum-of-legs arbitrage** are priced out by fees.
+- **Taker strategies on public prices have no edge.** The calibration "edge" from Phase 5 was
+  look-ahead plus sample selection, and mean reversion and move-fading lose after costs.
+- **Being a maker is the only edge in the data**: a few percent per dollar on favorites in
+  Weather and Sports, per the literature and our replication. That is slow, linear growth
+  (a few dollars a month on $50), not exponential, and it is unproven for *our* orders until
+  a maker paper-trading mode has run.
+- Do not fund anything yet. Next: build maker-mode paper trading on Kalshi Weather and Sports
+  favorites and run it for a few weeks.
 
 ---
 
 ## Known limitations
 
+- **Research samples must be volume-blind.** `ingest kalshi --max-markets` ranks markets by
+  *final* volume, which selects upsets (section 3). Use `ingest kalshi-detail` samples
+  (`--series`, or the seeded random sample), and `backtest run --universe population`.
+- **Kalshi `close_time` is when a settled market actually closed.** Never anchor a
+  decision on it; use `expected_expiration_time` (the default `--anchor scheduled`).
 - **Hourly candles.** Kalshi calibration and gap research use hourly candle closes. That is
   fine for "is this price miscalibrated 2h out" but too coarse for latency-sensitive edges.
 - **Polymarket price history has no bid/ask.** Intl prices are mids or last trades. Albert

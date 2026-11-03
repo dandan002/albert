@@ -38,6 +38,12 @@ Each phase ends with a **live smoke run that produces non-empty, sanity-checked 
 - [x] **Market inefficiencies:** calibration by category × price bucket (favorite-longshot bias)
       and cross-venue gaps.
 - [ ] Late-resolution drift (not built yet).
+- [x] Literature re-tests (`research literature`, 2026-11-03): maker/taker, sum-of-legs arb,
+      category calibration slopes, rolling-min reversion, move reversal. Only the maker
+      premium survives.
+- [x] Fixed two biases: decisions anchored on scheduled expiry (not actual close), and
+      volume-blind samples (`ingest kalshi-detail --series`, `--universe population`). The
+      Phase 5 longshot edge is withdrawn.
 
 ## Phase 4: Backtester
 
@@ -49,7 +55,9 @@ Each phase ends with a **live smoke run that produces non-empty, sanity-checked 
 ## Phase 5: Paper trading
 
 - [x] Paper trader built (`albert paper run`): live quotes, simulated fills, settlement, ledger.
-- [ ] Run it for >= 2 weeks or >= 100 signals and compare to the backtest.
+- [ ] Maker mode: post resting bids on Kalshi Weather/Sports favorites (>= 50c); count a fill
+      only when later trades print through our price; track queue-adjusted fill rate and PnL.
+- [ ] Run it for >= 2 weeks or >= 100 fills and compare to the historical maker returns.
 
 ## Phase 6: Live trading ($100, split about $50 / $50)
 

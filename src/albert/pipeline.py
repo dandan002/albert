@@ -1,6 +1,6 @@
 """Research and backtest pipelines used by the CLI. Each writes a report under data/reports."""
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import polars as pl
@@ -12,6 +12,7 @@ from albert.ingest import Clients
 from albert.reports import Report
 from albert.research import calibration as cal
 from albert.research import follow, gaps, wallets
+from albert.research import literature as lit
 from albert.research.follow import SIGNAL_SCHEMA
 from albert.risk import RiskConfig
 from albert.store import read_table, write_table
@@ -19,10 +20,18 @@ from albert.venues import polymarket as pm
 
 
 # ---- data helpers -------------------------------------------------------------------------------
-def kalshi_obs(s: Settings, horizon_hours: float) -> pl.DataFrame:
+def kalshi_obs(s: Settings, horizon_hours: float, anchor: str = "scheduled",
+               universe: str = "all") -> pl.DataFrame:
+    """``universe="population"`` keeps only the volume-blind game sample (see
+    research/literature.full_population_legs); ``"all"`` also includes volume-ranked markets."""
     markets = read_table(s.tables_dir, "kalshi_markets")
     candles = read_table(s.tables_dir, "kalshi_candles")
-    return cal.kalshi_observations(markets, candles, horizon_hours=horizon_hours)
+    obs = cal.kalshi_observations(markets, candles, horizon_hours=horizon_hours, anchor=anchor)
+    if universe == "population":
+        obs = obs.filter(pl.col("market_id").is_in(lit.full_population_legs(markets).implode()))
+    elif universe != "all":
+        raise ValueError(f"unknown universe {universe!r}")
+    return obs
 
 
 def fetch_pm_history(s: Settings, c: Clients, windows: pl.DataFrame, bucket_seconds: int = 300,
@@ -166,19 +175,164 @@ def _plot_equity(result: BacktestResult, path: Path) -> bool:
     return True
 
 
+def research_literature(s: Settings, *, reversion_grid: tuple = ((24, 6), (24, 24), (72, 24),
+                                                                (72, 72))) -> Path:
+    """Re-test published prediction-market effects on our data (see research/literature.py)."""
+    r = Report(s.reports_dir, "research-literature")
+    markets = read_table(s.tables_dir, "kalshi_markets")
+    candles = read_table(s.tables_dir, "kalshi_candles")
+    trades = read_table(s.tables_dir, "kalshi_trades")
+    summary: dict[str, object] = {}
+
+    # Only the seeded random sample (`ingest kalshi-detail`, volume band 500-200k). Markets
+    # picked as the top-N by volume are excluded: ranking on final volume selects upsets.
+    band = markets.filter(pl.col("volume").is_between(500, 200_000))["ticker"].implode()
+    trades = trades.filter(pl.col("ticker").is_in(band))
+    legs = lit.trade_legs(trades, markets)
+    mt = lit.maker_taker_returns(legs)
+    r.text("1. Makers vs takers (Bürgi, Deng & Whelan 2025)",
+           f"{trades['ticker'].n_unique()} randomly sampled markets (volume 500-200k contracts), "
+           f"{trades.height} trades (newest 5,000 per market), each counted once for the taker and "
+           "once for the maker, held to settlement, after fees. ROI = PnL / dollars staked; SE "
+           "clustered by event.")
+    r.table("ROI by role", mt["by_role"])
+    r.table("ROI by role and price band", mt["by_role_band"], save_as="maker_taker_bands")
+    r.table("Maker purchases at >= 50c, by category", mt["maker_favorites_by_category"])
+    r.table("Purchases at >= 50c by role and month", mt["favorites_by_role_month"])
+    r.table("Maker purchases at >= 50c by category and month",
+            mt["maker_favorites_by_category_month"], max_rows=40)
+    summary["maker_taker"] = mt["by_role"].to_dicts()
+
+    try:
+        events = read_table(s.tables_dir, "kalshi_events")
+    except FileNotFoundError:
+        events = None
+    if events is not None:
+        hours = lit.leg_sum_arbitrage(candles, markets, events)
+        ls = lit.leg_sum_summary(hours)
+        summary["leg_sum"] = ls
+        r.text("2. Sum-of-legs arbitrage (Saguillo et al. 2025)",
+               "Mutually exclusive, complete events only; every leg quoted in the same hourly "
+               "candle; taker fees on a 100-lot per leg.")
+        r.json("Summary", ls)
+        if not hours.is_empty():
+            per_event = hours.group_by("event_ticker").agg(
+                pl.len().alias("hours"), pl.first("legs"), pl.first("n_yes"),
+                pl.col("long_profit").max().alias("best_long"),
+                pl.col("short_profit").max().alias("best_short"),
+                pl.col("long_realized").max().alias("best_long_realized"),
+            ).sort("best_long", descending=True)
+            r.table("Events by best indicative long profit", per_event, max_rows=15)
+            hours.write_parquet(r.dir / "leg_sum_hours.parquet")
+
+    r.text("3. Calibration slope by category (arXiv:2602.19520)",
+           "Logistic fit y ~ a + b*logit(mid). b > 1 means prices are too close to 50% "
+           "(under-confident; favorites cheap), b < 1 means over-confident. Event bootstrap SE.")
+    obs_by_h = {h: kalshi_obs(s, h) for h in (2.0, 6.0, 24.0, 26.0, 72.0)}
+    slopes = []
+    for h in (2.0, 24.0):
+        sl = lit.calibration_slopes(obs_by_h[h]).with_columns(pl.lit(h).alias("horizon_h"))
+        slopes.append(sl)
+        r.table(f"Kalshi, {h:g}h before close", sl)
+    try:
+        pm_obs = cal.pm_observations(read_table(s.tables_dir, "pm_markets"),
+                                     read_table(s.tables_dir, "pm_price_history"), horizon_hours=2.0)
+    except FileNotFoundError:
+        pm_obs = None
+    if pm_obs is not None and pm_obs.height:
+        sl = lit.calibration_slopes(pm_obs, min_n=150).with_columns(pl.lit(2.0).alias("horizon_h"))
+        r.table("Polymarket intl (first tag), 2h before resolution", sl)
+        slopes.append(sl.with_columns(pl.concat_str(pl.lit("pm:"), "category").alias("category")))
+    summary["slopes"] = pl.concat(slopes).to_dicts()
+
+    pop = lit.full_population_legs(markets).implode()
+    r.text("3b. Sports moneylines: full population vs volume-selected sample",
+           "The volume-ranked candle sample over-represents upsets (they draw in-game volume), "
+           "which makes favorites look overpriced. Full population = first leg of every "
+           f"{'/'.join(lit.GAME_SERIES)} game, chosen without volume. Decision at scheduled "
+           "expiry - horizon. Slope test, then the slope strategy fit/tested on each sample "
+           "(flat 1-contract bets, edge >= 3c after fees, split 2026-10-01).")
+    split_dt = datetime(2026, 10, 1, tzinfo=UTC)
+    pop_rows = []
+    for h in (24.0, 6.0):
+        o = obs_by_h[h] if h in obs_by_h else kalshi_obs(s, h)
+        games = o.filter(pl.col("market_id").str.contains(r"^(" + "|".join(lit.GAME_SERIES) + r")-"))
+        for label, g in (("full population", games.filter(pl.col("market_id").is_in(pop))),
+                         ("volume-selected", games.filter(~pl.col("market_id").is_in(pop)))):
+            if g.height < 100:
+                continue
+            sl = lit.calibration_slopes(g, min_n=100).filter(pl.col("category") == "ALL").row(0, named=True)
+            fav = g.filter(pl.col("mid") > 0.55)
+            train, test = split_by_time(g, split_dt)
+            flat = lit.flat_signal_returns(lit.slope_signals(train.with_columns(pl.lit("G").alias("category")),
+                                                             test.with_columns(pl.lit("G").alias("category")),
+                                                             min_n=100))
+            fr = flat.row(0, named=True) if not flat.is_empty() else {}
+            pop_rows.append({"horizon_h": h, "sample": label, "markets": g.height,
+                             "slope": sl["slope"], "slope_se": sl["slope_se"],
+                             "favorite_residual": float((fav["y"] - fav["mid"]).mean()),
+                             "strategy_trades": fr.get("n", 0), "strategy_roi": fr.get("roi"),
+                             "strategy_t": fr.get("t")})
+    pop_table = pl.DataFrame(pop_rows)
+    r.table("Sports moneylines", pop_table)
+    summary["sports_population"] = pop_rows
+
+    rows = []
+    for lookback, hold in reversion_grid:
+        t = lit.rolling_min_reversion(candles, markets, lookback_hours=lookback, hold_hours=hold)
+        if t.is_empty():
+            continue
+        st = lit.cluster_ratio(t.with_columns(pl.lit(1).alias("_all")), ["_all"]).row(0, named=True)
+        rows.append({"lookback_h": lookback, "hold_h": hold, "trades": t.height,
+                     "markets": t["ticker"].n_unique(), "gross_per_contract": float(t["gross"].mean()),
+                     "net_roi": st["roi"], "se": st["se"], "t": st["t"],
+                     "win_rate": float((t["pnl"] > 0).mean()),
+                     "settled_share": float(t["settled"].mean())})
+    rev = pl.DataFrame(rows)
+    summary["reversion"] = rows
+    r.text("4. Rolling-minimum mean reversion (Quantpedia, Polymarket)",
+           "Buy YES at the ask when the hourly mid is at its trailing minimum; sell at the bid "
+           "after the hold (or settle). Taker fees both ways. One position per market at a time.")
+    r.table("Grid (hours)", rev)
+
+    r.text("5. Pre-close move reversal (Moskowitz 2021)",
+           "move = mid(late) - mid(early) for the same market; residual = outcome - mid(late). "
+           "Slope < 0: moves over-shoot and partly reverse; > 0: they under-shoot (momentum).")
+    mv_rows = []
+    for late, early in ((2.0, 26.0), (24.0, 72.0)):
+        mv = lit.move_reversal_slopes(lit.move_reversal(obs_by_h[late], obs_by_h[early]))
+        mv = mv.with_columns(pl.lit(f"{early:g}h->{late:g}h").alias("window"))
+        mv_rows.append(mv)
+        r.table(f"Move from {early:g}h to {late:g}h before close", mv)
+    summary["move_reversal"] = pl.concat(mv_rows).to_dicts()
+    r.json("Summary", summary)
+    return r.save()
+
+
 def backtest(s: Settings, c: Clients | None, *, strategies: list[str], split: datetime,
              cash: dict[str, float], cfg: RiskConfig, horizon_hours: float = 2.0,
-             delay_minutes: float = 5.0, top_k: int = 20, prior: float = 200.0) -> Path:
+             delay_minutes: float = 5.0, top_k: int = 20, prior: float = 200.0,
+             anchor: str = "scheduled", universe: str = "all") -> Path:
     frames = []
     notes = []
+    notes.append(f"decision anchor: {anchor} (scheduled = expected_expiration_time - horizon); "
+                 f"universe: {universe}")
     if "longshot" in strategies:
-        obs = kalshi_obs(s, horizon_hours)
+        obs = kalshi_obs(s, horizon_hours, anchor, universe)
         train, test = split_by_time(obs, split)
         notes.append(f"longshot: trained on {train.height} markets resolved before {split:%Y-%m-%d}, "
                      f"tested on {test.height} decided after it; horizon {horizon_hours:g}h, "
                      f"prior {prior:g}.")
         if train.height and test.height:
             frames.append(longshot_signals(train, test, prior=prior))
+    if "slope" in strategies:
+        obs = kalshi_obs(s, horizon_hours, anchor, universe)
+        train, test = split_by_time(obs, split)
+        notes.append(f"slope: per-category logistic recalibration fit on {train.height} markets "
+                     f"resolved before {split:%Y-%m-%d}, tested on {test.height}; "
+                     f"horizon {horizon_hours:g}h.")
+        if train.height and test.height:
+            frames.append(lit.slope_signals(train, test))
     if "wallet_follow" in strategies:
         if c is None:
             raise RuntimeError("wallet_follow needs API clients for price history")

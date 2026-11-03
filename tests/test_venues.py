@@ -131,3 +131,18 @@ def test_pmus_open_markets_book_and_bbo(fixture):
 def test_pmus_event_slug_map(fixture):
     mapping = pmus.event_slug_map(fixture("pmus/events.json"))
     assert mapping and all(isinstance(v, str) for v in mapping.values())
+
+
+def test_kalshi_event_row_reads_exclusivity_and_legs(fixture):
+    row = k.event_row(fixture("kalshi/event.json"))
+    assert row["event_ticker"].startswith("KXNBAGAME-")
+    assert row["mutually_exclusive"] is True
+    assert row["n_markets"] >= 2
+
+
+def test_kalshi_markets_keep_scheduled_expiration(fixture):
+    series = k.series_frame(fixture("kalshi/series.json"))
+    info = {r["series_ticker"]: r for r in series.iter_rows(named=True)}
+    rows = k.market_rows(fixture("kalshi/settled_markets.json"), info, "live")
+    assert all(r["expected_expiration_time"] is not None for r in rows)
+    assert any(r["can_close_early"] for r in rows)

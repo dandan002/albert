@@ -50,6 +50,8 @@ def capture(s: Settings, c: Clients, root: Path) -> list[Path]:
         f"/historical/markets/{hticker}/candlesticks",
         {"start_ts": 1700000000, "end_ts": int(now.timestamp()), "period_interval": 1440},
         cache=False).payload, 4))
+    out.append(_write(root, "kalshi", "event", kc.get(
+        f"/events/{settled['markets'][0]['event_ticker']}", cache=False).payload))
     out.append(_write(root, "kalshi", "cutoff", kc.get("/historical/cutoff", cache=False).payload))
     open_m = kc.get("/markets", {"status": "open", "mve_filter": "exclude", "limit": 50,
                                  "series_ticker": "KXNBAGAME"}, cache=False).payload

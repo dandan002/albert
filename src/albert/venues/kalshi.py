@@ -26,6 +26,9 @@ MARKET_SCHEMA = {
     "open_time": pl.Datetime("us", "UTC"),
     "close_time": pl.Datetime("us", "UTC"),
     "occurrence_time": pl.Datetime("us", "UTC"),
+    # Scheduled at listing; unlike close_time it does not move when the market closes early.
+    "expected_expiration_time": pl.Datetime("us", "UTC"),
+    "can_close_early": pl.Boolean,
     "settlement_ts": pl.Datetime("us", "UTC"),
     "result": pl.String,
     "settlement_value": pl.Float64,
@@ -103,13 +106,15 @@ class Kalshi:
         return self.client.get("/series", tag=day)
 
     def _cursor_pages(self, path: str, params: dict[str, Any], key: str,
-                      cache: bool = True) -> Iterator[Fetched]:
+                      cache: bool = True, max_pages: int | None = None) -> Iterator[Fetched]:
         cursor = None
+        pages = 0
         while True:
             page = self.client.get(path, {**params, "cursor": cursor}, cache=cache)
             yield page
+            pages += 1
             cursor = page.payload.get("cursor")
-            if not cursor or not page.payload.get(key):
+            if not cursor or not page.payload.get(key) or (max_pages and pages >= max_pages):
                 return
 
     def settled_markets(self, start: datetime, end: datetime) -> Iterator[Fetched]:
@@ -148,9 +153,12 @@ class Kalshi:
             cache=False,
         )
 
-    def trades(self, ticker: str, historical: bool) -> Iterator[Fetched]:
+    def trades(self, ticker: str, historical: bool,
+               max_pages: int | None = None) -> Iterator[Fetched]:
+        """Trades newest-first; ``max_pages`` truncates very active markets to their final trades."""
         path = "/historical/trades" if historical else "/markets/trades"
-        yield from self._cursor_pages(path, {"ticker": ticker, "limit": 1000}, "trades")
+        yield from self._cursor_pages(path, {"ticker": ticker, "limit": 1000}, "trades",
+                                      max_pages=max_pages)
 
     def candles(self, ticker: str, start: datetime, end: datetime, period_minutes: int,
                 historical: bool) -> Fetched:
@@ -164,11 +172,29 @@ class Kalshi:
             "period_interval": period_minutes,
         })
 
+    def event(self, event_ticker: str) -> Fetched:
+        return self.client.get(f"/events/{event_ticker}")
+
     def orderbook(self, ticker: str, depth: int = 10) -> Fetched:
         return self.client.get(f"/markets/{ticker}/orderbook", {"depth": depth}, cache=False)
 
 
 # ---- normalizers ----------------------------------------------------------------------------
+EVENT_SCHEMA = {"event_ticker": pl.String, "series_ticker": pl.String, "category": pl.String,
+                "title": pl.String, "mutually_exclusive": pl.Boolean, "n_markets": pl.Int64}
+
+
+def event_row(payload: dict[str, Any]) -> dict[str, Any]:
+    """One row per event; ``n_markets`` counts every leg the venue lists, settled or not."""
+    e = payload.get("event") or {}
+    return {
+        "event_ticker": e.get("event_ticker"), "series_ticker": e.get("series_ticker"),
+        "category": e.get("category"), "title": e.get("title"),
+        "mutually_exclusive": e.get("mutually_exclusive"),
+        "n_markets": len(payload.get("markets") or e.get("markets") or []),
+    }
+
+
 def series_frame(payload: dict[str, Any]) -> pl.DataFrame:
     rows = [
         {
@@ -207,6 +233,8 @@ def market_rows(payload: dict[str, Any], series_info: dict[str, dict[str, Any]],
             "open_time": parse_ts(m.get("open_time")),
             "close_time": parse_ts(m.get("close_time")),
             "occurrence_time": parse_ts(m.get("occurrence_datetime")),
+            "expected_expiration_time": parse_ts(m.get("expected_expiration_time")),
+            "can_close_early": m.get("can_close_early"),
             "settlement_ts": parse_ts(m.get("settlement_ts")),
             "result": m.get("result") or None,
             "settlement_value": num(_field(m, "settlement_value")),
