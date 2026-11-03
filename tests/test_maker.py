@@ -92,3 +92,35 @@ def test_live_quote_rule_matches_backtest_rule():
         else:
             o = orders.row(0, named=True)
             assert live == {"side": o["side"], "bid": o["bid"], "ask": o["ask"], "improved": o["improved"]}
+
+
+def test_orders_cancel_before_the_ticker_start_time():
+    # Game starts 04:30 ET = 09:30 UTC on Oct 2 (EDT: 08:30 UTC); expiry is start + 3h.
+    ev = "KXKBOGAME-26OCT020430SAMKTW"
+    start = datetime(2026, 10, 2, 8, 30, tzinfo=UTC)
+    markets = _market(ticker="M", event_ticker=ev, expected_expiration_time=start + timedelta(hours=3),
+                      close_time=start + timedelta(hours=3))
+    decision = start + timedelta(hours=3) - timedelta(hours=24)
+    candles = pl.DataFrame([{**_candle(0.60, 0.65), "end_ts": decision - timedelta(minutes=30)}])
+    trades = pl.DataFrame([{**_trade(0, 0.6, "no"), "created_time": decision - timedelta(hours=1)}])
+    o = maker.maker_orders(markets, candles, trades, horizon_hours=24, ttl_hours=23).row(0, named=True)
+    assert o["cancel_ts"] == start - timedelta(minutes=15)
+    # Posting 2h before expiry would only rest in-game: no order at all.
+    late = maker.maker_orders(markets, pl.DataFrame([{**_candle(0.60, 0.65), "end_ts": start}]),
+                              trades, horizon_hours=2, ttl_hours=20)
+    assert late.is_empty()
+
+
+def test_trade_windows_define_coverage_instead_of_first_trade():
+    markets = _market()
+    candles = pl.DataFrame([_candle(0.60, 0.65)])
+    trades = pl.DataFrame([_trade(30, 0.61, "no")])  # no trade before the decision at all
+    decision, cancel = T0, T0 + timedelta(hours=20)
+    ok = pl.DataFrame({"ticker": ["M"], "window_start": [decision - timedelta(hours=1)],
+                       "window_end": [cancel]})
+    assert maker.maker_orders(markets, candles, trades, horizon_hours=24, ttl_hours=20).is_empty()
+    got = maker.maker_orders(markets, candles, trades, horizon_hours=24, ttl_hours=20, windows=ok)
+    assert got.height == 1 and "window_end" not in got.columns
+    short = ok.with_columns(pl.lit(decision + timedelta(hours=5)).dt.replace_time_zone("UTC").alias("window_end"))
+    assert maker.maker_orders(markets, candles, trades, horizon_hours=24, ttl_hours=20,
+                              windows=short).is_empty()

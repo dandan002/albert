@@ -10,7 +10,10 @@ Order rule, per market, at ``decision_ts = expected_expiration_time - horizon``:
   * our bid = favorite best bid + 1 tick when the spread is >= 2 ticks (we create a new best
     price, so we are first in its queue), otherwise the best bid (we join an existing queue
     of unknown size);
-  * the order rests until the market stops trading (``close_time``) or ``ttl_hours``.
+  * the order rests until the market stops trading (``close_time``), ``ttl_hours``, or
+    ``start_buffer`` before the game start encoded in the ticker, whichever is first; an
+    order that would only rest after that point is never posted (resting into a live game
+    is filled mostly when the favorite is collapsing).
 
 Fill rule, using real Kalshi trades after ``decision_ts`` (``taker_side`` is the taker's side):
   * a YES bid at q is hit by takers *selling* YES, i.e. trades with ``taker_side == "no"``;
@@ -33,6 +36,7 @@ import polars as pl
 
 from albert.fees import kalshi_fee
 from albert.research.literature import cluster_ratio
+from albert.venues.kalshi import ticker_start
 
 ORDER_SCHEMA = {
     "ticker": pl.String, "event_ticker": pl.String, "category": pl.String,
@@ -68,19 +72,27 @@ def quote_order(yes_bid: float, yes_ask: float, *, tick: float = 0.01, lo: float
 def maker_orders(markets: pl.DataFrame, candles: pl.DataFrame, trades: pl.DataFrame, *,
                  horizon_hours: float, categories: tuple[str, ...] = ("Climate and Weather", "Sports"),
                  lo: float = 0.50, hi: float = 0.95, tick: float = 0.01, ttl_hours: float | None = None,
-                 max_spread: float = 0.10, staleness_hours: float = 6.0) -> pl.DataFrame:
+                 max_spread: float = 0.10, staleness_hours: float = 6.0,
+                 start_buffer_minutes: float = 15.0, queue: str = "any",
+                 windows: pl.DataFrame | None = None) -> pl.DataFrame:
     """One candidate maker order per market (see module docstring).
 
-    Only markets with trades covering the whole order life are kept: our trade sample is the
-    newest N trades per market, so a decision before the first recorded trade could miss fills.
+    Only markets with trades covering the whole order life are kept. With ``windows``
+    (``kalshi_trade_windows``: complete trades in [window_start, window_end]) coverage is
+    exact. Without it, the trade sample is the newest N per market, so the decision must be
+    after the first recorded trade, which quietly drops busy markets.
     """
     m = markets.filter(pl.col("result").is_in(["yes", "no"]) & pl.col("category").is_in(list(categories))
                        ).with_columns(
         (pl.coalesce("expected_expiration_time", "close_time") - timedelta(hours=horizon_hours)
          ).alias("decision_ts"))
     m = m.filter(pl.col("decision_ts") < pl.col("close_time"))
-    first_trade = trades.group_by("ticker").agg(pl.col("created_time").min().alias("first_trade"))
-    m = m.join(first_trade, on="ticker").filter(pl.col("first_trade") <= pl.col("decision_ts"))
+    if windows is not None:
+        m = m.join(windows.select("ticker", "window_start", "window_end"), on="ticker").filter(
+            pl.col("window_start") <= pl.col("decision_ts"))
+    else:
+        first_trade = trades.group_by("ticker").agg(pl.col("created_time").min().alias("first_trade"))
+        m = m.join(first_trade, on="ticker").filter(pl.col("first_trade") <= pl.col("decision_ts"))
     c = candles.filter(pl.col("yes_bid_close").is_between(0.001, 0.999)
                        & pl.col("yes_ask_close").is_between(0.001, 0.999)).sort("end_ts")
     j = m.sort("decision_ts").join_asof(
@@ -94,7 +106,10 @@ def maker_orders(markets: pl.DataFrame, candles: pl.DataFrame, trades: pl.DataFr
     spread = fav_ask - fav_bid
     improved = spread >= 2 * tick - 1e-9
     bid = pl.when(improved).then(fav_bid + tick).otherwise(fav_bid).round(4)
-    cancel = pl.col("close_time")
+    j = j.with_columns(pl.col("event_ticker").map_elements(
+        ticker_start, return_dtype=pl.Datetime("us", "UTC")).alias("_start"))
+    cancel = pl.min_horizontal(pl.col("close_time"),
+                               pl.col("_start") - timedelta(minutes=start_buffer_minutes))
     if ttl_hours is not None:
         cancel = pl.min_horizontal(cancel, pl.col("decision_ts") + timedelta(hours=ttl_hours))
     out = j.select(
@@ -104,7 +119,16 @@ def maker_orders(markets: pl.DataFrame, candles: pl.DataFrame, trades: pl.DataFr
         bid.alias("bid"), fav_ask.round(4).alias("ask"), improved.alias("improved"),
         pl.when(yes_fav == (pl.col("result") == "yes")).then(1.0).otherwise(0.0).alias("payoff"),
         "fee_type", "fee_multiplier",
-    ).filter(pl.col("bid").is_between(lo, hi))
+        *([pl.col("window_end")] if windows is not None else []),
+    ).filter(pl.col("bid").is_between(lo, hi) & (pl.col("cancel_ts") > pl.col("decision_ts")))
+    if windows is not None:  # the whole resting period must be inside the fetched window
+        out = out.filter(pl.col("cancel_ts") <= pl.col("window_end")).drop("window_end")
+    if queue == "join":      # only 1-tick markets: rest at the existing best bid
+        out = out.filter(~pl.col("improved"))
+    elif queue == "improve":  # only wider markets: become the new best bid
+        out = out.filter(pl.col("improved"))
+    elif queue != "any":
+        raise ValueError(f"unknown queue mode {queue!r}")
     # One order per underlying game (legs, spreads and totals of one match are one bet), as
     # in the paper trader: KXCS2GAME-<key> and KXCS2SPREAD-<key> share <key>.
     out = (out.with_columns(game_key_expr().alias("_game"))

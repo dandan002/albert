@@ -146,3 +146,13 @@ def test_kalshi_markets_keep_scheduled_expiration(fixture):
     rows = k.market_rows(fixture("kalshi/settled_markets.json"), info, "live")
     assert all(r["expected_expiration_time"] is not None for r in rows)
     assert any(r["can_close_early"] for r in rows)
+
+
+def test_ticker_start_is_eastern_time():
+    from datetime import UTC, datetime
+
+    assert k.ticker_start("KXKBOGAME-26NOV040430SAMKTW") == datetime(2026, 11, 4, 9, 30, tzinfo=UTC)
+    # Daylight time in October: 20:00 EDT = 00:00 UTC next day.
+    assert k.ticker_start("KXMLBGAME-26OCT152000MILLAD") == datetime(2026, 10, 16, 0, 0, tzinfo=UTC)
+    assert k.ticker_start("KXNBAGAME-26NOV06SASSAC") is None
+    assert k.ticker_start("KXHIGHNY-26NOV04") is None

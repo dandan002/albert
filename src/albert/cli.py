@@ -78,6 +78,22 @@ def ingest_kalshi_detail(
     typer.echo(result.summary())
 
 
+@ingest_app.command("kalshi-trade-windows")
+def ingest_kalshi_trade_windows(
+    series: list[str] = typer.Option(..., help="Game series (one leg per game, all games); repeatable"),
+    start: str = typer.Option(..., help="YYYY-MM-DD (market close date)"),
+    end: str = typer.Option(..., help="YYYY-MM-DD, exclusive"),
+    horizon: float = typer.Option(24.0, help="Maker order posted this many hours before scheduled expiry"),
+    ttl: float = typer.Option(20.0, help="Maker order lifetime in hours"),
+) -> None:
+    """All trades inside each game's maker-order window (complete coverage, no volume bias)."""
+    from albert.ingest import ingest_kalshi_trade_windows as run
+
+    s, c = _clients()
+    typer.echo(run(s, c, series=series, start=_day(start), end=_day(end), horizon_hours=horizon,
+                   ttl_hours=ttl).summary())
+
+
 @ingest_app.command("kalshi-events")
 def ingest_kalshi_events(min_legs: int = typer.Option(3, help="Only events with >= N legs")) -> None:
     """Event metadata (mutually_exclusive, leg count) for multi-leg events with candles."""
@@ -214,12 +230,19 @@ def backtest_maker(
     lo: float = typer.Option(0.50, help="Lowest favorite bid"),
     hi: float = typer.Option(0.95, help="Highest favorite bid"),
     ttl: float = typer.Option(None, help="Cancel after N hours (default: at market close)"),
+    exclude_tickers: str = typer.Option(None, help="Parquet with a `ticker` column to exclude (holdout test)"),
+    queue: str = typer.Option("any", help="any, join (1-tick markets only), improve (wider only)"),
+    universe: str = typer.Option("sample", help="sample (random volume band; biased) or population (all games, windowed trades)"),
 ) -> None:
     """Resting bids on Kalshi favorites, filled only by later real trades into our price."""
+    from pathlib import Path
+
     from albert.pipeline import backtest_maker as run
 
     typer.echo(run(settings(), horizons=tuple(horizon), size=size, cash=cash,
-                   categories=tuple(category), lo=lo, hi=hi, ttl_hours=ttl))
+                   categories=tuple(category), lo=lo, hi=hi, ttl_hours=ttl,
+                   exclude_tickers=Path(exclude_tickers) if exclude_tickers else None,
+                   queue=queue, universe=universe))
 
 
 @backtest_app.command("run")

@@ -240,6 +240,61 @@ def ingest_kalshi_events(s: Settings, c: Clients, *, min_legs: int = 3) -> Inges
     return result
 
 
+WINDOW_SCHEMA = {"ticker": pl.String, "window_start": pl.Datetime("us", "UTC"),
+                 "window_end": pl.Datetime("us", "UTC"), "trades": pl.Int64}
+
+
+def ingest_kalshi_trade_windows(s: Settings, c: Clients, *, series: list[str], start: datetime,
+                                end: datetime, horizon_hours: float = 24.0,
+                                ttl_hours: float = 20.0, lead_hours: float = 1.0) -> IngestResult:
+    """*All* trades in each game's maker-order window, for one leg of every game in ``series``.
+
+    Window = [scheduled expiry - horizon - lead, scheduled expiry - horizon + ttl]. Unlike the
+    newest-N sample this has full coverage however busy the market is, so the maker backtest
+    is not restricted (and biased) to quiet markets. Coverage is recorded in
+    ``kalshi_trade_windows``.
+    """
+    from albert.research.literature import full_population_legs
+
+    result = IngestResult()
+    markets = read_table(s.tables_dir, "kalshi_markets")
+    legs = full_population_legs(markets, tuple(series)).implode()
+    sel = markets.filter(pl.col("ticker").is_in(legs) & (pl.col("close_time") >= start)
+                         & (pl.col("close_time") < end))
+    cutoff = c.kalshi.cutoff()
+    trade_rows: list[dict] = []
+    windows: list[dict] = []
+    for i, m in enumerate(sel.iter_rows(named=True), 1):
+        anchor = m["expected_expiration_time"] or m["close_time"]
+        lo = anchor - timedelta(hours=horizon_hours + lead_hours)
+        hi = anchor - timedelta(hours=horizon_hours) + timedelta(hours=ttl_hours)
+        historical = bool(cutoff["trades_created_ts"] and m["close_time"] < cutoff["trades_created_ts"])
+        n = 0
+        try:
+            for page in c.kalshi.trades(m["ticker"], historical, min_ts=lo, max_ts=hi):
+                result.raw_files.append(page.raw_path)
+                rows = k.trade_rows(page.payload)
+                trade_rows.extend(rows)
+                n += len(rows)
+        except RuntimeError as error:
+            print(f"skip trades {m['ticker']}: {error}")
+            continue
+        windows.append({"ticker": m["ticker"], "window_start": lo, "window_end": hi, "trades": n})
+        if i % 250 == 0:
+            print(f"  windows: {i}/{sel.height} markets, {len(trade_rows)} trades", flush=True)
+    frame = pl.DataFrame(trade_rows, schema=k.TRADE_SCHEMA)
+    _require_rows("kalshi_trades", frame)
+    write_table(s.tables_dir, "kalshi_trades", frame, key=["trade_id"])
+    write_table(s.tables_dir, "kalshi_trade_windows", pl.DataFrame(windows, schema=WINDOW_SCHEMA),
+                key=["ticker"])
+    result.tables["kalshi_trades"] = frame.height
+    result.tables["kalshi_trade_windows"] = len(windows)
+    result.manifest = write_manifest(s.data_dir, "ingest kalshi-trade-windows", {
+        "series": series, "start": start, "end": end, "horizon_hours": horizon_hours,
+        "ttl_hours": ttl_hours, "lead_hours": lead_hours}, result.tables, result.raw_files)
+    return result
+
+
 def ingest_kalshi_open(s: Settings, c: Clients) -> pl.DataFrame:
     """Snapshot open markets (for matching and paper trading). Not written as the settled table."""
     series_info = kalshi_series(s, c)

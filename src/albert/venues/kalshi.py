@@ -6,6 +6,8 @@ suffixes, so each parser accepts either spelling.
 """
 
 from collections.abc import Iterator
+import re
+from zoneinfo import ZoneInfo
 from datetime import UTC, datetime
 from typing import Any
 
@@ -153,12 +155,20 @@ class Kalshi:
             cache=False,
         )
 
-    def trades(self, ticker: str, historical: bool,
-               max_pages: int | None = None) -> Iterator[Fetched]:
-        """Trades newest-first; ``max_pages`` truncates very active markets to their final trades."""
+    def trades(self, ticker: str, historical: bool, max_pages: int | None = None,
+               min_ts: datetime | None = None, max_ts: datetime | None = None) -> Iterator[Fetched]:
+        """Trades newest-first; ``max_pages`` truncates very active markets to their final trades.
+
+        ``min_ts``/``max_ts`` restrict to a time window (both endpoints honour them), which gives
+        complete coverage of that window regardless of how busy the market is.
+        """
         path = "/historical/trades" if historical else "/markets/trades"
-        yield from self._cursor_pages(path, {"ticker": ticker, "limit": 1000}, "trades",
-                                      max_pages=max_pages)
+        params: dict[str, Any] = {"ticker": ticker, "limit": 1000}
+        if min_ts is not None:
+            params["min_ts"] = int(min_ts.timestamp())
+        if max_ts is not None:
+            params["max_ts"] = int(max_ts.timestamp())
+        yield from self._cursor_pages(path, params, "trades", max_pages=max_pages)
 
     def candles(self, ticker: str, start: datetime, end: datetime, period_minutes: int,
                 historical: bool) -> Fetched:
@@ -180,6 +190,32 @@ class Kalshi:
 
 
 # ---- normalizers ----------------------------------------------------------------------------
+_EASTERN = ZoneInfo("America/New_York")
+_MONTHS = {m: i + 1 for i, m in enumerate("JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC".split())}
+_START_RX = re.compile(r"^[A-Z0-9]+-(\d{2})([A-Z]{3})(\d{2})(\d{4})(?=[A-Z])")
+
+
+def ticker_start(event_ticker: str | None) -> datetime | None:
+    """Scheduled start encoded in many game tickers, in US Eastern time.
+
+    ``KXKBOGAME-26NOV040430SAMKTW`` -> 2026-11-04 04:30 ET (09:30 UTC). Validated on ~80k
+    settled games: the market closes a game's length after this time (1.4% close before it,
+    i.e. postponements). Tickers without a time (``KXNBAGAME-26NOV06SASSAC``) return None.
+    """
+    m = _START_RX.match(event_ticker or "")
+    if not m:
+        return None
+    yy, mon, dd, hm = m.groups()
+    hour, minute = int(hm[:2]), int(hm[2:])
+    if mon not in _MONTHS or hour > 23 or minute > 59:
+        return None
+    try:
+        local = datetime(2000 + int(yy), _MONTHS[mon], int(dd), hour, minute, tzinfo=_EASTERN)
+    except ValueError:
+        return None
+    return local.astimezone(UTC)
+
+
 EVENT_SCHEMA = {"event_ticker": pl.String, "series_ticker": pl.String, "category": pl.String,
                 "title": pl.String, "mutually_exclusive": pl.Boolean, "n_markets": pl.Int64}
 

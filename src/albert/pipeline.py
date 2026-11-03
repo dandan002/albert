@@ -311,27 +311,47 @@ def research_literature(s: Settings, *, reversion_grid: tuple = ((24, 6), (24, 2
 
 def backtest_maker(s: Settings, *, horizons: tuple[float, ...] = (24.0, 6.0), size: int = 5,
                    cash: float = 50.0, categories: tuple[str, ...] = ("Climate and Weather", "Sports"),
-                   lo: float = 0.50, hi: float = 0.95, ttl_hours: float | None = None) -> Path:
+                   lo: float = 0.50, hi: float = 0.95, ttl_hours: float | None = None,
+                   exclude_tickers: Path | None = None, queue: str = "any",
+                   universe: str = "sample") -> Path:
     """Resting-bid backtest on Kalshi favorites with a trade-driven fill model (backtest/maker.py)."""
     from albert.backtest import maker
 
     markets = read_table(s.tables_dir, "kalshi_markets")
     candles = read_table(s.tables_dir, "kalshi_candles")
-    # The random-sample volume band only: top-N-by-volume markets are selected on the outcome.
-    band = markets.filter(pl.col("volume").is_between(500, 200_000))["ticker"].implode()
-    trades = read_table(s.tables_dir, "kalshi_trades").filter(pl.col("ticker").is_in(band))
+    windows = None
+    if universe == "population":
+        # One leg of every game, with complete trades in each order window: no volume selection.
+        windows = read_table(s.tables_dir, "kalshi_trade_windows")
+        trades = read_table(s.tables_dir, "kalshi_trades").filter(
+            pl.col("ticker").is_in(windows["ticker"].implode()))
+    elif universe == "sample":
+        # The random-sample volume band (500-200k). NOTE: biased toward favorites winning,
+        # because the cap drops the busiest games and upsets draw volume (README section 5).
+        band = markets.filter(pl.col("volume").is_between(500, 200_000))["ticker"].implode()
+        trades = read_table(s.tables_dir, "kalshi_trades").filter(pl.col("ticker").is_in(band))
+    else:
+        raise ValueError(f"unknown universe {universe!r}")
+    holdout_note = ""
+    if exclude_tickers is not None:
+        # Holdout: drop every market an earlier (in-sample) run could have seen.
+        seen = pl.read_parquet(exclude_tickers)["ticker"].implode()
+        trades = trades.filter(~pl.col("ticker").is_in(seen))
+        holdout_note = f"\n- HOLDOUT: excluding {pl.read_parquet(exclude_tickers).height} in-sample tickers ({exclude_tickers})"
     r = Report(s.reports_dir, "backtest-maker")
     r.text("Setup", f"- categories {list(categories)}, favorite bid in [{lo}, {hi}], {size} contracts "
-                    f"per order for the flat test, ttl {ttl_hours or 'until close'}\n"
+                    f"per order for the flat test, ttl {ttl_hours or 'until close'}, queue mode {queue}, "
+                    f"universe {universe}\n"
                     f"- {trades['ticker'].n_unique()} randomly sampled markets with trades "
                     "(volume 500-200k)\n- fill = later real taker trades selling into our price "
                     "(at it if we improved the best bid, through it if we joined); held to settlement; "
                     "maker fee.\n- taker benchmark = same market and side bought at the ask at the "
-                    "decision time, taker fee.")
+                    "decision time, taker fee." + holdout_note)
     rows, all_orders = [], []
     for h in horizons:
         orders = maker.maker_orders(markets, candles, trades, horizon_hours=h, categories=categories,
-                                    lo=lo, hi=hi, ttl_hours=ttl_hours)
+                                    lo=lo, hi=hi, ttl_hours=ttl_hours, queue=queue,
+                                    windows=windows)
         if orders.is_empty():
             continue
         fills = maker.with_pnl(maker.simulate_fills(orders, trades, size=size)).with_columns(
@@ -351,6 +371,9 @@ def backtest_maker(s: Settings, *, horizons: tuple[float, ...] = (24.0, 6.0), si
         r.table(f"{h:g}h: maker ROI by category", maker.summarize(fills, ["category"]))
         r.table(f"{h:g}h: maker ROI by month", maker.summarize(fills, ["month"]))
         r.table(f"{h:g}h: maker ROI by queue position", maker.summarize(fills, ["improved"]))
+        r.table(f"{h:g}h: maker ROI by bid band", maker.summarize(
+            fills.with_columns(pl.col("bid").cut([0.6, 0.7, 0.8, 0.9]).cast(pl.String).alias("bid_band")),
+            ["bid_band"]))
         r.table(f"{h:g}h: taker benchmark by category", maker.summarize(taker, ["category"]))
     r.table("Summary (flat size)", pl.DataFrame(rows))
     if all_orders:
@@ -358,7 +381,8 @@ def backtest_maker(s: Settings, *, horizons: tuple[float, ...] = (24.0, 6.0), si
     bank = {}
     for h in horizons:
         orders = maker.maker_orders(markets, candles, trades, horizon_hours=h, categories=categories,
-                                    lo=lo, hi=hi, ttl_hours=ttl_hours)
+                                    lo=lo, hi=hi, ttl_hours=ttl_hours, queue=queue,
+                                    windows=windows)
         if orders.is_empty():
             continue
         b = maker.run_maker_bankroll(orders, trades, cash=cash)

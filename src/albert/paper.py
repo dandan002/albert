@@ -359,6 +359,10 @@ class PaperTrader:
         for o in self.state.orders:
             after = datetime.fromisoformat(o.last_trade_ts)
             cancel_at = datetime.fromisoformat(o.cancel_at)
+            start = k.ticker_start(o.event_id)
+            if start is not None and start - timedelta(minutes=15) < cancel_at:
+                cancel_at = start - timedelta(minutes=15)  # never rest into a live game
+                o.cancel_at = cancel_at.isoformat()
             try:
                 trades = self._new_trades(o.ticker, after)
             except HttpError as error:
@@ -442,6 +446,11 @@ class PaperTrader:
                          if n >= 1 else "below_min_size", bid=rule["bid"])
                 continue
             cancel_at = min(now + timedelta(hours=self.maker_ttl), m["close_time"])
+            start = k.ticker_start(m["event_ticker"])
+            if start is not None:
+                cancel_at = min(cancel_at, start - timedelta(minutes=15))
+            if cancel_at <= now:
+                continue  # game starts too soon: never rest into a live game
             o = RestingOrder(m["ticker"], m["event_ticker"], m["category"], rule["side"], rule["bid"], n,
                              rule["improved"], reserve, now.isoformat(), cancel_at.isoformat(),
                              now.isoformat(), m["fee_type"], m["fee_multiplier"])
