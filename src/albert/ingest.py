@@ -7,12 +7,13 @@ from pathlib import Path
 import polars as pl
 
 from albert.categories import pm_is_non_financial, pmus_is_non_financial
-from albert.config import Settings
+from albert.config import Settings, secret
 from albert.http import CachedClient
 from albert.store import read_table, write_manifest, write_table
 from albert.venues import kalshi as k
 from albert.venues import polymarket as pm
 from albert.venues import polymarket_us as pmus
+from albert.venues import pandascore as ps
 from albert.venues import weather as wx
 
 
@@ -23,6 +24,7 @@ class Clients:
     pmus: pmus.PolymarketUS
     iem: wx.IEM | None = None
     nws: wx.NWS | None = None
+    pandascore: "ps.PandaScore | None" = None
 
     @classmethod
     def build(cls, s: Settings, *, record_live: bool = True) -> "Clients":
@@ -43,6 +45,10 @@ class Clients:
                                     record_live=record_live, timeout=120.0)),
             nws=wx.NWS(CachedClient("nws", s.nws_base, s.raw_dir, min_interval=0.5,
                                     record_live=record_live, user_agent=s.nws_user_agent)),
+            # Free tier: 60 requests/minute, so one request every 1.1 s.
+            pandascore=ps.PandaScore(CachedClient(
+                "pandascore", s.pandascore_base, s.raw_dir, min_interval=1.1, record_live=record_live,
+                headers={"Authorization": f"Bearer {token}"})) if (token := secret("PANDASCORE_TOKEN")) else None,
         )
 
 
@@ -500,6 +506,33 @@ def ingest_elo_candles(s: Settings, c: Clients, *, start: datetime, end: datetim
     result.manifest = write_manifest(s.data_dir, "ingest elo-candles", {
         "start": start, "end": end, "per_series_month": per_series_month, "seed": seed},
         result.tables, result.raw_files)
+    return result
+
+
+def ingest_pandascore(s: Settings, c: Clients, start: datetime, end: datetime,
+                      games: tuple[str, ...] = tuple(ps.GAMES)) -> IngestResult:
+    """Finished esports matches and map results from PandaScore into ``esports_matches`` and
+    ``esports_games``."""
+    if c.pandascore is None:
+        raise RuntimeError("PANDASCORE_TOKEN is not set: add it to .env (free key at pandascore.co)")
+    result = IngestResult()
+    matches: list[dict] = []
+    maps: list[dict] = []
+    for game in games:
+        for page in c.pandascore.past_matches(game, start, end):
+            result.raw_files.append(page.raw_path)
+            m, g = ps.match_rows(page.payload, game)
+            matches.extend(m)
+            maps.extend(g)
+        print(f"  {game}: {len(matches)} matches, {len(maps)} maps so far", flush=True)
+    mf = pl.DataFrame(matches, schema=ps.MATCH_SCHEMA)
+    gf = pl.DataFrame(maps, schema=ps.GAME_SCHEMA)
+    _require_rows("esports_matches", mf)
+    write_table(s.tables_dir, "esports_matches", mf, key=["match_id"])
+    write_table(s.tables_dir, "esports_games", gf, key=["match_id", "position"])
+    result.tables = {"esports_matches": mf.height, "esports_games": gf.height}
+    result.manifest = write_manifest(s.data_dir, "ingest pandascore", {
+        "start": start, "end": end, "games": list(games)}, result.tables, result.raw_files)
     return result
 
 

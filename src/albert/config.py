@@ -18,6 +18,7 @@ class Settings:
     pmus_base: str = "https://gateway.polymarket.us/v1"
     iem_base: str = "https://mesonet.agron.iastate.edu"
     nws_base: str = "https://api.weather.gov"
+    pandascore_base: str = "https://api.pandascore.co"
     # api.weather.gov asks for a contact in the User-Agent.
     nws_user_agent: str = field(default_factory=lambda: "albert-research ("
                                 + os.environ.get("ALBERT_NWS_CONTACT", "github.com/dandan002/albert") + ")")
@@ -40,6 +41,27 @@ class Settings:
     @property
     def paper_dir(self) -> Path:
         return self.data_dir / "paper"
+
+
+def load_env_file(path: Path = Path(".env")) -> None:
+    """Fill os.environ from a KEY=VALUE .env file without overriding existing variables.
+
+    Secrets stay in the process environment only: they are never put on ``Settings``,
+    written to manifests or raw files, or logged.
+    """
+    if not path.exists():
+        return
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+def secret(name: str) -> str | None:
+    load_env_file()
+    return os.environ.get(name) or None
 
 
 def settings() -> Settings:

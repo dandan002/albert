@@ -114,6 +114,7 @@ class CachedClient:
         sleep=time.sleep,
         record_live: bool = True,
         user_agent: str = "albert-research/0.2",
+        headers: dict[str, str] | None = None,
     ) -> None:
         self.record_live = record_live
         self.venue = venue
@@ -126,7 +127,9 @@ class CachedClient:
         self._http = httpx.Client(
             timeout=timeout,
             transport=transport,
-            headers={"User-Agent": user_agent},
+            # Extra headers (e.g. auth) are sent but never stored: raw records keep only the
+            # URL and params, and the cache key ignores headers.
+            headers={"User-Agent": user_agent, **(headers or {})},
         )
 
     def get(self, path: str, params: dict[str, Any] | None = None, *, cache: bool = True,

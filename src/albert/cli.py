@@ -116,6 +116,19 @@ def ingest_weather(
     typer.echo(run(s, c, _day(start), _day(end), codes=code or None).summary())
 
 
+@ingest_app.command("pandascore")
+def ingest_pandascore(
+    start: str = typer.Option(..., help="YYYY-MM-DD"), end: str = typer.Option(..., help="YYYY-MM-DD"),
+    game: list[str] = typer.Option(None, help="csgo, lol, dota2, valorant (default: all)"),
+) -> None:
+    """Esports match + map results from PandaScore (needs PANDASCORE_TOKEN in .env)."""
+    from albert.ingest import ingest_pandascore as run
+
+    s, c = _clients()
+    typer.echo(run(s, c, _day(start), _day(end), games=tuple(game) if game else
+                   ("csgo", "lol", "dota2", "valorant")).summary())
+
+
 @ingest_app.command("elo-history")
 def ingest_elo_history() -> None:
     """All settled markets (historical + live) for the Elo series."""
