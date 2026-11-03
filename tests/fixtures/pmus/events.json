@@ -1,0 +1,658 @@
+{
+ "events": [
+  {
+   "active": false,
+   "archived": false,
+   "category": "sports",
+   "chatChannel": {
+    "chatMemberCount": 4,
+    "id": "aec-nfl-car-gb-2025-11-02",
+    "type": "CHAT_CHANNEL_TYPE_MESSAGING"
+   },
+   "closed": true,
+   "combos": {
+    "enabled": true,
+    "numMarkets": 0,
+    "numSpreadsAndTotalsMarkets": 0
+   },
+   "createdAt": "2025-10-30T00:23:45Z",
+   "description": "Carolina vs. Green Bay",
+   "elapsed": "",
+   "endDate": "2025-11-02T23:59:00Z",
+   "fixtureId": "",
+   "gameId": 19072,
+   "hidden": false,
+   "id": "2",
+   "insiderTradingRules": null,
+   "marketCounts": {
+    "numMarkets": 0,
+    "numSpreadsAndTotalsMarkets": 0
+   },
+   "marketGroups": [
+    {
+     "id": "PRIMARY",
+     "initialCollapsed": false,
+     "live": false,
+     "marketIds": [
+      "2"
+     ],
+     "order": 0,
+     "title": "Primary"
+    }
+   ],
+   "markets": [
+    {
+     "active": false,
+     "archived": false,
+     "assetPriceTerms": null,
+     "category": "sports",
+     "closed": true,
+     "comboEnabled": true,
+     "createdAt": "2026-03-07T02:30:00Z",
+     "description": "In the upcoming american football game, scheduled for November 2 at 1:00PM ET:\nIf Carolina wins, the market will resolve to \u201cCarolina\u201d.\nIf Green Bay wins, the market will resolve to \u201cGreen Bay\u201d.\nIf the game is postponed, this market will remain open until the game has been completed.\nIf the game is canceled entirely, with no make-up game, this market will resolve 50-50.",
+     "endDate": "2025-11-03T18:00:00Z",
+     "ep3Status": "EXPIRED",
+     "ep3SyncedAt": "2026-09-25T18:40:55Z",
+     "feeCoefficient": 0.0695,
+     "gameStartTime": "2025-11-02T18:00:00Z",
+     "hidden": false,
+     "id": "2",
+     "manualActivation": false,
+     "marketSides": [
+      {
+       "createdAt": "2025-10-30T00:23:45Z",
+       "description": "Panthers",
+       "id": "3",
+       "identifier": "aec-nfl-car-gb-2025-11-02",
+       "long": true,
+       "marketId": 2,
+       "marketSideType": "MARKET_SIDE_TYPE_INSTRUMENT",
+       "price": "1",
+       "team": {
+        "abbreviation": "car",
+        "alias": "Panthers",
+        "awayIcon": "https://static.polymarket.us/images/teams/nfl-car/CAR_away.png",
+        "color": {
+         "dark": "#0085CA",
+         "light": "#0085CA"
+        },
+        "colorPrimary": "#0085CA",
+        "conference": "",
+        "displayAbbreviation": "CAR",
+        "homeIcon": "https://static.polymarket.us/images/teams/nfl-car/CAR_home.png",
+        "id": 52,
+        "imageDisplayType": "IMAGE_DISPLAY_TYPE_LOGO",
+        "league": "nfl",
+        "logo": "https://polymarket-upload.s3.us-east-2.amazonaws.com/NFL+Team+Logos/CAR.png",
+        "longIcon": "https://static.polymarket.us/images/teams/nfl-car/CAR_home.png",
+        "longIconDark": "https://static.polymarket.us/images/teams/nfl-car/CAR_home.png",
+        "name": "Carolina Panthers",
+        "ordering": "away",
+        "providerId": 5,
+        "providerIds": [
+         {
+          "provider": "PROVIDER_SPORTSDATAIO",
+          "providerId": "5"
+         },
+         {
+          "provider": "PROVIDER_SPORTRADAR",
+          "providerId": "f14bf5cc-9a82-4a38-bc15-d39f75ed5314"
+         }
+        ],
+        "record": "3-4",
+        "safeName": "CAR Panthers",
+        "shortIcon": "https://static.polymarket.us/images/teams/nfl-car/CAR_away.png",
+        "shortIconDark": "https://static.polymarket.us/images/teams/nfl-car/CAR_away.png"
+       },
+       "teamId": 52,
+       "tradable": true,
+       "updatedAt": "2025-10-30T00:23:45Z"
+      },
+      {
+       "createdAt": "2025-10-30T00:23:45Z",
+       "description": "Packers",
+       "id": "4",
+       "identifier": "aec-nfl-car-gb-2025-11-02",
+       "long": false,
+       "marketId": 2,
+       "marketSideType": "MARKET_SIDE_TYPE_INSTRUMENT",
+       "price": "0",
+       "team": {
+        "abbreviation": "gb",
+        "alias": "Packers",
+        "awayIcon": "https://static.polymarket.us/images/teams/nfl-gb/GB_away.png",
+        "color": {
+         "dark": "#4C645D",
+         "light": "#203731"
+        },
+        "colorPrimary": "#203731",
+        "conference": "",
+        "displayAbbreviation": "GB",
+        "homeIcon": "https://static.polymarket.us/images/teams/nfl-gb/GB_home.png",
+        "id": 59,
+        "imageDisplayType": "IMAGE_DISPLAY_TYPE_LOGO",
+        "league": "nfl",
+        "logo": "https://polymarket-upload.s3.us-east-2.amazonaws.com/NFL+Team+Logos/GB.png",
+        "longIcon": "https://static.polymarket.us/images/teams/nfl-gb/GB_home.png",
+        "longIconDark": "https://static.polymarket.us/images/teams/nfl-gb/GB_home.png",
+        "name": "Green Bay Packers",
+        "ordering": "home",
+        "providerId": 12,
+        "providerIds": [
+         {
+          "provider": "PROVIDER_SPORTSDATAIO",
+          "providerId": "12"
+         },
+         {
+          "provider": "PROVIDER_SPORTRADAR",
+          "providerId": "a20471b4-a8d9-40c7-95ad-90cc30e46932"
+         }
+        ],
+        "record": "5-3",
+        "safeName": "GB Packers",
+        "shortIcon": "https://static.polymarket.us/images/teams/nfl-gb/GB_away.png",
+        "shortIconDark": "https://static.polymarket.us/images/teams/nfl-gb/GB_away.png"
+       },
+       "teamId": 59,
+       "tradable": true,
+       "updatedAt": "2025-10-30T00:23:45Z"
+      }
+     ],
+     "marketType": "moneyline",
+     "minimumTradeQty": 1,
+     "orderPriceMinTickSize": 0.001,
+     "outcomePrices": "[\"1\",\"0\"]",
+     "outcomes": "[\"Panthers\",\"Packers\"]",
+     "politics": null,
+     "question": "Carolina vs. Green Bay",
+     "slug": "aec-nfl-car-gb-2025-11-02",
+     "sportsMarketType": "moneyline",
+     "sportsMarketTypeV2": "SPORTS_MARKET_TYPE_MONEYLINE",
+     "startDate": "2025-10-29T22:00:01Z",
+     "status": "MARKET_STATUS_RESOLVED",
+     "tags": [],
+     "title": "CAR Panthers vs GB Packers",
+     "titleShort": "CAR vs GB",
+     "updatedAt": "2026-09-25T18:40:55Z"
+    }
+   ],
+   "participants": [],
+   "payoutEstimateMessage": "",
+   "payoutEstimateTime": "",
+   "period": "NS",
+   "primaryTag": {
+    "createdAt": "2025-09-25T16:13:27Z",
+    "featuredEventIds": [],
+    "hub": null,
+    "id": "1",
+    "label": "NFL",
+    "league": {
+     "abbreviation": "NFL",
+     "activeSeriesId": 2,
+     "automaticResolution": false,
+     "createdAt": "2026-03-05T18:30:42Z",
+     "id": 1,
+     "image": "https://static.polymarket.us/images/new-category-icons/Icon-Rugby.png",
+     "isOperational": true,
+     "name": "NFL",
+     "ordering": "away",
+     "resolution": "https://www.nfl.com/",
+     "slug": "nfl",
+     "sportId": 3,
+     "tagId": 1
+    },
+    "parentId": 13,
+    "slug": "nfl",
+    "subtags": [],
+    "updatedAt": "2026-11-03T05:44:19Z"
+   },
+   "seriesSlug": "nfl-2025",
+   "slug": "aec-nfl-car-gb-2025-11-02",
+   "sortType": "price",
+   "sportradarGameId": "7f467bc5-2616-43ed-bc84-ab659c9f34b2",
+   "startDate": "2025-11-02T18:00:00Z",
+   "startTime": "2025-11-02T18:00:00Z",
+   "streamProvider": "",
+   "streamRequiresAuth": false,
+   "tags": [
+    {
+     "createdAt": "2025-09-25T16:13:27Z",
+     "featuredEventIds": [],
+     "hub": null,
+     "id": "1",
+     "label": "NFL",
+     "league": {
+      "abbreviation": "NFL",
+      "activeSeriesId": 2,
+      "automaticResolution": false,
+      "createdAt": "2026-03-05T18:30:42Z",
+      "id": 1,
+      "image": "https://static.polymarket.us/images/new-category-icons/Icon-Rugby.png",
+      "isOperational": true,
+      "name": "NFL",
+      "ordering": "away",
+      "resolution": "https://www.nfl.com/",
+      "slug": "nfl",
+      "sportId": 3,
+      "tagId": 1
+     },
+     "parentId": 13,
+     "slug": "nfl",
+     "subtags": [],
+     "updatedAt": "2026-11-03T05:44:19Z"
+    },
+    {
+     "createdAt": "2025-09-25T16:13:27Z",
+     "featuredEventIds": [],
+     "hub": null,
+     "id": "2",
+     "label": "Sports",
+     "slug": "sports",
+     "subtags": [],
+     "updatedAt": "2026-11-03T05:44:19Z"
+    }
+   ],
+   "teams": [
+    {
+     "abbreviation": "car",
+     "alias": "Panthers",
+     "awayIcon": "https://static.polymarket.us/images/teams/nfl-car/CAR_away.png",
+     "color": {
+      "dark": "#0085CA",
+      "light": "#0085CA"
+     },
+     "colorPrimary": "#0085CA",
+     "conference": "",
+     "displayAbbreviation": "CAR",
+     "homeIcon": "https://static.polymarket.us/images/teams/nfl-car/CAR_home.png",
+     "id": 52,
+     "imageDisplayType": "IMAGE_DISPLAY_TYPE_LOGO",
+     "league": "nfl",
+     "logo": "https://polymarket-upload.s3.us-east-2.amazonaws.com/NFL+Team+Logos/CAR.png",
+     "longIcon": "https://static.polymarket.us/images/teams/nfl-car/CAR_home.png",
+     "longIconDark": "https://static.polymarket.us/images/teams/nfl-car/CAR_home.png",
+     "name": "Carolina Panthers",
+     "providerId": 5,
+     "providerIds": [
+      {
+       "provider": "PROVIDER_SPORTSDATAIO",
+       "providerId": "5"
+      },
+      {
+       "provider": "PROVIDER_SPORTRADAR",
+       "providerId": "f14bf5cc-9a82-4a38-bc15-d39f75ed5314"
+      }
+     ],
+     "record": "3-4",
+     "safeName": "CAR Panthers",
+     "shortIcon": "https://static.polymarket.us/images/teams/nfl-car/CAR_away.png",
+     "shortIconDark": "https://static.polymarket.us/images/teams/nfl-car/CAR_away.png"
+    },
+    {
+     "abbreviation": "gb",
+     "alias": "Packers",
+     "awayIcon": "https://static.polymarket.us/images/teams/nfl-gb/GB_away.png",
+     "color": {
+      "dark": "#4C645D",
+      "light": "#203731"
+     },
+     "colorPrimary": "#203731",
+     "conference": "",
+     "displayAbbreviation": "GB",
+     "homeIcon": "https://static.polymarket.us/images/teams/nfl-gb/GB_home.png",
+     "id": 59,
+     "imageDisplayType": "IMAGE_DISPLAY_TYPE_LOGO",
+     "league": "nfl",
+     "logo": "https://polymarket-upload.s3.us-east-2.amazonaws.com/NFL+Team+Logos/GB.png",
+     "longIcon": "https://static.polymarket.us/images/teams/nfl-gb/GB_home.png",
+     "longIconDark": "https://static.polymarket.us/images/teams/nfl-gb/GB_home.png",
+     "name": "Green Bay Packers",
+     "providerId": 12,
+     "providerIds": [
+      {
+       "provider": "PROVIDER_SPORTSDATAIO",
+       "providerId": "12"
+      },
+      {
+       "provider": "PROVIDER_SPORTRADAR",
+       "providerId": "a20471b4-a8d9-40c7-95ad-90cc30e46932"
+      }
+     ],
+     "record": "5-3",
+     "safeName": "GB Packers",
+     "shortIcon": "https://static.polymarket.us/images/teams/nfl-gb/GB_away.png",
+     "shortIconDark": "https://static.polymarket.us/images/teams/nfl-gb/GB_away.png"
+    }
+   ],
+   "ticker": "aec-nfl-car-gb-2025-11-02",
+   "title": "Carolina vs. Green Bay",
+   "updatedAt": "2026-07-03T20:10:02Z"
+  },
+  {
+   "active": false,
+   "archived": false,
+   "category": "sports",
+   "chatChannel": {
+    "chatMemberCount": 4,
+    "id": "aec-nfl-lac-ten-2025-11-02",
+    "type": "CHAT_CHANNEL_TYPE_MESSAGING"
+   },
+   "closed": true,
+   "combos": {
+    "enabled": true,
+    "numMarkets": 0,
+    "numSpreadsAndTotalsMarkets": 0
+   },
+   "createdAt": "2025-10-30T00:23:45Z",
+   "description": "Los Angeles vs. Tennessee",
+   "elapsed": "",
+   "endDate": "2025-11-02T23:59:00Z",
+   "fixtureId": "",
+   "gameId": 19077,
+   "hidden": false,
+   "id": "3",
+   "insiderTradingRules": null,
+   "marketCounts": {
+    "numMarkets": 0,
+    "numSpreadsAndTotalsMarkets": 0
+   },
+   "marketGroups": [
+    {
+     "id": "PRIMARY",
+     "initialCollapsed": false,
+     "live": false,
+     "marketIds": [
+      "1"
+     ],
+     "order": 0,
+     "title": "Primary"
+    }
+   ],
+   "markets": [
+    {
+     "active": false,
+     "archived": false,
+     "assetPriceTerms": null,
+     "category": "sports",
+     "closed": true,
+     "comboEnabled": true,
+     "createdAt": "2026-03-07T02:30:00Z",
+     "description": "In the upcoming american football game, scheduled for November 2 at 1:00PM ET:\nIf Los Angeles wins, the market will resolve to \u201cLos Angeles\u201d.\nIf Tennessee wins, the market will resolve to \u201cTennessee\u201d.\nIf the game is postponed, this market will remain open until the game has been completed.\nIf the game is canceled entirely, with no make-up game, this market will resolve 50-50.",
+     "endDate": "2025-11-03T18:00:00Z",
+     "ep3Status": "EXPIRED",
+     "ep3SyncedAt": "2026-09-25T18:39:25Z",
+     "feeCoefficient": 0.0695,
+     "gameStartTime": "2025-11-02T18:00:00Z",
+     "hidden": false,
+     "id": "1",
+     "manualActivation": false,
+     "marketSides": [
+      {
+       "createdAt": "2025-10-30T00:23:45Z",
+       "description": "Chargers",
+       "id": "1",
+       "identifier": "aec-nfl-lac-ten-2025-11-02",
+       "long": true,
+       "marketId": 1,
+       "marketSideType": "MARKET_SIDE_TYPE_INSTRUMENT",
+       "price": "1",
+       "team": {
+        "abbreviation": "lac",
+        "alias": "Chargers",
+        "awayIcon": "https://static.polymarket.us/images/teams/nfl-lac/LAC_away.png",
+        "color": {
+         "dark": "#0078BB",
+         "light": "#D2AB37"
+        },
+        "colorPrimary": "#0080C6",
+        "conference": "",
+        "displayAbbreviation": "LAC",
+        "homeIcon": "https://static.polymarket.us/images/teams/nfl-lac/LAC_home.png",
+        "id": 65,
+        "imageDisplayType": "IMAGE_DISPLAY_TYPE_LOGO",
+        "league": "nfl",
+        "logo": "https://polymarket-upload.s3.us-east-2.amazonaws.com/NFL+Team+Logos/LAC.png",
+        "longIcon": "https://static.polymarket.us/images/teams/nfl-lac/LAC_home.png",
+        "longIconDark": "https://static.polymarket.us/images/teams/nfl-lac/LAC_home.png",
+        "name": "Los Angeles Chargers",
+        "ordering": "away",
+        "providerId": 29,
+        "providerIds": [
+         {
+          "provider": "PROVIDER_SPORTSDATAIO",
+          "providerId": "29"
+         },
+         {
+          "provider": "PROVIDER_SPORTRADAR",
+          "providerId": "1f6dcffb-9823-43cd-9ff4-e7a8466749b5"
+         }
+        ],
+        "record": "0-7",
+        "safeName": "LA Chargers",
+        "shortIcon": "https://static.polymarket.us/images/teams/nfl-lac/LAC_away.png",
+        "shortIconDark": "https://static.polymarket.us/images/teams/nfl-lac/LAC_away.png"
+       },
+       "teamId": 65,
+       "tradable": true,
+       "updatedAt": "2025-10-30T00:23:45Z"
+      },
+      {
+       "createdAt": "2025-10-30T00:23:45Z",
+       "description": "Titans",
+       "id": "2",
+       "identifier": "aec-nfl-lac-ten-2025-11-02",
+       "long": false,
+       "marketId": 1,
+       "marketSideType": "MARKET_SIDE_TYPE_INSTRUMENT",
+       "price": "0",
+       "team": {
+        "abbreviation": "ten",
+        "alias": "Titans",
+        "awayIcon": "https://static.polymarket.us/images/teams/nfl-ten/TEN_away.png",
+        "color": {
+         "dark": "#539AE3",
+         "light": "#4B92DB"
+        },
+        "colorPrimary": "#4B92DB",
+        "conference": "",
+        "displayAbbreviation": "TEN",
+        "homeIcon": "https://static.polymarket.us/images/teams/nfl-ten/TEN_home.png",
+        "id": 78,
+        "imageDisplayType": "IMAGE_DISPLAY_TYPE_LOGO",
+        "league": "nfl",
+        "logo": "https://polymarket-upload.s3.us-east-2.amazonaws.com/NFL+Team+Logos/TEN.png",
+        "longIcon": "https://static.polymarket.us/images/teams/nfl-ten/TEN_home.png",
+        "longIconDark": "https://static.polymarket.us/images/teams/nfl-ten/TEN_home.png",
+        "name": "Tennessee Titans",
+        "ordering": "home",
+        "providerId": 34,
+        "providerIds": [
+         {
+          "provider": "PROVIDER_SPORTSDATAIO",
+          "providerId": "34"
+         },
+         {
+          "provider": "PROVIDER_SPORTRADAR",
+          "providerId": "d26a1ca5-722d-4274-8f97-c92e49c96315"
+         }
+        ],
+        "record": "1-7",
+        "safeName": "TEN Titans",
+        "shortIcon": "https://static.polymarket.us/images/teams/nfl-ten/TEN_away.png",
+        "shortIconDark": "https://static.polymarket.us/images/teams/nfl-ten/TEN_away.png"
+       },
+       "teamId": 78,
+       "tradable": true,
+       "updatedAt": "2025-10-30T00:23:45Z"
+      }
+     ],
+     "marketType": "moneyline",
+     "minimumTradeQty": 1,
+     "orderPriceMinTickSize": 0.001,
+     "outcomePrices": "[\"1\",\"0\"]",
+     "outcomes": "[\"Chargers\",\"Titans\"]",
+     "politics": null,
+     "question": "Los Angeles vs. Tennessee",
+     "slug": "aec-nfl-lac-ten-2025-11-02",
+     "sportsMarketType": "moneyline",
+     "sportsMarketTypeV2": "SPORTS_MARKET_TYPE_MONEYLINE",
+     "startDate": "2025-10-29T22:00:01Z",
+     "status": "MARKET_STATUS_RESOLVED",
+     "tags": [],
+     "title": "LA Chargers vs TEN Titans",
+     "titleShort": "LAC vs TEN",
+     "updatedAt": "2026-09-25T18:39:25Z"
+    }
+   ],
+   "participants": [],
+   "payoutEstimateMessage": "",
+   "payoutEstimateTime": "",
+   "period": "NS",
+   "primaryTag": {
+    "createdAt": "2025-09-25T16:13:27Z",
+    "featuredEventIds": [],
+    "hub": null,
+    "id": "1",
+    "label": "NFL",
+    "league": {
+     "abbreviation": "NFL",
+     "activeSeriesId": 2,
+     "automaticResolution": false,
+     "createdAt": "2026-03-05T18:30:42Z",
+     "id": 1,
+     "image": "https://static.polymarket.us/images/new-category-icons/Icon-Rugby.png",
+     "isOperational": true,
+     "name": "NFL",
+     "ordering": "away",
+     "resolution": "https://www.nfl.com/",
+     "slug": "nfl",
+     "sportId": 3,
+     "tagId": 1
+    },
+    "slug": "nfl",
+    "subtags": [],
+    "updatedAt": "2026-11-03T05:44:19Z"
+   },
+   "seriesSlug": "nfl-2025",
+   "slug": "aec-nfl-lac-ten-2025-11-02",
+   "sortType": "price",
+   "sportradarGameId": "9e382841-2083-4b3e-a459-04228a289dc0",
+   "startDate": "2025-11-02T18:00:00Z",
+   "startTime": "2025-11-02T18:00:00Z",
+   "streamProvider": "",
+   "streamRequiresAuth": false,
+   "tags": [
+    {
+     "createdAt": "2025-09-25T16:13:27Z",
+     "featuredEventIds": [],
+     "hub": null,
+     "id": "1",
+     "label": "NFL",
+     "league": {
+      "abbreviation": "NFL",
+      "activeSeriesId": 2,
+      "automaticResolution": false,
+      "createdAt": "2026-03-05T18:30:42Z",
+      "id": 1,
+      "image": "https://static.polymarket.us/images/new-category-icons/Icon-Rugby.png",
+      "isOperational": true,
+      "name": "NFL",
+      "ordering": "away",
+      "resolution": "https://www.nfl.com/",
+      "slug": "nfl",
+      "sportId": 3,
+      "tagId": 1
+     },
+     "slug": "nfl",
+     "subtags": [],
+     "updatedAt": "2026-11-03T05:44:19Z"
+    },
+    {
+     "createdAt": "2025-09-25T16:13:27Z",
+     "featuredEventIds": [],
+     "hub": null,
+     "id": "2",
+     "label": "Sports",
+     "slug": "sports",
+     "subtags": [],
+     "updatedAt": "2026-11-03T05:44:19Z"
+    }
+   ],
+   "teams": [
+    {
+     "abbreviation": "lac",
+     "alias": "Chargers",
+     "awayIcon": "https://static.polymarket.us/images/teams/nfl-lac/LAC_away.png",
+     "color": {
+      "dark": "#0078BB",
+      "light": "#D2AB37"
+     },
+     "colorPrimary": "#0080C6",
+     "conference": "",
+     "displayAbbreviation": "LAC",
+     "homeIcon": "https://static.polymarket.us/images/teams/nfl-lac/LAC_home.png",
+     "id": 65,
+     "imageDisplayType": "IMAGE_DISPLAY_TYPE_LOGO",
+     "league": "nfl",
+     "logo": "https://polymarket-upload.s3.us-east-2.amazonaws.com/NFL+Team+Logos/LAC.png",
+     "longIcon": "https://static.polymarket.us/images/teams/nfl-lac/LAC_home.png",
+     "longIconDark": "https://static.polymarket.us/images/teams/nfl-lac/LAC_home.png",
+     "name": "Los Angeles Chargers",
+     "providerId": 29,
+     "providerIds": [
+      {
+       "provider": "PROVIDER_SPORTSDATAIO",
+       "providerId": "29"
+      },
+      {
+       "provider": "PROVIDER_SPORTRADAR",
+       "providerId": "1f6dcffb-9823-43cd-9ff4-e7a8466749b5"
+      }
+     ],
+     "record": "0-7",
+     "safeName": "LA Chargers",
+     "shortIcon": "https://static.polymarket.us/images/teams/nfl-lac/LAC_away.png",
+     "shortIconDark": "https://static.polymarket.us/images/teams/nfl-lac/LAC_away.png"
+    },
+    {
+     "abbreviation": "ten",
+     "alias": "Titans",
+     "awayIcon": "https://static.polymarket.us/images/teams/nfl-ten/TEN_away.png",
+     "color": {
+      "dark": "#539AE3",
+      "light": "#4B92DB"
+     },
+     "colorPrimary": "#4B92DB",
+     "conference": "",
+     "displayAbbreviation": "TEN",
+     "homeIcon": "https://static.polymarket.us/images/teams/nfl-ten/TEN_home.png",
+     "id": 78,
+     "imageDisplayType": "IMAGE_DISPLAY_TYPE_LOGO",
+     "league": "nfl",
+     "logo": "https://polymarket-upload.s3.us-east-2.amazonaws.com/NFL+Team+Logos/TEN.png",
+     "longIcon": "https://static.polymarket.us/images/teams/nfl-ten/TEN_home.png",
+     "longIconDark": "https://static.polymarket.us/images/teams/nfl-ten/TEN_home.png",
+     "name": "Tennessee Titans",
+     "providerId": 34,
+     "providerIds": [
+      {
+       "provider": "PROVIDER_SPORTSDATAIO",
+       "providerId": "34"
+      },
+      {
+       "provider": "PROVIDER_SPORTRADAR",
+       "providerId": "d26a1ca5-722d-4274-8f97-c92e49c96315"
+      }
+     ],
+     "record": "1-7",
+     "safeName": "TEN Titans",
+     "shortIcon": "https://static.polymarket.us/images/teams/nfl-ten/TEN_away.png",
+     "shortIconDark": "https://static.polymarket.us/images/teams/nfl-ten/TEN_away.png"
+    }
+   ],
+   "ticker": "aec-nfl-lac-ten-2025-11-02",
+   "title": "Los Angeles vs. Tennessee",
+   "updatedAt": "2026-07-03T20:10:02Z"
+  }
+ ]
+}

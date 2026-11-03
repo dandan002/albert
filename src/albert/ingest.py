@@ -1,0 +1,293 @@
+"""Ingest pipelines: fetch -> raw cache -> typed Parquet tables -> run manifest."""
+
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from pathlib import Path
+
+import polars as pl
+
+from albert.categories import pm_is_non_financial, pmus_is_non_financial
+from albert.config import Settings
+from albert.http import CachedClient
+from albert.store import read_table, write_manifest, write_table
+from albert.venues import kalshi as k
+from albert.venues import polymarket as pm
+from albert.venues import polymarket_us as pmus
+
+
+@dataclass
+class Clients:
+    kalshi: k.Kalshi
+    pm: pm.Polymarket
+    pmus: pmus.PolymarketUS
+
+    @classmethod
+    def build(cls, s: Settings) -> "Clients":
+        return cls(
+            kalshi=k.Kalshi(CachedClient("kalshi", s.kalshi_base, s.raw_dir, min_interval=0.08)),
+            pm=pm.Polymarket(
+                CachedClient("pm_gamma", s.pm_gamma_base, s.raw_dir, min_interval=0.12),
+                CachedClient("pm_data", s.pm_data_base, s.raw_dir, min_interval=0.12),
+            ),
+            pmus=pmus.PolymarketUS(CachedClient("pmus", s.pmus_base, s.raw_dir, min_interval=0.1)),
+        )
+
+
+@dataclass
+class IngestResult:
+    tables: dict[str, int] = field(default_factory=dict)
+    raw_files: list[Path] = field(default_factory=list)
+    manifest: Path | None = None
+
+    def summary(self) -> str:
+        lines = [f"{name}: {rows} rows" for name, rows in self.tables.items()]
+        if self.manifest:
+            lines.append(f"manifest: {self.manifest}")
+        return "\n".join(lines)
+
+
+def _require_rows(name: str, frame: pl.DataFrame) -> None:
+    if frame.is_empty():
+        raise RuntimeError(f"{name}: 0 rows. Treating as a failure (check filters and dates).")
+
+
+# ---- Kalshi ---------------------------------------------------------------------------------
+def kalshi_series(s: Settings, c: Clients) -> dict[str, dict]:
+    page = c.kalshi.series()
+    frame = k.series_frame(page.payload)
+    write_table(s.tables_dir, "kalshi_series", frame, merge=False)
+    return {row["series_ticker"]: row for row in frame.iter_rows(named=True)}
+
+
+def ingest_kalshi(s: Settings, c: Clients, start: datetime, end: datetime, *,
+                  categories: list[str] | None = None, min_volume: float = 0.0,
+                  trades: bool = False, candles: bool = False, candle_minutes: int = 60,
+                  max_markets: int | None = None, per_category: bool = False) -> IngestResult:
+    result = IngestResult()
+    series_info = kalshi_series(s, c)
+    rows: list[dict] = []
+    for page in c.kalshi.settled_markets(start, end):
+        result.raw_files.append(page.raw_path)
+        source = "historical" if "/historical/" in page.url else "live"
+        rows.extend(k.market_rows(page.payload, series_info, source))
+    markets = k.markets_frame(rows).filter(
+        pl.col("close_time").is_between(start, end, closed="left")
+        & (pl.col("volume").fill_null(0) >= min_volume)
+        & pl.col("result").is_in(["yes", "no"])
+    )
+    if categories:
+        markets = markets.filter(pl.col("category").is_in(categories))
+    _require_rows("kalshi_markets", markets)
+    write_table(s.tables_dir, "kalshi_markets", markets, key=["ticker"])
+    result.tables["kalshi_markets"] = markets.height
+
+    selected = markets.sort("volume", descending=True)
+    if max_markets:
+        # per_category: top-N within each category, so Sports (~95% of volume) does not crowd
+        # out everything else.
+        selected = (selected.group_by("category", maintain_order=True).head(max_markets)
+                    if per_category else selected.head(max_markets))
+    cutoff = c.kalshi.cutoff()
+
+    if trades:
+        trade_rows: list[dict] = []
+        for m in selected.iter_rows(named=True):
+            historical = bool(cutoff["trades_created_ts"] and m["close_time"] < cutoff["trades_created_ts"])
+            for page in c.kalshi.trades(m["ticker"], historical):
+                result.raw_files.append(page.raw_path)
+                trade_rows.extend(k.trade_rows(page.payload))
+        frame = pl.DataFrame(trade_rows, schema=k.TRADE_SCHEMA)
+        write_table(s.tables_dir, "kalshi_trades", frame, key=["trade_id"])
+        result.tables["kalshi_trades"] = frame.height
+
+    if candles:
+        candle_rows: list[dict] = []
+        for m in selected.iter_rows(named=True):
+            historical = bool(cutoff["market_settled_ts"] and m["close_time"] < cutoff["market_settled_ts"])
+            open_time = m["open_time"] or (m["close_time"] - timedelta(days=30))
+            # Kalshi caps candle requests at ~5000 periods; a 60-minute candle covers ~200 days.
+            open_time = max(open_time, m["close_time"] - timedelta(minutes=candle_minutes * 4900))
+            try:
+                page = c.kalshi.candles(m["ticker"], open_time, m["close_time"], candle_minutes,
+                                        historical)
+            except RuntimeError as error:  # one bad market should not kill a long run
+                print(f"skip candles {m['ticker']}: {error}")
+                continue
+            result.raw_files.append(page.raw_path)
+            candle_rows.extend(k.candle_rows(page.payload, m["ticker"], candle_minutes))
+        frame = pl.DataFrame(candle_rows, schema=k.CANDLE_SCHEMA)
+        write_table(s.tables_dir, "kalshi_candles", frame, key=["ticker", "end_ts", "period_minutes"])
+        result.tables["kalshi_candles"] = frame.height
+
+    result.manifest = write_manifest(s.data_dir, "ingest kalshi", {
+        "start": start, "end": end, "categories": categories, "min_volume": min_volume,
+        "trades": trades, "candles": candles, "candle_minutes": candle_minutes,
+        "max_markets": max_markets, "per_category": per_category,
+    }, result.tables, result.raw_files)
+    return result
+
+
+def ingest_kalshi_open(s: Settings, c: Clients) -> pl.DataFrame:
+    """Snapshot open markets (for matching and paper trading). Not written as the settled table."""
+    series_info = kalshi_series(s, c)
+    rows: list[dict] = []
+    for page in c.kalshi.open_markets():
+        rows.extend(k.market_rows(page.payload, series_info, "live"))
+    frame = k.markets_frame(rows)
+    write_table(s.tables_dir, "kalshi_open_markets", frame, merge=False)
+    return frame
+
+
+# ---- Polymarket intl (data only) --------------------------------------------------------------
+def ingest_pm_markets(s: Settings, c: Clients, start: datetime, end: datetime, *,
+                      closed: bool = True, min_volume: float = 100.0) -> IngestResult:
+    result = IngestResult()
+    rows: list[dict] = []
+    for page in c.pm.events(closed=closed, end_min=start, end_max=end, cache=closed):
+        result.raw_files.append(page.raw_path)
+        rows.extend(pm.market_rows(page.payload["events"]))
+    frame = pl.DataFrame(rows, schema=pm.MARKET_SCHEMA)
+    frame = frame.filter(pl.Series([pm_is_non_financial(t) for t in frame["tags"].to_list()],
+                                   dtype=pl.Boolean))
+    frame = frame.filter(pl.col("volume") >= min_volume)
+    if closed:
+        # Event end dates are loose; keep markets whose own close falls in the window.
+        when = pl.coalesce("closed_time", "end_date")
+        frame = frame.filter(pl.col("winner_index").is_not_null()
+                             & when.is_between(start, end, closed="left"))
+    name = "pm_markets" if closed else "pm_open_markets"
+    _require_rows(name, frame)
+    write_table(s.tables_dir, name, frame, key=["condition_id"], merge=closed)
+    result.tables[name] = frame.height
+    result.manifest = write_manifest(s.data_dir, "ingest pm-markets",
+                                     {"start": start, "end": end, "closed": closed,
+                                      "min_volume": min_volume},
+                                     result.tables, result.raw_files)
+    return result
+
+
+def ingest_pm_wallets(s: Settings, c: Clients, start: datetime, end: datetime, *,
+                      top: int = 200, categories: tuple[str, ...] = ("overall",),
+                      time_period: str = "all", extra_wallets: list[str] | None = None,
+                      max_pages: int = 20) -> IngestResult:
+    """Leaderboard wallets (plus any extras) and all their trades in [start, end).
+
+    The leaderboard is only a sampling frame. It is biased toward winners, which is why
+    research/wallets.py tests persistence out of sample instead of trusting its rankings.
+    """
+    result = IngestResult()
+    board: list[dict] = []
+    for category in categories:
+        for page in c.pm.leaderboard(time_period=time_period, category=category, limit=top):
+            result.raw_files.append(page.raw_path)
+            board.extend(pm.leaderboard_rows(page.payload, time_period, category))
+    board_frame = pl.DataFrame(board, schema=pm.LEADERBOARD_SCHEMA)
+    write_table(s.tables_dir, "pm_leaderboard", board_frame,
+                key=["wallet", "time_period", "category"])
+    result.tables["pm_leaderboard"] = board_frame.height
+
+    wallets = list(dict.fromkeys(board_frame["wallet"].to_list() + [w.lower() for w in extra_wallets or []]))
+    trade_rows: list[dict] = []
+    # Page month by month: the feed is newest-first, so one capped pass over a long window would
+    # leave very active wallets with only their last few days of history.
+    chunks = []
+    lo = start
+    while lo < end:
+        hi = min(end, lo + timedelta(days=30))
+        chunks.append((lo, hi))
+        lo = hi
+    for i, wallet in enumerate(wallets, 1):
+        for lo, hi in chunks:
+            for page in c.pm.wallet_trades(wallet, lo, hi, max_pages=max_pages):
+                result.raw_files.append(page.raw_path)
+                trade_rows.extend(pm.trade_rows(page.payload))
+        if i % 25 == 0:
+            print(f"  wallets {i}/{len(wallets)}, trades so far {len(trade_rows)}")
+    trades = pl.DataFrame(trade_rows, schema=pm.TRADE_SCHEMA)
+    _require_rows("pm_trades", trades)
+    write_table(s.tables_dir, "pm_trades", trades,
+                key=["transaction_hash", "wallet", "token_id", "side", "price", "size"])
+    result.tables["pm_trades"] = trades.height
+    result.manifest = write_manifest(s.data_dir, "ingest pm-wallets", {
+        "start": start, "end": end, "top": top, "categories": categories,
+        "time_period": time_period, "extra_wallets": extra_wallets,
+    }, result.tables, result.raw_files)
+    return result
+
+
+def ingest_pm_resolutions_for_trades(s: Settings, c: Clients) -> IngestResult:
+    """Make sure every market a tracked wallet traded has metadata and a resolution.
+
+    The wallet trade feed spans markets outside any date window we ingested, so we fetch the
+    missing ones by condition id from Gamma.
+    """
+    result = IngestResult()
+    trades = read_table(s.tables_dir, "pm_trades")
+    try:
+        known = set(read_table(s.tables_dir, "pm_markets")["condition_id"].to_list())
+    except FileNotFoundError:
+        known = set()
+    missing = sorted(set(trades["condition_id"].drop_nulls().to_list()) - known)
+    rows: list[dict] = []
+    for i in range(0, len(missing), 50):
+        batch = missing[i:i + 50]
+        # Gamma /markets defaults to open markets only, so ask for closed ones explicitly.
+        page = c.pm.gamma.get("/markets", {"condition_ids": batch, "limit": 100, "closed": "true"})
+        result.raw_files.append(page.raw_path)
+        # /markets returns bare markets; wrap them so market_rows can reuse the event parser.
+        for m in page.payload:
+            event = (m.get("events") or [{}])[0]
+            rows.extend(pm.market_rows([{**event, "markets": [m]}]))
+        if (i // 50) % 100 == 99:
+            print(f"  resolutions {i + 50}/{len(missing)}")
+    if rows:
+        frame = pl.DataFrame(rows, schema=pm.MARKET_SCHEMA)
+        write_table(s.tables_dir, "pm_markets", frame, key=["condition_id"])
+        result.tables["pm_markets_added"] = frame.height
+    result.manifest = write_manifest(s.data_dir, "ingest pm-resolutions", {"missing": len(missing)},
+                                     result.tables, result.raw_files)
+    return result
+
+
+# ---- Polymarket US ------------------------------------------------------------------------------
+def ingest_pmus(s: Settings, c: Clients, *, closed: bool, start: datetime | None = None,
+                end: datetime | None = None, max_pages: int | None = None) -> IngestResult:
+    """Polymarket US markets in non-financial categories, optionally limited by end date.
+
+    The venue has over 2M closed markets (mostly short crypto contracts), so closed ingests
+    should always pass a window.
+    """
+    result = IngestResult()
+    passes = pmus.window_params(start, end)
+    rows: list[dict] = []
+    for extra in passes:
+        for n, page in enumerate(c.pmus.markets(closed=closed, cache=closed, extra=extra), 1):
+            result.raw_files.append(page.raw_path)
+            rows.extend(pmus.market_rows(page.payload))
+            if max_pages and n >= max_pages:
+                break
+    event_map: dict[str, str] = {}
+    event_filter = {k_: v for k_, v in passes[0].items() if k_ != "marketTypes"}
+    event_filter["categories"] = list(pmus.NON_FINANCIAL_CATEGORIES)
+    for n, page in enumerate(c.pmus.events(closed=closed, cache=closed, extra=event_filter), 1):
+        result.raw_files.append(page.raw_path)
+        event_map.update(pmus.event_slug_map(page.payload))
+        if max_pages and n >= max_pages * 5:
+            break
+    frame = pl.DataFrame(rows, schema=pmus.MARKET_SCHEMA).with_columns(
+        pl.col("slug").replace_strict(event_map, default=None, return_dtype=pl.String)
+        .alias("event_slug")
+    )
+    frame = frame.filter(pl.Series([pmus_is_non_financial(x) for x in frame["category"].to_list()],
+                                   dtype=pl.Boolean))
+    if closed:
+        frame = frame.filter(pl.col("settlement").is_not_null())
+    name = "pmus_markets" if closed else "pmus_open_markets"
+    _require_rows(name, frame)
+    write_table(s.tables_dir, name, frame, key=["slug"], merge=closed)
+    result.tables[name] = frame.height
+    result.manifest = write_manifest(s.data_dir, f"ingest pmus {'closed' if closed else 'open'}",
+                                     {"closed": closed, "start": start, "end": end,
+                                      "max_pages": max_pages},
+                                     result.tables, result.raw_files)
+    return result

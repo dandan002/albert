@@ -1,0 +1,105 @@
+{
+ "candlesticks": [
+  {
+   "end_period_ts": 1780977600,
+   "open_interest": "42.28",
+   "price": {
+    "close": "0.7500",
+    "high": "0.7500",
+    "low": "0.4200",
+    "mean": "0.6750",
+    "open": "0.4200",
+    "previous": null
+   },
+   "volume": "42.28",
+   "yes_ask": {
+    "close": "0.7500",
+    "high": "0.9900",
+    "low": "0.6700",
+    "open": "0.9900"
+   },
+   "yes_bid": {
+    "close": "0.2500",
+    "high": "0.4200",
+    "low": "0.0000",
+    "open": "0.0000"
+   }
+  },
+  {
+   "end_period_ts": 1781064000,
+   "open_interest": "27823.13",
+   "price": {
+    "close": "0.6200",
+    "high": "0.6500",
+    "low": "0.5300",
+    "mean": "0.6287",
+    "open": "0.5300",
+    "previous": "0.7500"
+   },
+   "volume": "31885.65",
+   "yes_ask": {
+    "close": "0.6300",
+    "high": "0.7500",
+    "low": "0.6100",
+    "open": "0.7500"
+   },
+   "yes_bid": {
+    "close": "0.6200",
+    "high": "0.6300",
+    "low": "0.2500",
+    "open": "0.2500"
+   }
+  },
+  {
+   "end_period_ts": 1781150400,
+   "open_interest": "359307.56",
+   "price": {
+    "close": "0.6500",
+    "high": "0.6600",
+    "low": "0.5600",
+    "mean": "0.6390",
+    "open": "0.6300",
+    "previous": "0.6200"
+   },
+   "volume": "697762.80",
+   "yes_ask": {
+    "close": "0.6500",
+    "high": "0.6600",
+    "low": "0.5700",
+    "open": "0.6300"
+   },
+   "yes_bid": {
+    "close": "0.6300",
+    "high": "0.6500",
+    "low": "0.5600",
+    "open": "0.6200"
+   }
+  },
+  {
+   "end_period_ts": 1781236800,
+   "open_interest": "1043146.77",
+   "price": {
+    "close": "0.6500",
+    "high": "0.6500",
+    "low": "0.6300",
+    "mean": "0.6485",
+    "open": "0.6500",
+    "previous": "0.6500"
+   },
+   "volume": "798999.88",
+   "yes_ask": {
+    "close": "0.6500",
+    "high": "0.6500",
+    "low": "0.6400",
+    "open": "0.6500"
+   },
+   "yes_bid": {
+    "close": "0.6400",
+    "high": "0.6400",
+    "low": "0.6300",
+    "open": "0.6300"
+   }
+  }
+ ],
+ "ticker": "KXNBAGAME-26JUN13NYKSAS-SAS"
+}

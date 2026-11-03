@@ -1,0 +1,51 @@
+{
+ "marketData": {
+  "askDepth": 9,
+  "askShares": "280000",
+  "bestAsk": {
+   "currency": "USD",
+   "value": "0.1830"
+  },
+  "bestBid": {
+   "currency": "USD",
+   "value": "0.1810"
+  },
+  "bidDepth": 9,
+  "bidShares": "270000",
+  "currentPx": {
+   "currency": "USD",
+   "value": "0.1820"
+  },
+  "lastPriceSample": {
+   "longPx": {
+    "currency": "USD",
+    "value": "0.1800"
+   },
+   "shortPx": {
+    "currency": "USD",
+    "value": "0.82"
+   },
+   "ts": "2026-11-03T05:51:59.630815881Z"
+  },
+  "lastTradePx": {
+   "currency": "USD",
+   "value": "0.1800"
+  },
+  "longQuote": {
+   "currency": "USD",
+   "value": "0.1830"
+  },
+  "marketSlug": "tec-mls-winner-2026-11-07-vwh",
+  "openInterest": "120537.0000",
+  "settlementPx": {
+   "currency": "USD",
+   "value": "0.2240"
+  },
+  "sharesTraded": "2975804.0000",
+  "shortQuote": {
+   "currency": "USD",
+   "value": "0.819"
+  },
+  "state": "MARKET_STATE_OPEN"
+ }
+}

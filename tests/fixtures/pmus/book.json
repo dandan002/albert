@@ -1,0 +1,138 @@
+{
+ "marketData": {
+  "bids": [
+   {
+    "px": {
+     "currency": "USD",
+     "value": "0.1810"
+    },
+    "qty": "1.0000"
+   },
+   {
+    "px": {
+     "currency": "USD",
+     "value": "0.1800"
+    },
+    "qty": "2.0000"
+   },
+   {
+    "px": {
+     "currency": "USD",
+     "value": "0.1500"
+    },
+    "qty": "1.0000"
+   },
+   {
+    "px": {
+     "currency": "USD",
+     "value": "0.1450"
+    },
+    "qty": "66.0000"
+   },
+   {
+    "px": {
+     "currency": "USD",
+     "value": "0.1440"
+    },
+    "qty": "3158.0000"
+   }
+  ],
+  "marketSlug": "tec-mls-winner-2026-11-07-vwh",
+  "offers": [
+   {
+    "px": {
+     "currency": "USD",
+     "value": "0.1830"
+    },
+    "qty": "2.0000"
+   },
+   {
+    "px": {
+     "currency": "USD",
+     "value": "0.2000"
+    },
+    "qty": "9.0000"
+   },
+   {
+    "px": {
+     "currency": "USD",
+     "value": "0.9180"
+    },
+    "qty": "60.0000"
+   },
+   {
+    "px": {
+     "currency": "USD",
+     "value": "0.9190"
+    },
+    "qty": "579.0000"
+   },
+   {
+    "px": {
+     "currency": "USD",
+     "value": "0.9200"
+    },
+    "qty": "462.0000"
+   }
+  ],
+  "state": "MARKET_STATE_OPEN",
+  "stats": {
+   "closePx": {
+    "currency": "USD",
+    "value": "0.2240"
+   },
+   "closeSetTime": "2026-09-12T21:00:21.935821738Z",
+   "currentPx": {
+    "currency": "USD",
+    "value": "0.1820"
+   },
+   "highPx": {
+    "currency": "USD",
+    "value": "0.9280"
+   },
+   "highSetTime": "2026-10-11T03:08:46.052722074Z",
+   "lastPriceSample": {
+    "longPx": {
+     "currency": "USD",
+     "value": "0.1800"
+    },
+    "shortPx": {
+     "currency": "USD",
+     "value": "0.82"
+    },
+    "ts": "2026-11-03T05:51:59.630815881Z"
+   },
+   "lastTradePx": {
+    "currency": "USD",
+    "value": "0.1800"
+   },
+   "lastTradeQty": "1.0000",
+   "lastTradeSetTime": "2026-11-03T02:04:42.377378422Z",
+   "lowPx": {
+    "currency": "USD",
+    "value": "0.0170"
+   },
+   "lowSetTime": "2026-10-31T16:58:18.606340460Z",
+   "notionalSetTime": "2026-11-03T02:04:42.377378422Z",
+   "notionalTraded": {
+    "currency": "USD",
+    "value": "663133.8970"
+   },
+   "openInterest": "120537.0000",
+   "openInterestSetTime": "2026-11-03T02:04:35.066432323Z",
+   "openPx": {
+    "currency": "USD",
+    "value": "0.2150"
+   },
+   "openSetTime": "2026-09-12T21:21:23.306824892Z",
+   "settlementPriceCalculationMethod": "SETTLEMENT_PRICE_CALCULATION_METHOD_EVENT_TIER_2",
+   "settlementPx": {
+    "currency": "USD",
+    "value": "0.2240"
+   },
+   "settlementSetTime": "2026-09-12T21:00:21.935860189Z",
+   "sharesTraded": "2975804.0000"
+  },
+  "transactTime": "2026-11-03T05:51:59.630815881Z"
+ }
+}

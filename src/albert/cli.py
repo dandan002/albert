@@ -1,15 +1,245 @@
+from datetime import UTC, date, datetime, time
+
 import typer
 
-app = typer.Typer(help="Albert: prediction-market research and systematic trading.")
+from albert import __version__
+from albert.config import settings
+
+app = typer.Typer(help="Albert: prediction-market research and systematic trading.",
+                  no_args_is_help=True)
+ingest_app = typer.Typer(help="Fetch venue data into data/tables.", no_args_is_help=True)
+app.add_typer(ingest_app, name="ingest")
 
 
-@app.callback()
-def main() -> None:
-    """Albert research CLI."""
+def _day(value: str) -> datetime:
+    return datetime.combine(date.fromisoformat(value), time.min, tzinfo=UTC)
+
+
+def _clients():
+    from albert.ingest import Clients
+
+    s = settings()
+    return s, Clients.build(s)
 
 
 @app.command()
 def version() -> None:
-    from albert import __version__
-
     typer.echo(__version__)
+
+
+@ingest_app.command("kalshi")
+def ingest_kalshi(
+    start: str = typer.Option(..., help="YYYY-MM-DD, inclusive (market close date)"),
+    end: str = typer.Option(..., help="YYYY-MM-DD, exclusive"),
+    category: list[str] = typer.Option(None, help="Kalshi category, repeatable (e.g. Sports)"),
+    min_volume: float = typer.Option(0.0, help="Minimum contracts traded"),
+    trades: bool = typer.Option(False, help="Also fetch trades per market"),
+    candles: bool = typer.Option(False, help="Also fetch bid/ask candlesticks per market"),
+    candle_minutes: int = typer.Option(60, help="Candle period: 1, 60, or 1440"),
+    max_markets: int = typer.Option(None, help="Fetch trades/candles for the top-N by volume"),
+    per_category: bool = typer.Option(False, help="Apply --max-markets within each category"),
+) -> None:
+    """Settled non-financial Kalshi markets (plus optional trades and candles)."""
+    from albert.ingest import ingest_kalshi as run
+
+    s, c = _clients()
+    result = run(s, c, _day(start), _day(end), categories=category or None,
+                 min_volume=min_volume, trades=trades, candles=candles,
+                 candle_minutes=candle_minutes, max_markets=max_markets,
+                 per_category=per_category)
+    typer.echo(result.summary())
+
+
+@ingest_app.command("kalshi-open")
+def ingest_kalshi_open() -> None:
+    """Snapshot currently open non-financial Kalshi markets."""
+    from albert.ingest import ingest_kalshi_open as run
+
+    s, c = _clients()
+    typer.echo(f"kalshi_open_markets: {run(s, c).height} rows")
+
+
+@ingest_app.command("pm-markets")
+def ingest_pm_markets(
+    start: str = typer.Option(..., help="YYYY-MM-DD (event end date)"),
+    end: str = typer.Option(..., help="YYYY-MM-DD, exclusive"),
+    open_: bool = typer.Option(False, "--open", help="Open markets instead of resolved ones"),
+    min_volume: float = typer.Option(100.0, help="Minimum USDC volume"),
+) -> None:
+    """Polymarket intl (data only) market metadata and resolutions."""
+    from albert.ingest import ingest_pm_markets as run
+
+    s, c = _clients()
+    typer.echo(run(s, c, _day(start), _day(end), closed=not open_,
+                   min_volume=min_volume).summary())
+
+
+@ingest_app.command("pm-wallets")
+def ingest_pm_wallets(
+    start: str = typer.Option(..., help="YYYY-MM-DD, trade window start"),
+    end: str = typer.Option(..., help="YYYY-MM-DD, trade window end (exclusive)"),
+    top: int = typer.Option(200, help="Wallets per leaderboard category"),
+    category: list[str] = typer.Option(None, help="Leaderboard category (overall, sports, politics...)"),
+    time_period: str = typer.Option("all", help="Leaderboard window: day, week, month, all"),
+    wallet: list[str] = typer.Option(None, help="Extra wallet address, repeatable"),
+    max_pages: int = typer.Option(20, help="Max 1000-trade pages per wallet"),
+) -> None:
+    """Leaderboard wallets and their full trade history, then backfill market resolutions."""
+    from albert.ingest import ingest_pm_resolutions_for_trades, ingest_pm_wallets as run
+
+    s, c = _clients()
+    result = run(s, c, _day(start), _day(end), top=top,
+                 categories=tuple(category or ("overall",)), time_period=time_period,
+                 extra_wallets=wallet, max_pages=max_pages)
+    typer.echo(result.summary())
+    typer.echo(ingest_pm_resolutions_for_trades(s, c).summary())
+
+
+@ingest_app.command("pmus")
+def ingest_pmus(
+    open_: bool = typer.Option(False, "--open", help="Open markets instead of resolved ones"),
+    start: str = typer.Option(None, help="YYYY-MM-DD: market end date from (needed for closed)"),
+    end: str = typer.Option(None, help="YYYY-MM-DD: market end date to (exclusive)"),
+    max_pages: int = typer.Option(None, help="Stop after N pages of 500 markets"),
+) -> None:
+    """Polymarket US market metadata (tradeable venue), non-financial categories only."""
+    from albert.ingest import ingest_pmus as run
+
+    if not open_ and not (start and end):
+        typer.echo("Closed Polymarket US ingests need --start and --end (2M+ closed markets).")
+        raise typer.Exit(2)
+    s, c = _clients()
+    typer.echo(run(s, c, closed=not open_, start=_day(start) if start else None,
+                   end=_day(end) if end else None, max_pages=max_pages).summary())
+
+
+# ---- matching / research / backtest ------------------------------------------------------------
+research_app = typer.Typer(help="Research reports (written to data/reports).", no_args_is_help=True)
+backtest_app = typer.Typer(help="Backtests over strategy signals.", no_args_is_help=True)
+app.add_typer(research_app, name="research")
+app.add_typer(backtest_app, name="backtest")
+
+
+@app.command()
+def match(fuzzy: bool = typer.Option(False, help="Also write fuzzy title candidates for review")) -> None:
+    """Match markets across Kalshi, Polymarket intl, and Polymarket US."""
+    from albert.matching import match_all
+
+    for name, rows in match_all(settings().tables_dir, fuzzy=fuzzy).items():
+        typer.echo(f"{name}: {rows} rows")
+
+
+@research_app.command("calibration")
+def research_calibration(
+    horizon: float = typer.Option(2.0, help="Hours before close to take the decision price"),
+    width: float = typer.Option(0.05, help="Price bucket width"),
+) -> None:
+    """Favorite-longshot / calibration tables with after-fee edges."""
+    from albert.pipeline import research_calibration as run
+
+    typer.echo(run(settings(), horizon_hours=horizon, width=width))
+
+
+@research_app.command("wallets")
+def research_wallets(
+    split: str = typer.Option(..., help="YYYY-MM-DD: score before, evaluate after"),
+    top_k: int = typer.Option(20, help="Wallets in the out-of-sample test"),
+) -> None:
+    """Wallet skill scores and out-of-sample persistence."""
+    from albert.pipeline import research_wallets as run
+
+    typer.echo(run(settings(), split=_day(split), top_k=top_k))
+
+
+@research_app.command("gaps")
+def research_gaps(half_spread: float = typer.Option(0.01, help="Assumed Polymarket half spread")) -> None:
+    """Kalshi vs Polymarket price gaps on exactly matched markets."""
+    from albert.pipeline import research_gaps as run
+
+    s, c = _clients()
+    typer.echo(run(s, c, half_spread=half_spread))
+
+
+@backtest_app.command("run")
+def backtest_run(
+    strategy: list[str] = typer.Option(["longshot"], help="longshot and/or wallet_follow"),
+    split: str = typer.Option(..., help="YYYY-MM-DD: train before, trade after"),
+    kalshi_cash: float = typer.Option(50.0),
+    pmus_cash: float = typer.Option(50.0),
+    kelly: float = typer.Option(0.25, help="Fraction of full Kelly"),
+    min_edge: float = typer.Option(0.03, help="Required edge per contract after fees"),
+    max_bet: float = typer.Option(10.0, help="Max dollars per order"),
+    horizon: float = typer.Option(2.0, help="longshot: hours before close"),
+    delay: float = typer.Option(5.0, help="wallet_follow: minutes after the wallet's trade"),
+    top_k: int = typer.Option(20, help="wallet_follow: wallets to copy"),
+) -> None:
+    """Simulate strategies with real fees, bid/ask fills, fractional Kelly, and risk caps."""
+    from albert.pipeline import backtest
+    from albert.risk import RiskConfig
+
+    s, c = _clients()
+    cfg = RiskConfig(kelly_fraction=kelly, min_edge=min_edge, max_bet_dollars=max_bet)
+    typer.echo(backtest(s, c, strategies=strategy, split=_day(split),
+                        cash={"kalshi": kalshi_cash, "pmus": pmus_cash}, cfg=cfg,
+                        horizon_hours=horizon, delay_minutes=delay, top_k=top_k))
+
+
+# ---- paper trading -------------------------------------------------------------------------------
+paper_app = typer.Typer(help="Paper trading on live quotes (no real orders).", no_args_is_help=True)
+app.add_typer(paper_app, name="paper")
+
+
+@paper_app.command("reset")
+def paper_reset(kalshi_cash: float = typer.Option(50.0), pmus_cash: float = typer.Option(50.0),
+                yes: bool = typer.Option(False, "--yes", help="Confirm wiping the paper account")) -> None:
+    """Start a fresh paper account (the ledger is kept and appended to)."""
+    from albert.paper import PaperTrader
+
+    s = settings()
+    if (s.paper_dir / "state.json").exists() and not yes:
+        typer.echo("A paper account exists. Re-run with --yes to replace it.")
+        raise typer.Exit(1)
+    PaperTrader.reset(s, {"kalshi": kalshi_cash, "pmus": pmus_cash})
+    typer.echo(f"paper account reset: kalshi={kalshi_cash} pmus={pmus_cash}")
+
+
+@paper_app.command("run")
+def paper_run(
+    strategy: list[str] = typer.Option(["longshot", "wallet_follow", "xvenue"]),
+    interval: float = typer.Option(300.0, help="Seconds between ticks"),
+    iterations: int = typer.Option(0, help="Number of ticks (0 = run until stopped)"),
+    horizon: float = typer.Option(2.0, help="longshot: hours before close"),
+    kelly: float = typer.Option(0.25),
+    min_edge: float = typer.Option(0.03),
+    max_bet: float = typer.Option(10.0),
+    top_k: int = typer.Option(20, help="wallet_follow: wallets to follow"),
+) -> None:
+    """Poll live quotes, simulate fills, and settle positions as markets resolve."""
+    from albert.paper import PaperTrader, run_loop
+    from albert.risk import RiskConfig
+
+    s, c = _clients()
+    trader = PaperTrader(s, c, cfg=RiskConfig(kelly_fraction=kelly, min_edge=min_edge,
+                                              max_bet_dollars=max_bet),
+                         strategies=tuple(strategy), horizon_hours=horizon, top_k=top_k)
+    run_loop(trader, interval_seconds=interval, iterations=iterations)
+
+
+@paper_app.command("status")
+def paper_status() -> None:
+    """Paper account equity, cash, and open positions."""
+    from albert.paper import status
+
+    typer.echo(status(settings()))
+
+
+@app.command()
+def capture(out: str = typer.Option("tests/fixtures", help="Fixture root directory")) -> None:
+    """Record trimmed real API responses as test fixtures."""
+    from pathlib import Path
+
+    from albert.capture import capture as run
+
+    s, c = _clients()
+    for path in run(s, c, Path(out)):
+        typer.echo(path)

@@ -1,0 +1,40 @@
+{
+ "data": [
+  {
+   "pnl": 22053933.752321,
+   "profile_image": "",
+   "rank": 1,
+   "user_id": "0x56687bf447db6ffa42ffe2204a05edaa20f55839",
+   "user_name": "Theo4",
+   "verified": false,
+   "volume": 43013258.515682,
+   "x_username": ""
+  },
+  {
+   "pnl": 18482425.513018,
+   "profile_image": "",
+   "rank": 2,
+   "user_id": "0x204f72f35326db932158cba6adff0b9a1da95e14",
+   "user_name": "swisstony",
+   "verified": false,
+   "volume": 1850584673.0642025,
+   "x_username": ""
+  },
+  {
+   "pnl": 16619506.631731,
+   "profile_image": "",
+   "rank": 3,
+   "user_id": "0x1f2dd6d473f3e824cd2f8a89d9c69fb96f6ad0cf",
+   "user_name": "Fredi9999",
+   "verified": false,
+   "volume": 76611316.90515405,
+   "x_username": ""
+  }
+ ],
+ "pagination": {
+  "has_more": true,
+  "limit": 3,
+  "next_cursor": "eyJkYXRhIjp7InR5cGUiOiJsZWFkZXJib2FyZCIsInBhcmFtcyI6eyJsIjozLCJvIjozLCJzIjoiUE5MIiwidCI6ImFsbCIsImMiOiJvdmVyYWxsIn19LCJzaWciOiJkZGVhYjZkNGY3ZGIxYmI0NGI4NDJjMTViNzhkNzA5NCJ9",
+  "offset": 0
+ }
+}

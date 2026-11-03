@@ -1,0 +1,448 @@
+{
+ "markets": [
+  {
+   "active": true,
+   "archived": false,
+   "assetPriceTerms": null,
+   "bestAskQuote": {
+    "currency": "USD",
+    "value": "0.1830"
+   },
+   "bestBidQuote": {
+    "currency": "USD",
+    "value": "0.1810"
+   },
+   "category": "sports",
+   "closed": false,
+   "color": "#00245E",
+   "comboEnabled": false,
+   "createdAt": "2026-03-19T21:31:54Z",
+   "description": "Will Vancouver Whitecaps FC win the 2026 MLS Cup, scheduled to conclude December 18, 2026? If the event is postponed, delayed, or rescheduled, the expiration date will be amended to align with the new event date. If the event is not rescheduled within two weeks of the originally scheduled date, the instrument may settle at last fair market prices. If the event is canceled, the instrument may settle at last fair market prices. If the team is eliminated from contention, the instrument will settle to $0.00. If multiple teams are declared as having attained victory, holders receive $1.00 divided by the number of such teams, rounded down to the nearest tick.",
+   "endDate": "2027-01-01T21:20:09Z",
+   "ep3Status": "OPEN",
+   "ep3SyncedAt": "2026-10-29T12:04:57Z",
+   "eventSubcategory": "SOCCER",
+   "feeCoefficient": 0.0695,
+   "gameStartTime": "2026-02-21T00:00:00Z",
+   "hidden": false,
+   "id": "7974",
+   "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DVancouver+Whitecaps.png",
+   "manualActivation": false,
+   "marketSides": [
+    {
+     "createdAt": "2026-03-19T21:31:54Z",
+     "description": "Yes",
+     "id": "15947",
+     "identifier": "tec-mls-winner-2026-11-07-vwh",
+     "long": true,
+     "marketId": 7974,
+     "marketSideType": "MARKET_SIDE_TYPE_INSTRUMENT",
+     "price": "0.1830",
+     "quote": {
+      "currency": "USD",
+      "value": "0.1830"
+     },
+     "team": {
+      "abbreviation": "vwh",
+      "alias": "Caps",
+      "color": {
+       "dark": "#00245E",
+       "light": "#00245E"
+      },
+      "colorPrimary": "#00245E",
+      "displayAbbreviation": "VWH",
+      "id": 2282,
+      "imageDisplayType": "IMAGE_DISPLAY_TYPE_LOGO",
+      "league": "mls",
+      "logo": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DVancouver+Whitecaps.png",
+      "longIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DVancouver+Whitecaps.png",
+      "longIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DVancouver+Whitecaps.png",
+      "name": "Vancouver Whitecaps FC",
+      "ordering": "home",
+      "providerId": 713,
+      "providerIds": [
+       {
+        "provider": "PROVIDER_SPORTRADAR",
+        "providerId": "sr:competitor:22010"
+       },
+       {
+        "provider": "PROVIDER_SPORTSDATAIO",
+        "providerId": "713"
+       }
+      ],
+      "record": "18-7-8",
+      "safeName": "Vancouver Whitecaps FC",
+      "shortIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DVancouver+Whitecaps.png",
+      "shortIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DVancouver+Whitecaps.png"
+     },
+     "teamId": 2282,
+     "tradable": true,
+     "updatedAt": "2026-03-19T21:31:54Z"
+    },
+    {
+     "createdAt": "2026-03-19T21:31:54Z",
+     "description": "No",
+     "id": "15948",
+     "identifier": "tec-mls-winner-2026-11-07-vwh",
+     "long": false,
+     "marketId": 7974,
+     "marketSideType": "MARKET_SIDE_TYPE_INSTRUMENT",
+     "price": "0.819",
+     "quote": {
+      "currency": "USD",
+      "value": "0.819"
+     },
+     "team": {
+      "abbreviation": "vwh",
+      "alias": "Caps",
+      "color": {
+       "dark": "#00245E",
+       "light": "#00245E"
+      },
+      "colorPrimary": "#00245E",
+      "displayAbbreviation": "VWH",
+      "id": 2282,
+      "imageDisplayType": "IMAGE_DISPLAY_TYPE_LOGO",
+      "league": "mls",
+      "logo": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DVancouver+Whitecaps.png",
+      "longIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DVancouver+Whitecaps.png",
+      "longIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DVancouver+Whitecaps.png",
+      "name": "Vancouver Whitecaps FC",
+      "ordering": "away",
+      "providerId": 713,
+      "providerIds": [
+       {
+        "provider": "PROVIDER_SPORTRADAR",
+        "providerId": "sr:competitor:22010"
+       },
+       {
+        "provider": "PROVIDER_SPORTSDATAIO",
+        "providerId": "713"
+       }
+      ],
+      "record": "18-7-8",
+      "safeName": "Vancouver Whitecaps FC",
+      "shortIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DVancouver+Whitecaps.png",
+      "shortIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DVancouver+Whitecaps.png"
+     },
+     "teamId": 2282,
+     "tradable": true,
+     "updatedAt": "2026-03-19T21:31:54Z"
+    }
+   ],
+   "marketType": "futures",
+   "minimumTradeQty": 1,
+   "orderPriceMinTickSize": 0.001,
+   "outcomePrices": "[\"0.1830\",\"0.819\"]",
+   "outcomes": "[\"No\",\"Yes\"]",
+   "politics": null,
+   "question": "Major League Soccer Champion",
+   "slug": "tec-mls-winner-2026-11-07-vwh",
+   "sportsMarketType": "futures",
+   "sportsMarketTypeV2": "SPORTS_MARKET_TYPE_FUTURE",
+   "startDate": "2026-03-19T21:25:04Z",
+   "status": "MARKET_STATUS_OPEN",
+   "subtitle": "10-2-2",
+   "tags": [],
+   "title": "Vancouver Whitecaps FC",
+   "titleShort": "Vancouver Whitecaps FC",
+   "updatedAt": "2026-11-03T05:43:36Z"
+  },
+  {
+   "active": true,
+   "archived": false,
+   "assetPriceTerms": null,
+   "bestAskQuote": {
+    "currency": "USD",
+    "value": "0.0200"
+   },
+   "bestBidQuote": {
+    "currency": "USD",
+    "value": "0.0050"
+   },
+   "category": "sports",
+   "closed": false,
+   "color": "#2B2707",
+   "comboEnabled": false,
+   "createdAt": "2026-03-19T21:31:54Z",
+   "description": "Will Columbus Crew win the 2026 MLS Cup, scheduled to conclude December 18, 2026? If the event is postponed, delayed, or rescheduled, the expiration date will be amended to align with the new event date. If the event is not rescheduled within two weeks of the originally scheduled date, the instrument may settle at last fair market prices. If the event is canceled, the instrument may settle at last fair market prices. If the team is eliminated from contention, the instrument will settle to $0.00. If multiple teams are declared as having attained victory, holders receive $1.00 divided by the number of such teams, rounded down to the nearest tick.",
+   "endDate": "2027-01-01T21:20:09Z",
+   "ep3Status": "OPEN",
+   "ep3SyncedAt": "2026-10-29T12:04:57Z",
+   "eventSubcategory": "SOCCER",
+   "feeCoefficient": 0.0695,
+   "gameStartTime": "2026-02-21T00:00:00Z",
+   "hidden": false,
+   "id": "7976",
+   "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DColumbus+Crew.png",
+   "manualActivation": false,
+   "marketSides": [
+    {
+     "createdAt": "2026-03-19T21:31:54Z",
+     "description": "Yes",
+     "id": "15951",
+     "identifier": "tec-mls-winner-2026-11-07-clb",
+     "long": true,
+     "marketId": 7976,
+     "marketSideType": "MARKET_SIDE_TYPE_INSTRUMENT",
+     "price": "0.0200",
+     "quote": {
+      "currency": "USD",
+      "value": "0.0200"
+     },
+     "team": {
+      "abbreviation": "clb",
+      "alias": "The Crew",
+      "color": {
+       "dark": "#2B2707",
+       "light": "#2B2707"
+      },
+      "colorPrimary": "#2B2707",
+      "displayAbbreviation": "CLB",
+      "id": 2265,
+      "imageDisplayType": "IMAGE_DISPLAY_TYPE_LOGO",
+      "league": "mls",
+      "logo": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DColumbus+Crew.png",
+      "longIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DColumbus+Crew.png",
+      "longIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DColumbus+Crew.png",
+      "name": "Columbus Crew",
+      "ordering": "home",
+      "providerId": 696,
+      "providerIds": [
+       {
+        "provider": "PROVIDER_SPORTRADAR",
+        "providerId": "sr:competitor:2504"
+       },
+       {
+        "provider": "PROVIDER_SPORTSDATAIO",
+        "providerId": "696"
+       }
+      ],
+      "record": "13-5-15",
+      "safeName": "Columbus Crew",
+      "shortIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DColumbus+Crew.png",
+      "shortIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DColumbus+Crew.png"
+     },
+     "teamId": 2265,
+     "tradable": true,
+     "updatedAt": "2026-03-19T21:31:54Z"
+    },
+    {
+     "createdAt": "2026-03-19T21:31:54Z",
+     "description": "No",
+     "id": "15952",
+     "identifier": "tec-mls-winner-2026-11-07-clb",
+     "long": false,
+     "marketId": 7976,
+     "marketSideType": "MARKET_SIDE_TYPE_INSTRUMENT",
+     "price": "0.995",
+     "quote": {
+      "currency": "USD",
+      "value": "0.995"
+     },
+     "team": {
+      "abbreviation": "clb",
+      "alias": "The Crew",
+      "color": {
+       "dark": "#2B2707",
+       "light": "#2B2707"
+      },
+      "colorPrimary": "#2B2707",
+      "displayAbbreviation": "CLB",
+      "id": 2265,
+      "imageDisplayType": "IMAGE_DISPLAY_TYPE_LOGO",
+      "league": "mls",
+      "logo": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DColumbus+Crew.png",
+      "longIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DColumbus+Crew.png",
+      "longIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DColumbus+Crew.png",
+      "name": "Columbus Crew",
+      "ordering": "away",
+      "providerId": 696,
+      "providerIds": [
+       {
+        "provider": "PROVIDER_SPORTRADAR",
+        "providerId": "sr:competitor:2504"
+       },
+       {
+        "provider": "PROVIDER_SPORTSDATAIO",
+        "providerId": "696"
+       }
+      ],
+      "record": "13-5-15",
+      "safeName": "Columbus Crew",
+      "shortIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DColumbus+Crew.png",
+      "shortIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DColumbus+Crew.png"
+     },
+     "teamId": 2265,
+     "tradable": true,
+     "updatedAt": "2026-03-19T21:31:54Z"
+    }
+   ],
+   "marketType": "futures",
+   "minimumTradeQty": 1,
+   "orderPriceMinTickSize": 0.001,
+   "outcomePrices": "[\"0.0200\",\"0.995\"]",
+   "outcomes": "[\"Yes\",\"No\"]",
+   "politics": null,
+   "question": "Major League Soccer Champion",
+   "slug": "tec-mls-winner-2026-11-07-clb",
+   "sportsMarketType": "futures",
+   "sportsMarketTypeV2": "SPORTS_MARKET_TYPE_FUTURE",
+   "startDate": "2026-03-19T21:25:04Z",
+   "status": "MARKET_STATUS_OPEN",
+   "subtitle": "4-4-7",
+   "tags": [],
+   "title": "Columbus Crew",
+   "titleShort": "Columbus Crew",
+   "updatedAt": "2026-11-03T04:13:07Z"
+  },
+  {
+   "active": true,
+   "archived": false,
+   "assetPriceTerms": null,
+   "bestAskQuote": {
+    "currency": "USD",
+    "value": "0.0140"
+   },
+   "bestBidQuote": {
+    "currency": "USD",
+    "value": "0.0110"
+   },
+   "category": "sports",
+   "closed": false,
+   "color": "#633492",
+   "comboEnabled": false,
+   "createdAt": "2026-03-19T21:31:54Z",
+   "description": "Will Orlando City SC win the 2026 MLS Cup, scheduled to conclude December 18, 2026? If the event is postponed, delayed, or rescheduled, the expiration date will be amended to align with the new event date. If the event is not rescheduled within two weeks of the originally scheduled date, the instrument may settle at last fair market prices. If the event is canceled, the instrument may settle at last fair market prices. If the team is eliminated from contention, the instrument will settle to $0.00. If multiple teams are declared as having attained victory, holders receive $1.00 divided by the number of such teams, rounded down to the nearest tick.",
+   "endDate": "2027-01-01T21:20:09Z",
+   "ep3Status": "OPEN",
+   "ep3SyncedAt": "2026-10-29T12:04:57Z",
+   "eventSubcategory": "SOCCER",
+   "feeCoefficient": 0.0695,
+   "gameStartTime": "2026-02-21T00:00:00Z",
+   "hidden": false,
+   "id": "7978",
+   "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DOrlando+City+SC.png",
+   "manualActivation": false,
+   "marketSides": [
+    {
+     "createdAt": "2026-03-19T21:31:54Z",
+     "description": "Yes",
+     "id": "15955",
+     "identifier": "tec-mls-winner-2026-11-07-orl",
+     "long": true,
+     "marketId": 7978,
+     "marketSideType": "MARKET_SIDE_TYPE_INSTRUMENT",
+     "price": "0.0140",
+     "quote": {
+      "currency": "USD",
+      "value": "0.0140"
+     },
+     "team": {
+      "abbreviation": "orl",
+      "alias": "The Lions",
+      "color": {
+       "dark": "#633492",
+       "light": "#633492"
+      },
+      "colorPrimary": "#633492",
+      "displayAbbreviation": "ORL",
+      "id": 2274,
+      "imageDisplayType": "IMAGE_DISPLAY_TYPE_LOGO",
+      "league": "mls",
+      "logo": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DOrlando+City+SC.png",
+      "longIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DOrlando+City+SC.png",
+      "longIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DOrlando+City+SC.png",
+      "name": "Orlando City SC",
+      "ordering": "home",
+      "providerId": 705,
+      "providerIds": [
+       {
+        "provider": "PROVIDER_SPORTRADAR",
+        "providerId": "sr:competitor:52237"
+       },
+       {
+        "provider": "PROVIDER_SPORTSDATAIO",
+        "providerId": "705"
+       }
+      ],
+      "record": "12-7-14",
+      "safeName": "Orlando City SC",
+      "shortIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DOrlando+City+SC.png",
+      "shortIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DOrlando+City+SC.png"
+     },
+     "teamId": 2274,
+     "tradable": true,
+     "updatedAt": "2026-03-19T21:31:54Z"
+    },
+    {
+     "createdAt": "2026-03-19T21:31:54Z",
+     "description": "No",
+     "id": "15956",
+     "identifier": "tec-mls-winner-2026-11-07-orl",
+     "long": false,
+     "marketId": 7978,
+     "marketSideType": "MARKET_SIDE_TYPE_INSTRUMENT",
+     "price": "0.989",
+     "quote": {
+      "currency": "USD",
+      "value": "0.989"
+     },
+     "team": {
+      "abbreviation": "orl",
+      "alias": "The Lions",
+      "color": {
+       "dark": "#633492",
+       "light": "#633492"
+      },
+      "colorPrimary": "#633492",
+      "displayAbbreviation": "ORL",
+      "id": 2274,
+      "imageDisplayType": "IMAGE_DISPLAY_TYPE_LOGO",
+      "league": "mls",
+      "logo": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DOrlando+City+SC.png",
+      "longIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DOrlando+City+SC.png",
+      "longIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DOrlando+City+SC.png",
+      "name": "Orlando City SC",
+      "ordering": "away",
+      "providerId": 705,
+      "providerIds": [
+       {
+        "provider": "PROVIDER_SPORTRADAR",
+        "providerId": "sr:competitor:52237"
+       },
+       {
+        "provider": "PROVIDER_SPORTSDATAIO",
+        "providerId": "705"
+       }
+      ],
+      "record": "12-7-14",
+      "safeName": "Orlando City SC",
+      "shortIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DOrlando+City+SC.png",
+      "shortIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/MLS/Team%3DOrlando+City+SC.png"
+     },
+     "teamId": 2274,
+     "tradable": true,
+     "updatedAt": "2026-03-19T21:31:54Z"
+    }
+   ],
+   "marketType": "futures",
+   "minimumTradeQty": 1,
+   "orderPriceMinTickSize": 0.001,
+   "outcomePrices": "[\"0.0140\",\"0.989\"]",
+   "outcomes": "[\"Yes\",\"No\"]",
+   "politics": null,
+   "question": "Major League Soccer Champion",
+   "slug": "tec-mls-winner-2026-11-07-orl",
+   "sportsMarketType": "futures",
+   "sportsMarketTypeV2": "SPORTS_MARKET_TYPE_FUTURE",
+   "startDate": "2026-03-19T21:25:04Z",
+   "status": "MARKET_STATUS_OPEN",
+   "subtitle": "4-2-9",
+   "tags": [],
+   "title": "Orlando City SC",
+   "titleShort": "Orlando City SC",
+   "updatedAt": "2026-11-02T22:16:11Z"
+  }
+ ]
+}

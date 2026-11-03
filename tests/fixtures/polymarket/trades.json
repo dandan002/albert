@@ -1,0 +1,73 @@
+{
+ "data": [
+  {
+   "bio": "",
+   "condition_id": "0x61d6e9c67b383b9c86697255164197a78463a993e9aae9bee17aa8b086169167",
+   "event_slug": "btc-updown-5m-1793685000",
+   "icon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+   "name": "Abdidoz",
+   "outcome": "Up",
+   "outcome_index": 0,
+   "price": 0.87,
+   "profile_image": "",
+   "profile_image_optimized": "",
+   "proxy_wallet": "0xa88591326d66940737601e77e5f6a5df55e2fac7",
+   "pseudonym": "Unfortunate-Goodie",
+   "side": "SELL",
+   "size": 5.88,
+   "slug": "btc-updown-5m-1793685000",
+   "timestamp": 1793685165,
+   "title": "Bitcoin Up or Down - November 3, 12:50AM-12:55AM ET",
+   "token_id": "80726754359349944486157531175132901040873516219864816402749940746190278115216",
+   "transaction_hash": "0xdfa16308117e67d3aa78ba82adaddf2f8b38f9d9afb4d300250a07ed5c11395f"
+  },
+  {
+   "bio": "",
+   "condition_id": "0x307a1ed89d60b61002dd5bbf00e1408c5ed2ab3fcdb056191ca7ef9bc34d38f3",
+   "event_slug": "which-party-will-win-the-senate-in-2026",
+   "icon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-the-democratic-party-control-the-senate-after-the-2026-midterm-elections-JJ9h02JGR09z.png",
+   "name": "adbg101",
+   "outcome": "Yes",
+   "outcome_index": 0,
+   "price": 0.7699999652,
+   "profile_image": "",
+   "profile_image_optimized": "",
+   "proxy_wallet": "0x107639191367c20fd9015d82e6ae96c72cb91a99",
+   "pseudonym": "Shadowy-Naturalisation-Goose",
+   "side": "BUY",
+   "size": 14.35065,
+   "slug": "will-the-democratic-party-control-the-senate-after-the-2026-midterm-elections",
+   "timestamp": 1793685165,
+   "title": "Will the Democratic Party control the Senate after the 2026 Midterm elections?",
+   "token_id": "113287701564209339913693347405685749986285999146352375265161592243948562084773",
+   "transaction_hash": "0xcf9ce91b1a8bd3fc58e535cea4ddffc4a35b052652554308af4c7b3a182c1803"
+  },
+  {
+   "bio": "challenger fiora",
+   "condition_id": "0xefa17dee3af09f69f9ddf245b969aa4efbe7c71cdf06ee49d694408bc33e2ed2",
+   "event_slug": "uefa-champions-league-2027-champion-20260701202025549",
+   "icon": "",
+   "name": "vtcchampion52",
+   "outcome": "Yes",
+   "outcome_index": 0,
+   "price": 0.002,
+   "profile_image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/profile-image-8942959-44f27cd3-68a9-4428-98b4-4ce8fb4e6ad1.gif",
+   "profile_image_optimized": "",
+   "proxy_wallet": "0xc69bd5567b40ef4d11922eaa57e1f9be1c642076",
+   "pseudonym": "Ultimate-Underpass",
+   "side": "BUY",
+   "size": 5.0,
+   "slug": "will-shakhtar-donetsk-win-the-2026-27-uefa-champions-league-championship-20260701202025578",
+   "timestamp": 1793685165,
+   "title": "Will Shakhtar Donetsk win the 2026-27 UEFA Champions League Championship?",
+   "token_id": "33339798372916037220786136133406478491116150628220441951753426683441228279665",
+   "transaction_hash": "0x99db39e72744b0d71636e3f99792c0ec8082c0c343861dfe26b71d08145ff4f4"
+  }
+ ],
+ "pagination": {
+  "has_more": true,
+  "limit": 3,
+  "next_cursor": "eyJkYXRhIjp7InR5cGUiOiJ0cmFkZXMiLCJwYXJhbXMiOnsibCI6MywidHMiOjE3OTM2ODUxNjUsInNxIjoiOTY2NTMxMzkwMDAzMTAzNjYwIiwiZCI6M319LCJzaWciOiI0YjBkZjdlM2UyMjc5OWQ3M2I5NzlhMGMzZDFkYjM3OCJ9",
+  "offset": 0
+ }
+}

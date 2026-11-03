@@ -16,6 +16,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+plots = ["matplotlib>=3.8"]
 dev = [
     "pytest>=9.0.3",
     "ruff>=0.15.12",
@@ -26,6 +27,7 @@ albert = "albert.cli:app"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = ["ignore:Sortedness of columns cannot be checked:UserWarning"]
 pythonpath = ["src"]
 
 [tool.ruff]

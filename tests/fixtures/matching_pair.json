@@ -1,0 +1,39 @@
+{
+ "kalshi": [
+  {
+   "ticker": "KXNCAAFGAME-26OCT31HAMPTOWS-TOWS",
+   "title": "Towson wins",
+   "yes_sub_title": "Towson",
+   "close_time": "2026-10-31 19:50:56+00:00",
+   "result": "yes"
+  },
+  {
+   "ticker": "KXNCAAFGAME-26OCT31HAMPTOWS-HAMP",
+   "title": "Hampton wins",
+   "yes_sub_title": "Hampton",
+   "close_time": "2026-10-31 19:50:56+00:00",
+   "result": "no"
+  }
+ ],
+ "polymarket": [
+  {
+   "condition_id": "0x330ba5d65a62426e8571d951b3ed84e28594c0b7108adf6f9165a4368cdf16fa",
+   "slug": "cfb-hamp-tows-2026-10-31",
+   "event_slug": "cfb-hamp-tows-2026-10-31",
+   "question": "Hampton vs. Towson",
+   "outcomes": [
+    "Hampton",
+    "Towson"
+   ],
+   "end_date": "2026-10-31 17:00:00+00:00",
+   "winner_index": 1
+  }
+ ],
+ "expected_match": {
+  "kalshi_ticker": "KXNCAAFGAME-26OCT31HAMPTOWS-HAMP",
+  "pm_condition_id": "0x330ba5d65a62426e8571d951b3ed84e28594c0b7108adf6f9165a4368cdf16fa",
+  "pm_outcome_index": 0,
+  "pm_event_slug": "cfb-hamp-tows-2026-10-31",
+  "method": "exact_game"
+ }
+}
