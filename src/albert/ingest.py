@@ -160,24 +160,46 @@ def _kalshi_candles(s: Settings, c: Clients, selected: pl.DataFrame, cutoff: dic
         candle_rows.extend(k.candle_rows(page.payload, m["ticker"], candle_minutes))
         if i % 250 == 0:
             print(f"  candles (historical): {i}/{len(historical)} markets, {len(candle_rows)} rows", flush=True)
-    # Batch live markets: sort by window, then chunk; each request spans its chunk's window.
+    # Batch live markets: sort by window, then grow each chunk while (markets x periods in the
+    # chunk's span) stays under the endpoint's 10,000-candle cap.
     live.sort(key=lambda m: (window(m)[0], m["ticker"]))
-    for i in range(0, len(live), batch_size):
-        chunk = live[i:i + batch_size]
+    max_candles = 9000
+    chunks: list[list[dict]] = []
+    cur: list[dict] = []
+    for m in live:
+        trial = cur + [m]
+        lo = min(window(x)[0] for x in trial)
+        hi = max(window(x)[1] for x in trial)
+        periods = (hi - lo).total_seconds() / 60 / candle_minutes + 1
+        if cur and (len(trial) > batch_size or periods * len(trial) > max_candles):
+            chunks.append(cur)
+            cur = [m]
+        else:
+            cur = trial
+    if cur:
+        chunks.append(cur)
+    done = 0
+    for n, chunk in enumerate(chunks):
         lo = min(window(m)[0] for m in chunk)
         hi = max(window(m)[1] for m in chunk)
-        if (hi - lo) > timedelta(minutes=candle_minutes * 4900):
-            lo = hi - timedelta(minutes=candle_minutes * 4900)
         try:
-            page = c.kalshi.candles_batch([m["ticker"] for m in chunk], lo, hi, candle_minutes)
+            if len(chunk) == 1:  # a single long-lived market: the per-market endpoint
+                pages = [(chunk[0]["ticker"], c.kalshi.candles(chunk[0]["ticker"], *window(chunk[0]),
+                                                               candle_minutes, False))]
+            else:
+                page = c.kalshi.candles_batch([m["ticker"] for m in chunk], lo, hi, candle_minutes)
+                pages = [(mk.get("market_ticker"), mk) for mk in page.payload.get("markets") or []]
+                result.raw_files.append(page.raw_path)
         except RuntimeError as error:
-            print(f"skip candle batch at {chunk[0]['ticker']}: {error}")
+            print(f"skip candle batch at {chunk[0]['ticker']}: {str(error)[:200]}")
             continue
-        result.raw_files.append(page.raw_path)
-        for mk in page.payload.get("markets") or []:
-            candle_rows.extend(k.candle_rows(mk, mk.get("market_ticker"), candle_minutes))
-        done = min(i + batch_size, len(live))
-        if (i // batch_size) % 10 == 0:
+        for ticker, payload in pages:
+            if hasattr(payload, "payload"):
+                result.raw_files.append(payload.raw_path)
+                payload = payload.payload
+            candle_rows.extend(k.candle_rows(payload, ticker, candle_minutes))
+        done += len(chunk)
+        if n % 10 == 0:
             print(f"  candles (batch): {done}/{len(live)} markets, {len(candle_rows)} rows", flush=True)
     frame = pl.DataFrame(candle_rows, schema=k.CANDLE_SCHEMA)
     _require_rows("kalshi_candles", frame)

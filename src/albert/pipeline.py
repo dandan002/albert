@@ -8,6 +8,7 @@ import polars as pl
 from albert.backtest.engine import BacktestResult, monte_carlo, run_backtest
 from albert.backtest.strategies import longshot_signals, split_by_time
 from albert.config import Settings
+from albert.fees import kalshi_fee
 from albert.ingest import Clients
 from albert.reports import Report
 from albert.research import calibration as cal
@@ -443,6 +444,98 @@ def research_sports(s: Settings, *, series: list[str], leads: tuple[float, ...] 
         out.append(table.with_columns(pl.lit(lead).alias("lead_h")))
     if out:
         pl.concat(out, how="diagonal_relaxed").write_parquet(r.dir / "sports.parquet")
+    return r.save()
+
+
+def research_esports_reference(s: Settings, c: Clients, *, leads: tuple[float, ...] = (6.0, 2.0, 1.0, 0.25),
+                               margins: tuple[float, ...] = (0.0, 0.02, 0.05)) -> Path:
+    """Polymarket intl (data only) as a reference price for Kalshi esports match winners.
+
+    For each matched leg and lead: Kalshi quote (last hourly candle <= t) and Polymarket price
+    (last history point <= t). Tests whether the gap predicts the Kalshi outcome, and a fixed
+    rule: buy on Kalshi when the Polymarket price beats Kalshi's ask (+ fee) by ``margin``.
+    No parameters are fitted, so every month is out of sample.
+    """
+    from albert.ingest import _kalshi_candles, IngestResult
+    from albert.matching import match_kalshi_pm_esports
+
+    markets = read_table(s.tables_dir, "kalshi_markets")
+    pm_markets = read_table(s.tables_dir, "pm_markets")
+    matches = match_kalshi_pm_esports(markets, pm_markets)
+    write_table(s.tables_dir, "match_kalshi_pm_esports", matches, merge=False)
+    have = read_table(s.tables_dir, "kalshi_candles")["ticker"].unique().implode()
+    missing = markets.filter(pl.col("ticker").is_in(matches["kalshi_ticker"].implode())
+                             & ~pl.col("ticker").is_in(have))
+    if missing.height:
+        _kalshi_candles(s, c, missing, c.kalshi.cutoff(), 60, IngestResult())
+    tokens = matches.join(pm_markets.select("condition_id", "token_ids"), left_on="pm_condition_id",
+                          right_on="condition_id").with_columns(
+        pl.col("token_ids").list.get(pl.col("pm_outcome_index")).alias("token_id"))
+    windows = tokens.select("token_id", (pl.col("pm_start") - timedelta(hours=max(leads) + 2)).alias("start"),
+                            pl.col("pm_start").alias("end"))
+    history = fetch_pm_history(s, c, windows, bucket_seconds=300)
+    candles = read_table(s.tables_dir, "kalshi_candles").filter(
+        pl.col("ticker").is_in(matches["kalshi_ticker"].implode()))
+    km = markets.select("ticker", "fee_type", "fee_multiplier")
+    r = Report(s.reports_dir, "research-esports-reference")
+    r.text("Setup", f"- {matches['kalshi_event'].n_unique()} Kalshi esports matches matched to Polymarket "
+                    f"intl (winner agreement checked), {matches.height} legs\n- Polymarket is a data "
+                    "signal only; trades are on Kalshi at the hourly candle's ask/bid, taker fee\n"
+                    "- SEs clustered by date")
+    rows, all_obs = [], []
+    for lead in leads:
+        base = tokens.with_columns((pl.col("start") - timedelta(hours=lead)).alias("t")).sort("t")
+        q = base.join_asof(candles.sort("end_ts").select(pl.col("ticker").alias("kalshi_ticker"), "end_ts",
+                                                         "yes_bid_close", "yes_ask_close"),
+                           left_on="t", right_on="end_ts", by="kalshi_ticker",
+                           strategy="backward", tolerance=timedelta(hours=2))
+        q = q.join_asof(history.sort("ts").rename({"price": "pm"}), left_on="t", right_on="ts", by="token_id",
+                        strategy="backward", tolerance=timedelta(hours=1))
+        q = q.filter(pl.col("yes_bid_close").is_not_null() & pl.col("yes_ask_close").is_not_null()
+                     & pl.col("pm").is_between(0.02, 0.98)
+                     & (pl.col("yes_ask_close") - pl.col("yes_bid_close")).is_between(0.001, 0.15))
+        q = q.join(km, left_on="kalshi_ticker", right_on="ticker").with_columns(
+            ((pl.col("yes_bid_close") + pl.col("yes_ask_close")) / 2).alias("mid"),
+            (pl.col("kalshi_result") == "yes").cast(pl.Float64).alias("y"),
+            pl.col("t").dt.strftime("%Y-%m-%d").alias("date"),
+            pl.col("t").dt.strftime("%Y-%m").alias("month"), pl.lit(lead).alias("lead_h"))
+        if q.is_empty():
+            continue
+        fy = [kalshi_fee(100, a, fee_type=ft or "quadratic", multiplier=fm) / 100
+              for a, ft, fm in q.select("yes_ask_close", "fee_type", "fee_multiplier").iter_rows()]
+        fn = [kalshi_fee(100, 1 - b, fee_type=ft or "quadratic", multiplier=fm) / 100
+              for b, ft, fm in q.select("yes_bid_close", "fee_type", "fee_multiplier").iter_rows()]
+        q = q.with_columns(pl.Series("fee_yes", fy), pl.Series("fee_no", fn)).with_columns(
+            (pl.col("pm") - pl.col("yes_ask_close") - pl.col("fee_yes")).alias("edge_yes"),
+            ((1 - pl.col("pm")) - (1 - pl.col("yes_bid_close")) - pl.col("fee_no")).alias("edge_no"))
+        all_obs.append(q)
+        gap = (q["pm"] - q["mid"]).to_numpy()
+        res = (q["y"] - q["mid"]).to_numpy()
+        gc = gap - gap.mean()
+        beta = float((gc * (res - res.mean())).sum() / (gc ** 2).sum()) if (gc ** 2).sum() else float("nan")
+        row = {"lead_h": lead, "legs": q.height, "events": q["kalshi_event"].n_unique(),
+               "mean_abs_gap": float(abs(gap).mean()), "gap_beta": beta,
+               "brier_kalshi": float(((q["mid"] - q["y"]) ** 2).mean()),
+               "brier_pm": float(((q["pm"] - q["y"]) ** 2).mean())}
+        for mg in margins:
+            yes = q.filter(pl.col("edge_yes") >= mg).select(
+                "kalshi_event", "date", "month", (pl.col("y") - pl.col("yes_ask_close") - pl.col("fee_yes")).alias("pnl"),
+                (pl.col("yes_ask_close") + pl.col("fee_yes")).alias("stake"))
+            no = q.filter(pl.col("edge_no") >= mg).select(
+                "kalshi_event", "date", "month", ((1 - pl.col("y")) - (1 - pl.col("yes_bid_close")) - pl.col("fee_no")).alias("pnl"),
+                ((1 - pl.col("yes_bid_close")) + pl.col("fee_no")).alias("stake"))
+            # One bet per match: legs mirror each other.
+            bets = pl.concat([yes, no]).unique("kalshi_event", keep="first").rename({"date": "event_ticker"})
+            if bets.height:
+                st = lit.cluster_ratio(bets.with_columns(pl.lit(1).alias("k")), ["k"]).row(0, named=True)
+                row[f"m{mg:g}_bets"], row[f"m{mg:g}_roi"], row[f"m{mg:g}_t"] = st["n"], st["roi"], st["t"]
+                if mg == margins[1]:
+                    r.table(f"Lead {lead:g}h, margin {mg:g}: by month",
+                            lit.cluster_ratio(bets, ["month"]).select("month", "n", "clusters", "roi", "se", "t"))
+        rows.append(row)
+    r.table("Summary", pl.DataFrame(rows))
+    if all_obs:
+        pl.concat(all_obs, how="diagonal_relaxed").write_parquet(r.dir / "observations.parquet")
     return r.save()
 
 

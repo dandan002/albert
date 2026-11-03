@@ -13,7 +13,7 @@ Observed conventions (2026-11):
 """
 
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import polars as pl
 
@@ -239,3 +239,80 @@ def match_all(tables_dir, *, fuzzy: bool = False) -> dict[str, int]:
 
 def utc_date(value: datetime) -> str:
     return value.strftime("%Y-%m-%d")
+
+
+# ---- esports: Kalshi match-winner legs <-> Polymarket intl match markets ----------------------
+ESPORTS_PM_PREFIX = {"cs2": "KXCS2GAME", "dota2": "KXDOTA2GAME", "lol": "KXLOLGAME",
+                     "val": "KXVALORANTGAME", "valorant": "KXVALORANTGAME"}
+
+
+def _team_norm(name: str | None) -> str:
+    return re.sub(r"[^a-z0-9]", "", (name or "").lower())
+
+
+def _team_sim(a: str, b: str) -> float:
+    from difflib import SequenceMatcher
+
+    x, y = _team_norm(a), _team_norm(b)
+    if not x or not y:
+        return 0.0
+    if x == y:
+        return 1.0
+    if len(min(x, y, key=len)) >= 3 and (x.startswith(y) or y.startswith(x)):
+        return 0.9  # "fnatic" vs "fnaticrising" would also match: guarded by needing both teams
+    return SequenceMatcher(None, x, y).ratio()
+
+
+def match_kalshi_pm_esports(kalshi: pl.DataFrame, pm_markets: pl.DataFrame, *,
+                            max_start_gap_hours: float = 3.0, min_sim: float = 0.8) -> pl.DataFrame:
+    """Kalshi match-winner legs -> Polymarket intl match markets (one row per Kalshi leg).
+
+    A pair needs the same game, start times within ``max_start_gap_hours`` (Kalshi: ticker
+    start; Polymarket: ``game_start_time``) and *both* teams matching (each Kalshi leg's
+    ``yes_sub_title`` against one Polymarket outcome) with similarity >= ``min_sim``.
+    Ambiguous pairs (more than one candidate) are dropped.
+    """
+    from albert.venues.kalshi import ticker_start
+
+    k = kalshi.filter(pl.col("series_ticker").is_in(list(set(ESPORTS_PM_PREFIX.values()))))
+    k = k.with_columns(pl.col("event_ticker").map_elements(
+        ticker_start, return_dtype=pl.Datetime("us", "UTC")).alias("start")).drop_nulls("start")
+    ev = k.group_by("event_ticker", "series_ticker").agg(
+        pl.col("start").first(), pl.col("ticker"), pl.col("yes_sub_title"), pl.col("result"))
+    ev = ev.filter(pl.col("ticker").list.len() == 2)
+    p = pm_markets.with_columns(pl.col("slug").str.extract(r"^([a-z0-9]+)-", 1).alias("_pre"))
+    p = p.filter(pl.col("_pre").is_in(list(ESPORTS_PM_PREFIX)) & pl.col("game_start_time").is_not_null()
+                 & ~pl.col("slug").str.contains(r"-game\d|-total|-map|handicap")
+                 & (pl.col("outcomes").list.len() == 2)).with_columns(
+        pl.col("_pre").replace_strict(ESPORTS_PM_PREFIX).alias("series_ticker"))
+    rows = []
+    pm_by = p.partition_by("series_ticker", as_dict=True)
+    for e in ev.iter_rows(named=True):
+        cands = pm_by.get((e["series_ticker"],))
+        if cands is None:
+            continue
+        near = cands.filter((pl.col("game_start_time") - e["start"]).abs()
+                            <= timedelta(hours=max_start_gap_hours))
+        hits = []
+        for c in near.iter_rows(named=True):
+            o = c["outcomes"]
+            for flip in (False, True):
+                a, b = (o[1], o[0]) if flip else (o[0], o[1])
+                s0 = _team_sim(e["yes_sub_title"][0], a)
+                s1 = _team_sim(e["yes_sub_title"][1], b)
+                if min(s0, s1) >= min_sim:
+                    hits.append((c, flip, min(s0, s1)))
+        if len(hits) != 1:
+            continue
+        c, flip, sim = hits[0]
+        for i in range(2):
+            rows.append({"kalshi_ticker": e["ticker"][i], "kalshi_event": e["event_ticker"],
+                         "pm_condition_id": c["condition_id"], "pm_slug": c["slug"],
+                         "pm_outcome_index": (1 - i) if flip else i, "similarity": sim,
+                         "kalshi_result": e["result"][i], "pm_winner_index": c["winner_index"],
+                         "start": e["start"], "pm_start": c["game_start_time"]})
+    return pl.DataFrame(rows, schema={
+        "kalshi_ticker": pl.String, "kalshi_event": pl.String, "pm_condition_id": pl.String,
+        "pm_slug": pl.String, "pm_outcome_index": pl.Int64, "similarity": pl.Float64,
+        "kalshi_result": pl.String, "pm_winner_index": pl.Int64,
+        "start": pl.Datetime("us", "UTC"), "pm_start": pl.Datetime("us", "UTC")})

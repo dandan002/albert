@@ -604,6 +604,35 @@ latency on new observations (needs a live 1-5 minute feed and order-book polling
 competitive and practitioners report bots already doing it), and a volume-blind maker test
 on weather brackets.
 
+### 7. Minor sports and esports (`research sports`, `backtest maker --anchor start`, `research esports-reference`)
+
+The goal changed on 2026-11-03 to *consistent* returns, with thin markets in scope. Sample: 21
+minor series whose tickers encode the start time (esports, table tennis, e-soccer, darts,
+T20 cricket, KHL/KBO/NPB, NCAA volleyball). Up to 500 random events per series, chosen
+without looking at volume; one leg per event; Aug 15 - Oct 31. Decisions are at the
+scheduled start minus a lead, and a market needs a two-sided quote then (known at the
+decision time, unlike final volume).
+
+- **Pricing is under-confident before the game.** Pooled calibration slope 1.17 ± 0.05
+  (t = 3.5) at 1h before the start, 1.13 at 15 min. Favourites win more often than priced.
+  Major leagues are calibrated (slope 1.006).
+- **But it does not pay as a taker.** Buying the favourite at the ask 1h before the start:
+  −1.0% per $ after fees (t = −0.9, 3,834 bets, 78 dates), Aug/Sep/Oct −2.5% / +0.2% /
+  −1.6%, positive in 5 of 12 weeks. The bias is smaller than the spread plus fee. Only 90c+
+  favourites were positive (+2.3%, t = 1.9), one band of five.
+- **Maker (bid for the favourite before the start, cancel 15 min before), complete trade
+  windows:** posting 12h before +0.3% (t = 0.1), 6h before −0.8%, 2h before +1.6% (t = 0.8).
+  Within the 2h version, *improving* the bid by 1c earned +4.7% (t = 1.9, 775 fills) and
+  joining lost 4.2%. That subgroup is post hoc, so a holdout on a fresh random sample
+  (seed 99) with the rule fixed in advance is running.
+- **Polymarket as a reference price for Kalshi esports.** 872 CS2/LoL/Dota 2/Valorant
+  matches were matched by start time and both team names; the venues agree on the winner
+  in 100%. Before the start the two prices differ by about 1c on average, are equally
+  accurate (Brier 0.22 each), and the gap's predictive slope flips sign across lead times.
+  Buying on Kalshi when Polymarket's price beats Kalshi's ask plus fee produced 7-115 bets
+  per cell with no consistent sign. The one strong cell (+42% on 20 bets) is 1 of 12 tried.
+  Kalshi esports prices track Polymarket closely.
+
 ### What this means for the $100 goal
 
 Nothing found so far supports "exponential growth". The honest summary:

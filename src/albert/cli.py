@@ -243,6 +243,15 @@ def research_sports(
     typer.echo(run(settings(), series=series, leads=tuple(lead), split=_day(split)))
 
 
+@research_app.command("esports-reference")
+def research_esports_reference() -> None:
+    """Polymarket intl esports prices as a reference for Kalshi esports match winners."""
+    from albert.pipeline import research_esports_reference as run
+
+    s, c = _clients()
+    typer.echo(run(s, c))
+
+
 @research_app.command("literature")
 def research_literature() -> None:
     """Re-test published effects: maker/taker, leg-sum arb, category slopes, reversion, moves."""
