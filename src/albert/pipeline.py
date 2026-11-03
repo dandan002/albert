@@ -399,7 +399,8 @@ def backtest_maker(s: Settings, *, horizons: tuple[float, ...] = (24.0, 6.0), si
 
 
 def research_sports(s: Settings, *, series: list[str], leads: tuple[float, ...] = (1.0, 0.25),
-                    split: datetime = datetime(2026, 10, 1, tzinfo=UTC), min_edge: float = 0.03) -> Path:
+                    split: datetime = datetime(2026, 10, 1, tzinfo=UTC), min_edge: float = 0.03,
+                    anchor: str = "start") -> Path:
     """Pre-game pricing of (minor) sports series on a volume-blind sample.
 
     Decision = ticker start time - lead. Only markets with a two-sided quote at that moment
@@ -410,12 +411,12 @@ def research_sports(s: Settings, *, series: list[str], leads: tuple[float, ...] 
     markets = read_table(s.tables_dir, "kalshi_markets").filter(pl.col("series_ticker").is_in(series))
     candles = read_table(s.tables_dir, "kalshi_candles")
     r = Report(s.reports_dir, "research-sports")
-    r.text("Setup", f"- series: {', '.join(series)}\n- decision = ticker start - lead; quote must be "
+    r.text("Setup", f"- series: {', '.join(series)}\n- decision = {anchor} anchor - lead; quote must be "
                     f"two-sided with spread <= 10c\n- strategy: per-series logistic recalibration fit "
                     f"before {split:%Y-%m-%d}, flat bets after it, edge >= {min_edge} after taker fee")
     out = []
     for lead in leads:
-        obs = cal.kalshi_observations(markets, candles, horizon_hours=lead, anchor="start",
+        obs = cal.kalshi_observations(markets, candles, horizon_hours=lead, anchor=anchor,
                                       staleness_hours=2.0).with_columns(
             pl.col("market_id").str.split("-").list.first().alias("category"))
         if obs.is_empty():

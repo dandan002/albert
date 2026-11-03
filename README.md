@@ -632,6 +632,11 @@ decision time, unlike final volume).
   Buying on Kalshi when Polymarket's price beats Kalshi's ask plus fee produced 7-115 bets
   per cell with no consistent sign. The one strong cell (+42% on 20 bets) is 1 of 12 tried.
   Kalshi esports prices track Polymarket closely.
+- **Tennis** (ITF, Challenger, ATP/WTA; 500 random events per tour). Tickers have no start
+  time, so decisions are at scheduled expiry − 9h / − 5h. Elsewhere the scheduled expiry
+  is almost always start + 3h, so that is about 6h / 2h before the match. Calibrated: slope
+  1.05 ± 0.04 and 1.04 ± 0.04. The favourite's gross edge at the ask is −5c to +3c by tour,
+  before fees. The per-series recalibration lost where it traded (ITF −13%, t = −2.6).
 
 ### What this means for the $100 goal
 

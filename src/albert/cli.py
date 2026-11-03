@@ -236,11 +236,12 @@ def research_sports(
     series: list[str] = typer.Option(..., help="Kalshi series (with start times in tickers); repeatable"),
     lead: list[float] = typer.Option([1.0, 0.25], help="Hours before the scheduled start"),
     split: str = typer.Option("2026-10-01", help="Fit before, trade from"),
+    anchor: str = typer.Option("start", help="start (ticker time) or scheduled (expected expiry; lead counts from it)"),
 ) -> None:
     """Pre-game calibration and a per-series recalibration strategy, volume-blind sample."""
     from albert.pipeline import research_sports as run
 
-    typer.echo(run(settings(), series=series, leads=tuple(lead), split=_day(split)))
+    typer.echo(run(settings(), series=series, leads=tuple(lead), split=_day(split), anchor=anchor))
 
 
 @research_app.command("esports-reference")
