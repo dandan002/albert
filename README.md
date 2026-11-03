@@ -639,6 +639,42 @@ decision time, unlike final volume).
   1.05 ± 0.04 and 1.04 ± 0.04. The favourite's gross edge at the ask is −5c to +3c by tour,
   before fees. The per-series recalibration lost where it traded (ITF −13%, t = −2.6).
 
+### 8. Elo ratings + market price on minor sports: first out-of-sample positive (`albert research elo`)
+
+Minor sports have small, repeating pools of teams and players, so a rating model can know
+things a thin market does not. `research/ratings.py` builds Elo ratings from *every*
+settled Kalshi event in 20 two-sided series (esports matches and maps, table tennis,
+darts, e-basketball, KHL/KBO/NPB, T20, NCAA volleyball): 34k matches, no look-ahead
+(each prediction uses only earlier results). Map markets share ratings with matches. The
+settings (K = 32, or 48 for sides with fewer than 10 games, scale 400) and the decision
+rule were **fixed before looking at October**:
+
+- Blend `P = sigmoid(a + b·logit(Kalshi mid) + c·logit(Elo))` fit on 1,196 Aug-Sep games:
+  a = +0.090, b = 0.978, c = **0.324**. Elo gets a stable positive weight.
+- Decision 1h before the ticker start time. Both sides need at least 10 rated games. Bet
+  when the blend beats the Kalshi ask (or 1 − bid) plus taker fee by the margin.
+
+**October test (all 2,554 games, prices for one leg of every event):**
+
+| | Market | Elo | Blend |
+|---|---|---|---|
+| Brier | 0.2074 | 0.2290 | **0.2057** |
+
+| Margin | Bets | ROI per $ (flat) | t (by date) | Weeks positive |
+|---|---|---|---|---|
+| 3c | 457 | **+3.5%** | 0.96 | 4 of 5 |
+| 6c | 111 | +13.3% | 1.35 | 3 of 5 |
+
+Bankroll ($50 Kalshi, quarter Kelly, 3c margin): **$50 → $90.55** in October, max
+drawdown 26%, 407 trades, fees 35% of gross profit. Earlier exploration on the
+volume-blind sample (same settings) showed the same signs (+3.3% at 3c, +11.6% at 6c).
+
+**Caveats:** one test month, t ≈ 1, so this is not yet proof. By series, CS2 maps
+(+16.5%, t = 3.0) carry much of it. That is a subgroup, and LoL matches were negative.
+Fills are at the hourly candle's ask, and the displayed size in these markets is small,
+which suits our bet size. **Next: forward-test it in the paper trader with these exact
+coefficients.**
+
 ### What this means for the $100 goal
 
 Nothing found so far supports "exponential growth". The honest summary:
@@ -655,6 +691,9 @@ Nothing found so far supports "exponential growth". The honest summary:
   under-confident before the game, but not by enough to pay the spread and fee. The maker
   subgroup that looked good failed its holdout. Kalshi esports prices track Polymarket within
   about 1c.
+- **One candidate: Elo + market on minor sports** (section 8). It is positive out of sample
+  in October (+3.5% per $ at a 3c margin, 4 of 5 weeks; $50 → $91 compounded) but not yet
+  significant. It is being forward-tested.
 - **NWS weather data does not beat Kalshi weather prices.** The market is better calibrated
   than a calibrated NBM + observations model at every decision time, and already-decided
   brackets are priced at 0c/100c.

@@ -1,5 +1,7 @@
 """Research and backtest pipelines used by the CLI. Each writes a report under data/reports."""
 
+from dataclasses import replace
+
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -537,6 +539,91 @@ def research_esports_reference(s: Settings, c: Clients, *, leads: tuple[float, .
     r.table("Summary", pl.DataFrame(rows))
     if all_obs:
         pl.concat(all_obs, how="diagonal_relaxed").write_parquet(r.dir / "observations.parquet")
+    return r.save()
+
+
+def research_elo(s: Settings, *, series: list[str], lead: float = 1.0,
+                 split: datetime = datetime(2026, 10, 1, tzinfo=UTC),
+                 margins: tuple[float, ...] = (0.03, 0.06), cash: float = 50.0,
+                 cfg: RiskConfig = RiskConfig()) -> Path:
+    """Market + Elo blend on minor sports (research/ratings.py).
+
+    Ratings come from every settled event (no look-ahead). The blend
+    P = sigmoid(a + b*logit(mid) + c*logit(elo)) is fit on games before ``split`` and
+    evaluated on games after it: Brier vs the market, and flat bets where the blend beats
+    the Kalshi ask/bid plus taker fee by ``margin`` (SEs clustered by date).
+    """
+    import numpy as np
+
+    from albert.research.ratings import elo_predictions
+
+    markets = read_table(s.tables_dir, "kalshi_markets").filter(pl.col("series_ticker").is_in(series))
+    preds = elo_predictions(markets)
+    legs = markets.filter(pl.col("ticker").is_in(preds["ticker"].implode()))
+    candles = read_table(s.tables_dir, "kalshi_candles").filter(pl.col("ticker").is_in(legs["ticker"].implode()))
+    obs = cal.kalshi_observations(legs, candles, horizon_hours=lead, anchor="start", staleness_hours=2.0)
+    obs = obs.join(preds.select(pl.col("ticker").alias("market_id"), "elo_p", "n_min",
+                                pl.col("series").alias("ser")), on="market_id").filter(pl.col("n_min") >= 10)
+    train, test = obs.filter(pl.col("decision_ts") < split), obs.filter(pl.col("decision_ts") >= split)
+    def lg(col: pl.Series) -> np.ndarray:
+        x = np.clip(col.to_numpy(), 1e-3, 1 - 1e-3)
+        return np.log(x / (1 - x))
+    X = np.column_stack([np.ones(train.height), lg(train["mid"]), lg(train["elo_p"])])
+    w = np.array([0.0, 1.0, 0.0])
+    y = train["y"].to_numpy()
+    for _ in range(60):
+        pr = 1 / (1 + np.exp(-X @ w))
+        w -= np.linalg.solve(-(X.T * (pr * (1 - pr))) @ X - 1e-6 * np.eye(3), X.T @ (y - pr))
+    Xt = np.column_stack([np.ones(test.height), lg(test["mid"]), lg(test["elo_p"])])
+    test = test.with_columns(pl.Series("p", 1 / (1 + np.exp(-Xt @ w))))
+    fy = [kalshi_fee(100, a, fee_type=ft or "quadratic", multiplier=fm) / 100
+          for a, ft, fm in test.select("yes_ask", "fee_type", "fee_multiplier").iter_rows()]
+    fn = [kalshi_fee(100, 1 - b, fee_type=ft or "quadratic", multiplier=fm) / 100
+          for b, ft, fm in test.select("yes_bid", "fee_type", "fee_multiplier").iter_rows()]
+    test = test.with_columns(pl.Series("fee_yes", fy), pl.Series("fee_no", fn),
+                             pl.col("decision_ts").dt.strftime("%Y-%m-%d").alias("date"),
+                             pl.col("decision_ts").dt.strftime("%G-W%V").alias("week"))
+    r = Report(s.reports_dir, "research-elo")
+    r.text("Setup", f"- series: {', '.join(series)}\n- decision: ticker start - {lead:g}h; both sides >= 10 "
+                    f"rated games\n- blend fit on {train.height} games before {split:%Y-%m-%d}: "
+                    f"P = sigmoid({w[0]:+.3f} {w[1]:+.3f}*logit(mid) {w[2]:+.3f}*logit(elo))\n"
+                    f"- test: {test.height} games")
+    yt = test["y"].to_numpy()
+    r.json("Test Brier", {"market": float(np.mean((test["mid"].to_numpy() - yt) ** 2)),
+                          "elo": float(np.mean((test["elo_p"].to_numpy() - yt) ** 2)),
+                          "blend": float(np.mean((test["p"].to_numpy() - yt) ** 2))})
+    sig_rows = []
+    for mg in margins:
+        yes = test.filter(pl.col("p") - pl.col("yes_ask") - pl.col("fee_yes") >= mg).with_columns(
+            pl.lit("yes").alias("side"), pl.col("yes_ask").alias("price"), pl.col("p").alias("prob"),
+            pl.col("y").alias("payoff"), pl.col("fee_yes").alias("fee"))
+        no = test.filter((1 - pl.col("p")) - (1 - pl.col("yes_bid")) - pl.col("fee_no") >= mg).with_columns(
+            pl.lit("no").alias("side"), (1 - pl.col("yes_bid")).alias("price"), (1 - pl.col("p")).alias("prob"),
+            (1 - pl.col("y")).alias("payoff"), pl.col("fee_no").alias("fee"))
+        bets = pl.concat([yes, no]).with_columns(
+            (pl.col("payoff") - pl.col("price") - pl.col("fee")).alias("pnl"),
+            (pl.col("price") + pl.col("fee")).alias("stake"), pl.col("date").alias("event_ticker"))
+        if bets.is_empty():
+            continue
+        r.table(f"Margin {mg:g}: all", lit.cluster_ratio(bets.with_columns(pl.lit("all").alias("k")), ["k"]))
+        r.table(f"Margin {mg:g}: by series", lit.cluster_ratio(bets, ["ser"]), max_rows=25)
+        wk = lit.cluster_ratio(bets, ["week"])
+        r.table(f"Margin {mg:g}: by week ({int((wk['pnl'] > 0).sum())} of {wk.height} positive)", wk)
+        if mg == margins[0]:
+            sig_rows.append(bets)
+    if sig_rows:
+        b = sig_rows[0]
+        signals = b.select(pl.lit("elo").alias("strategy"), "venue", "event_id", pl.col("decision_ts").alias("signal_ts"),
+                           "resolve_ts", pl.lit(None, dtype=pl.Float64).alias("available"), "fee_type",
+                           "fee_multiplier", "market_id", "side", "price", "prob", "payoff",
+                           pl.col("ser").alias("note")).select(list(SIGNAL_SCHEMA)).cast(SIGNAL_SCHEMA)
+        result = run_backtest(signals, cash={"kalshi": cash, "pmus": 0.0},
+                              cfg=replace(cfg, min_edge=margins[0]))
+        r.json(f"Bankroll (${cash:g}, quarter Kelly, margin {margins[0]:g})", result.metrics())
+        r.json("Monte Carlo", monte_carlo(result))
+        if _plot_equity(result, r.dir / "equity.png"):
+            r.image("Equity curve", "equity.png")
+    test.write_parquet(r.dir / "test.parquet")
     return r.save()
 
 

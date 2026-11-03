@@ -257,6 +257,19 @@ def research_esports_reference() -> None:
     typer.echo(run(s, c))
 
 
+@research_app.command("elo")
+def research_elo(
+    series: list[str] = typer.Option(..., help="Two-sided series with ticker start times; repeatable"),
+    lead: float = typer.Option(1.0, help="Hours before the start"),
+    split: str = typer.Option("2026-10-01", help="Fit the blend before, test from"),
+    cash: float = typer.Option(50.0),
+) -> None:
+    """Market + Elo blend for minor sports, fit before the split and tested after it."""
+    from albert.pipeline import research_elo as run
+
+    typer.echo(run(settings(), series=series, lead=lead, split=_day(split), cash=cash))
+
+
 @research_app.command("literature")
 def research_literature() -> None:
     """Re-test published effects: maker/taker, leg-sum arb, category slopes, reversion, moves."""
