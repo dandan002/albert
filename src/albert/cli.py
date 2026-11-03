@@ -90,13 +90,17 @@ def ingest_kalshi_trade_windows(
     ttl: float = typer.Option(20.0, help="Maker order lifetime in hours"),
     anchor: str = typer.Option("scheduled", help="scheduled (expiry) or start (ticker game start)"),
     legs: str = typer.Option("population", help="population (one leg of every event) or sampled (legs with candles)"),
+    tickers_file: str = typer.Option(None, help="Parquet with a `ticker` column: fetch exactly these legs"),
 ) -> None:
     """All trades inside each game's maker-order window (complete coverage, no volume bias)."""
+    import polars as pl
+
     from albert.ingest import ingest_kalshi_trade_windows as run
 
     s, c = _clients()
     typer.echo(run(s, c, series=series, start=_day(start), end=_day(end), horizon_hours=horizon,
-                   ttl_hours=ttl, anchor=anchor, legs=legs).summary())
+                   ttl_hours=ttl, anchor=anchor, legs=legs,
+                   tickers=pl.read_parquet(tickers_file)["ticker"].to_list() if tickers_file else None).summary())
 
 
 @ingest_app.command("weather")

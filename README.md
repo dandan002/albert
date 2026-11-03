@@ -623,8 +623,9 @@ decision time, unlike final volume).
 - **Maker (bid for the favourite before the start, cancel 15 min before), complete trade
   windows:** posting 12h before +0.3% (t = 0.1), 6h before −0.8%, 2h before +1.6% (t = 0.8).
   Within the 2h version, *improving* the bid by 1c earned +4.7% (t = 1.9, 775 fills) and
-  joining lost 4.2%. That subgroup is post hoc, so a holdout on a fresh random sample
-  (seed 99) with the rule fixed in advance is running.
+  joining lost 4.2%. That subgroup was post hoc. **Holdout** (4,482 legs from events the
+  in-sample run never used, rule fixed in advance): **−0.3% per filled $ (t = −0.07, 268
+  fills)**. It did not replicate. Posting at any queue position on the holdout: −3.4%.
 - **Polymarket as a reference price for Kalshi esports.** 872 CS2/LoL/Dota 2/Valorant
   matches were matched by start time and both team names; the venues agree on the winner
   in 100%. Before the start the two prices differ by about 1c on average, are equally
@@ -650,6 +651,10 @@ Nothing found so far supports "exponential growth". The honest summary:
 - **Being a maker loses less than taking, but has no positive edge on major-league
   games** once the sample is volume-blind (−1.7% per filled dollar on 1,179 fills). The
   apparent +3-5% premium came from samples that cut out the busiest (upset-heavy) games.
+- **Minor sports, esports and tennis are no better.** Minor sports are slightly
+  under-confident before the game, but not by enough to pay the spread and fee. The maker
+  subgroup that looked good failed its holdout. Kalshi esports prices track Polymarket within
+  about 1c.
 - **NWS weather data does not beat Kalshi weather prices.** The market is better calibrated
   than a calibrated NBM + observations model at every decision time, and already-decided
   brackets are priced at 0c/100c.

@@ -202,6 +202,7 @@ class MakerBankroll:
     skipped_no_cash: int
     max_drawdown: float
     curve: pl.DataFrame
+    fills: pl.DataFrame | None = None   # one row per posted order: size, filled, stake, pnl
 
 
 def run_maker_bankroll(orders: pl.DataFrame, trades: pl.DataFrame, *, cash: float,
@@ -220,6 +221,7 @@ def run_maker_bankroll(orders: pl.DataFrame, trades: pl.DataFrame, *, cash: floa
     event_locked: dict[str, float] = {}
     placed = filled_n = skipped = 0
     curve: list[dict] = []
+    posted: list[dict] = []
     peak, max_dd = cash, 0.0
 
     def release(until) -> None:
@@ -251,6 +253,9 @@ def run_maker_bankroll(orders: pl.DataFrame, trades: pl.DataFrame, *, cash: floa
                                             multiplier=r["fee_multiplier"])
         free -= reserve
         placed += 1
+        posted.append({"ticker": r["ticker"], "decision_ts": r["decision_ts"], "size": n,
+                       "filled": o["filled"], "bid": r["bid"], "payoff": r["payoff"],
+                       "stake": o["stake"], "pnl": o["pnl"], "reserve": reserve})
         event_locked[r["event_ticker"]] = event_locked.get(r["event_ticker"], 0.0) + reserve
         if o["filled"]:
             filled_n += 1
@@ -262,4 +267,5 @@ def run_maker_bankroll(orders: pl.DataFrame, trades: pl.DataFrame, *, cash: floa
             heapq.heappush(heap, (r["cancel_ts"], reserve, r["event_ticker"], reserve))
     release(None)
     return MakerBankroll(cash, free, placed, filled_n, skipped, max_dd,
-                         pl.DataFrame(curve, schema={"ts": pl.Datetime("us", "UTC"), "equity": pl.Float64}))
+                         pl.DataFrame(curve, schema={"ts": pl.Datetime("us", "UTC"), "equity": pl.Float64}),
+                         pl.DataFrame(posted))

@@ -314,7 +314,8 @@ WINDOW_SCHEMA = {"ticker": pl.String, "window_start": pl.Datetime("us", "UTC"),
 def ingest_kalshi_trade_windows(s: Settings, c: Clients, *, series: list[str], start: datetime,
                                 end: datetime, horizon_hours: float = 24.0,
                                 ttl_hours: float = 20.0, lead_hours: float = 1.0,
-                                anchor: str = "scheduled", legs: str = "population") -> IngestResult:
+                                anchor: str = "scheduled", legs: str = "population",
+                                tickers: list[str] | None = None) -> IngestResult:
     """*All* trades in each game's maker-order window, for one leg of every game in ``series``.
 
     Window = [anchor - horizon - lead, anchor - horizon + ttl], where anchor is the scheduled
@@ -329,7 +330,9 @@ def ingest_kalshi_trade_windows(s: Settings, c: Clients, *, series: list[str], s
 
     result = IngestResult()
     markets = read_table(s.tables_dir, "kalshi_markets")
-    if legs == "sampled":
+    if tickers is not None:
+        chosen = pl.Series(tickers).implode()
+    elif legs == "sampled":
         have = read_table(s.tables_dir, "kalshi_candles")["ticker"].unique()
         chosen = markets.filter(pl.col("series_ticker").is_in(series)
                                 & pl.col("ticker").is_in(have.implode()))["ticker"].implode()
@@ -372,7 +375,8 @@ def ingest_kalshi_trade_windows(s: Settings, c: Clients, *, series: list[str], s
     result.tables["kalshi_trade_windows"] = len(windows)
     result.manifest = write_manifest(s.data_dir, "ingest kalshi-trade-windows", {
         "series": series, "start": start, "end": end, "horizon_hours": horizon_hours,
-        "ttl_hours": ttl_hours, "lead_hours": lead_hours, "anchor": anchor, "legs": legs},
+        "ttl_hours": ttl_hours, "lead_hours": lead_hours, "anchor": anchor, "legs": legs,
+        "tickers": len(tickers) if tickers is not None else None},
         result.tables, result.raw_files)
     return result
 
