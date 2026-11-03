@@ -517,9 +517,29 @@ positive and still beats taking the same bets, but **it is not statistically dis
 from zero**, and it varies by month (+0.3%, +13.2%, −0.3% in Aug/Sep/Oct). Resting into
 in-game trading is clearly bad (6h row): fills arrive exactly when the favorite is collapsing.
 
-A larger Weather/Sports trade sample (1,500 more markets per category) is being ingested to
-tighten this. The paper trader now runs the 24h / 20h maker rule live
-(`albert paper run --strategy maker`), started 2026-11-03.
+**Holdout (2026-11-03).** The 24h / 20h, one-order-per-game rule was fixed in advance and
+run on 2,978 *new* randomly sampled markets (seed 11) that no earlier run had seen:
+
+| | In-sample | Holdout |
+|---|---|---|
+| Maker ROI on fills | +4.6% (t = 1.0) | +5.1% (t = 1.2) |
+| Taker, same bets | +0.6% | +4.4% (t = 1.6) |
+| $50 bankroll | $72 | $69 |
+| Joined a 1c-spread best bid (subgroup) | +12.5% | +17.7% (t = 2.6) |
+| Improved the best bid by 1c (subgroup) | +0.7% | −1.3% |
+
+**But the trade sample itself is biased.** Trades were sampled from markets with *final*
+volume 500-200k. In the volume-blind game population (section 3), buying the favorite at
+the ask 24h out earns **+4.5c in that band and −1.9c above 200k** (−0.4c overall), because
+the busiest games, where upsets happen, are cut off. The "newest 5,000 trades" coverage
+rule drops busy markets as well. So the positive taker benchmark, and probably most of the
+maker gain (including the "joined" subgroup), come from selection. The clean test is
+`ingest kalshi-trade-windows` (all trades in each order's window, for one leg of *every*
+game) followed by `backtest maker --universe population`.
+
+Rule change from live testing: ticker start times (`ticker_start`, US Eastern, validated on
+~80k games) now cap every order at 15 minutes before the game. A fixed 20h TTL let orders
+rest into cricket and KBO games, whose scheduled expiry is 4-8h after the start.
 
 ### What this means for the $100 goal
 
