@@ -182,6 +182,16 @@ class Kalshi:
             "period_interval": period_minutes,
         })
 
+    def candles_batch(self, tickers: list[str], start: datetime, end: datetime,
+                      period_minutes: int) -> Fetched:
+        """Live (post-cutoff) candles for many markets in one request: ``{"markets": [{
+        "market_ticker", "candlesticks"}]}``. Unknown tickers are silently omitted."""
+        return self.client.get("/markets/candlesticks", {
+            "market_tickers": ",".join(sorted(tickers)),
+            "start_ts": int(start.timestamp()), "end_ts": int(end.timestamp()),
+            "period_interval": period_minutes,
+        })
+
     def event(self, event_ticker: str) -> Fetched:
         return self.client.get(f"/events/{event_ticker}")
 

@@ -29,6 +29,28 @@ def _write(root: Path, venue: str, name: str, payload: Any, n: int = 3) -> Path:
     return path
 
 
+def _write_text(root: Path, venue: str, name: str, text: str, lines: int = 40) -> Path:
+    path = root / venue / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(text.splitlines()[:lines]) + "\n")
+    return path
+
+
+def capture_weather(s: Settings, c: Clients, root: Path) -> list[Path]:
+    """IEM (CLI, ASOS, NBM) and api.weather.gov samples for the weather parsers."""
+    now = datetime.now(UTC)
+    day = (now - timedelta(days=3)).date()
+    out = [
+        _write(root, "iem", "cli", c.iem.cli("NYC", day.year, cache=False).payload, 5),
+        _write_text(root, "iem", "asos.csv", c.iem.asos("NYC", day, day + timedelta(days=1), cache=False).payload),
+        _write_text(root, "iem", "nbm.csv", c.iem.nbm(
+            "NYC", now - timedelta(days=2), now - timedelta(days=2) + timedelta(hours=7), cache=False).payload, 60),
+        _write(root, "nws", "observations",
+               c.nws.latest_observations("NYC", now - timedelta(hours=3)).payload, 3),
+    ]
+    return out
+
+
 def capture(s: Settings, c: Clients, root: Path) -> list[Path]:
     out: list[Path] = []
     now = datetime.now(UTC)
@@ -50,6 +72,10 @@ def capture(s: Settings, c: Clients, root: Path) -> list[Path]:
         f"/historical/markets/{hticker}/candlesticks",
         {"start_ts": 1700000000, "end_ts": int(now.timestamp()), "period_interval": 1440},
         cache=False).payload, 4))
+    out.append(_write(root, "kalshi", "candles_batch", kc.get("/markets/candlesticks", {
+        "market_tickers": ",".join(m["ticker"] for m in settled["markets"][:2]),
+        "start_ts": int((now - timedelta(days=20)).timestamp()), "end_ts": int(now.timestamp()),
+        "period_interval": 60}, cache=False).payload, 4))
     out.append(_write(root, "kalshi", "event", kc.get(
         f"/events/{settled['markets'][0]['event_ticker']}", cache=False).payload))
     out.append(_write(root, "kalshi", "cutoff", kc.get("/historical/cutoff", cache=False).payload))

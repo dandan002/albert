@@ -65,6 +65,7 @@ def ingest_kalshi_detail(
     start: str = typer.Option(None, help="YYYY-MM-DD, with --series"),
     end: str = typer.Option(None, help="YYYY-MM-DD, with --series"),
     category: list[str] = typer.Option(None, help="Restrict --sample-per-category to these categories"),
+    all_legs: bool = typer.Option(False, help="With --series: every leg of each event, not one"),
 ) -> None:
     """Trades/candles for a seeded sample of already-ingested settled Kalshi markets."""
     from albert.ingest import ingest_kalshi_detail as run
@@ -74,7 +75,8 @@ def ingest_kalshi_detail(
                  max_volume=max_volume, multi_events=multi_events, max_outcomes=max_outcomes,
                  seed=seed, trades=trades, candles=candles, max_trade_pages=max_trade_pages,
                  series=series or None, start=_day(start) if start else None,
-                 end=_day(end) if end else None, categories=category or None)
+                 end=_day(end) if end else None, categories=category or None,
+                 all_legs=all_legs)
     typer.echo(result.summary())
 
 
@@ -92,6 +94,19 @@ def ingest_kalshi_trade_windows(
     s, c = _clients()
     typer.echo(run(s, c, series=series, start=_day(start), end=_day(end), horizon_hours=horizon,
                    ttl_hours=ttl).summary())
+
+
+@ingest_app.command("weather")
+def ingest_weather(
+    start: str = typer.Option(..., help="YYYY-MM-DD"),
+    end: str = typer.Option(..., help="YYYY-MM-DD, exclusive"),
+    code: list[str] = typer.Option(None, help="CLI station code (NYC, MDW, ...); default: all Kalshi ones"),
+) -> None:
+    """NWS CLI reports, ASOS observations and NBM forecasts (IEM archive) for Kalshi cities."""
+    from albert.ingest import ingest_weather as run
+
+    s, c = _clients()
+    typer.echo(run(s, c, _day(start), _day(end), codes=code or None).summary())
 
 
 @ingest_app.command("kalshi-events")
@@ -219,6 +234,23 @@ def research_literature() -> None:
     from albert.pipeline import research_literature as run
 
     typer.echo(run(settings()))
+
+
+@backtest_app.command("weather")
+def backtest_weather(
+    split: str = typer.Option("2026-10-01", help="YYYY-MM-DD: fit before, trade from this day"),
+    slot: list[str] = typer.Option(None, help="Decision slots: 'd-1 15h', 'd 10h', 'd 13h', 'd 16h'"),
+    cash: float = typer.Option(50.0, help="Kalshi bankroll"),
+    min_edge: float = typer.Option(0.05, help="Model prob - price - fee needed to trade"),
+    kelly: float = typer.Option(0.25),
+    max_bet: float = typer.Option(10.0),
+) -> None:
+    """NWS (NBM forecast + ASOS observations) model vs Kalshi daily-high brackets."""
+    from albert.pipeline import backtest_weather as run
+    from albert.risk import RiskConfig
+
+    typer.echo(run(settings(), split=_day(split), slots=tuple(slot) if slot else None, cash=cash,
+                   cfg=RiskConfig(kelly_fraction=kelly, min_edge=min_edge, max_bet_dollars=max_bet)))
 
 
 @backtest_app.command("maker")

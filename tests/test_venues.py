@@ -156,3 +156,11 @@ def test_ticker_start_is_eastern_time():
     assert k.ticker_start("KXMLBGAME-26OCT152000MILLAD") == datetime(2026, 10, 16, 0, 0, tzinfo=UTC)
     assert k.ticker_start("KXNBAGAME-26NOV06SASSAC") is None
     assert k.ticker_start("KXHIGHNY-26NOV04") is None
+
+
+def test_kalshi_batch_candles_parse_per_market(fixture):
+    payload = fixture("kalshi/candles_batch.json")
+    rows = [r for mk in payload["markets"] for r in k.candle_rows(mk, mk["market_ticker"], 60)]
+    assert len({r["ticker"] for r in rows}) == 2
+    assert all(r["yes_ask_close"] is None or 0 <= r["yes_ask_close"] <= 1 for r in rows)
+    assert any(r["yes_bid_close"] is not None for r in rows)

@@ -13,6 +13,7 @@ from albert.store import read_table, write_manifest, write_table
 from albert.venues import kalshi as k
 from albert.venues import polymarket as pm
 from albert.venues import polymarket_us as pmus
+from albert.venues import weather as wx
 
 
 @dataclass
@@ -20,6 +21,8 @@ class Clients:
     kalshi: k.Kalshi
     pm: pm.Polymarket
     pmus: pmus.PolymarketUS
+    iem: wx.IEM | None = None
+    nws: wx.NWS | None = None
 
     @classmethod
     def build(cls, s: Settings, *, record_live: bool = True) -> "Clients":
@@ -36,6 +39,10 @@ class Clients:
             ),
             pmus=pmus.PolymarketUS(CachedClient("pmus", s.pmus_base, s.raw_dir, min_interval=0.1,
                                                record_live=record_live)),
+            iem=wx.IEM(CachedClient("iem", s.iem_base, s.raw_dir, min_interval=0.5,
+                                    record_live=record_live, timeout=120.0)),
+            nws=wx.NWS(CachedClient("nws", s.nws_base, s.raw_dir, min_interval=0.5,
+                                    record_live=record_live, user_agent=s.nws_user_agent)),
         )
 
 
@@ -128,23 +135,50 @@ def _kalshi_trades(s: Settings, c: Clients, selected: pl.DataFrame, cutoff: dict
 
 
 def _kalshi_candles(s: Settings, c: Clients, selected: pl.DataFrame, cutoff: dict,
-                    candle_minutes: int, result: IngestResult) -> None:
+                    candle_minutes: int, result: IngestResult, batch_size: int = 60) -> None:
+    """Candles per market. Post-cutoff markets go through the batch endpoint, grouped by a
+    shared time window, which cuts the request count by ~``batch_size``x."""
     candle_rows: list[dict] = []
-    for i, m in enumerate(selected.iter_rows(named=True), 1):
-        historical = bool(cutoff["market_settled_ts"] and m["close_time"] < cutoff["market_settled_ts"])
+
+    def window(m: dict) -> tuple[datetime, datetime]:
         open_time = m["open_time"] or (m["close_time"] - timedelta(days=30))
         # Kalshi caps candle requests at ~5000 periods; a 60-minute candle covers ~200 days.
-        open_time = max(open_time, m["close_time"] - timedelta(minutes=candle_minutes * 4900))
+        return max(open_time, m["close_time"] - timedelta(minutes=candle_minutes * 4900)), m["close_time"]
+
+    historical, live = [], []
+    for m in selected.iter_rows(named=True):
+        old = bool(cutoff["market_settled_ts"] and m["close_time"] < cutoff["market_settled_ts"])
+        (historical if old else live).append(m)
+    for i, m in enumerate(historical, 1):
+        lo, hi = window(m)
         try:
-            page = c.kalshi.candles(m["ticker"], open_time, m["close_time"], candle_minutes,
-                                    historical)
+            page = c.kalshi.candles(m["ticker"], lo, hi, candle_minutes, True)
         except RuntimeError as error:  # one bad market should not kill a long run
             print(f"skip candles {m['ticker']}: {error}")
             continue
         result.raw_files.append(page.raw_path)
         candle_rows.extend(k.candle_rows(page.payload, m["ticker"], candle_minutes))
         if i % 250 == 0:
-            print(f"  candles: {i}/{selected.height} markets, {len(candle_rows)} rows")
+            print(f"  candles (historical): {i}/{len(historical)} markets, {len(candle_rows)} rows", flush=True)
+    # Batch live markets: sort by window, then chunk; each request spans its chunk's window.
+    live.sort(key=lambda m: (window(m)[0], m["ticker"]))
+    for i in range(0, len(live), batch_size):
+        chunk = live[i:i + batch_size]
+        lo = min(window(m)[0] for m in chunk)
+        hi = max(window(m)[1] for m in chunk)
+        if (hi - lo) > timedelta(minutes=candle_minutes * 4900):
+            lo = hi - timedelta(minutes=candle_minutes * 4900)
+        try:
+            page = c.kalshi.candles_batch([m["ticker"] for m in chunk], lo, hi, candle_minutes)
+        except RuntimeError as error:
+            print(f"skip candle batch at {chunk[0]['ticker']}: {error}")
+            continue
+        result.raw_files.append(page.raw_path)
+        for mk in page.payload.get("markets") or []:
+            candle_rows.extend(k.candle_rows(mk, mk.get("market_ticker"), candle_minutes))
+        done = min(i + batch_size, len(live))
+        if (i // batch_size) % 10 == 0:
+            print(f"  candles (batch): {done}/{len(live)} markets, {len(candle_rows)} rows", flush=True)
     frame = pl.DataFrame(candle_rows, schema=k.CANDLE_SCHEMA)
     _require_rows("kalshi_candles", frame)
     write_table(s.tables_dir, "kalshi_candles", frame, key=["ticker", "end_ts", "period_minutes"])
@@ -157,7 +191,7 @@ def ingest_kalshi_detail(s: Settings, c: Clients, *, sample_per_category: int = 
                          trades: bool = True, candles: bool = True, max_trade_pages: int = 10,
                          candle_minutes: int = 60, series: list[str] | None = None,
                          start: datetime | None = None, end: datetime | None = None,
-                         categories: list[str] | None = None) -> IngestResult:
+                         categories: list[str] | None = None, all_legs: bool = False) -> IngestResult:
     """Trades/candles for a reproducible *sample* of already-ingested settled markets.
 
     ``ingest kalshi --max-markets`` takes the top-N by volume, which over-represents a few huge
@@ -192,7 +226,10 @@ def ingest_kalshi_detail(s: Settings, c: Clients, *, sample_per_category: int = 
             full = full.filter(pl.col("close_time") >= start)
         if end:
             full = full.filter(pl.col("close_time") < end)
-        parts.append(full.sort("ticker").unique("event_ticker", keep="first", maintain_order=True))
+        # One leg per event (games: both legs mirror each other) or every leg (bracket events
+        # such as daily temperature, where each leg is a different outcome).
+        parts.append(full if all_legs else
+                     full.sort("ticker").unique("event_ticker", keep="first", maintain_order=True))
     if not parts:
         raise ValueError("nothing selected: pass sample_per_category, multi_events or series")
     selected = pl.concat(parts).unique("ticker", maintain_order=True)
@@ -207,6 +244,7 @@ def ingest_kalshi_detail(s: Settings, c: Clients, *, sample_per_category: int = 
         "max_volume": max_volume, "multi_events": multi_events, "max_outcomes": max_outcomes,
         "seed": seed, "trades": trades, "candles": candles, "max_trade_pages": max_trade_pages,
         "series": series, "start": start, "end": end, "categories": categories,
+        "all_legs": all_legs,
     }, result.tables, result.raw_files)
     return result
 
@@ -292,6 +330,44 @@ def ingest_kalshi_trade_windows(s: Settings, c: Clients, *, series: list[str], s
     result.manifest = write_manifest(s.data_dir, "ingest kalshi-trade-windows", {
         "series": series, "start": start, "end": end, "horizon_hours": horizon_hours,
         "ttl_hours": ttl_hours, "lead_hours": lead_hours}, result.tables, result.raw_files)
+    return result
+
+
+def weather_codes(markets: pl.DataFrame) -> list[str]:
+    """CLI station codes used by Kalshi daily high/low markets (from their rules text)."""
+    rules = markets.filter(pl.col("series_ticker").str.contains(r"^KX(HIGH|LOWT)"))
+    codes = {wx.cli_code(r) for r in rules["rules_primary"].unique().to_list()}
+    return sorted(c for c in codes if c and c in wx.STATION_TZ)
+
+
+def ingest_weather(s: Settings, c: Clients, start: datetime, end: datetime,
+                   codes: list[str] | None = None) -> IngestResult:
+    """NWS CLI (settlement), ASOS observations and NBM guidance from the IEM archive."""
+    result = IngestResult()
+    if codes is None:
+        codes = weather_codes(read_table(s.tables_dir, "kalshi_markets"))
+    cli, obs, nbm = [], [], []
+    for code in codes:
+        for year in range(start.year, end.year + 1):
+            page = c.iem.cli(code, year)
+            result.raw_files.append(page.raw_path)
+            cli.extend(wx.cli_rows(page.payload, code))
+        page = c.iem.asos(code, (start - timedelta(days=2)).date(), (end + timedelta(days=2)).date())
+        result.raw_files.append(page.raw_path)
+        obs.extend(wx.asos_rows(page.payload, code))
+        page = c.iem.nbm(code, start - timedelta(days=3), end + timedelta(days=1))
+        result.raw_files.append(page.raw_path)
+        nbm.extend(wx.nbm_rows(page.payload, code))
+        print(f"  {code}: cli {len(cli)} obs {len(obs)} nbm {len(nbm)}", flush=True)
+    for name, rows, schema, key in (("wx_cli", cli, wx.CLI_SCHEMA, ["code", "day"]),
+                                    ("wx_obs", obs, wx.OBS_SCHEMA, ["code", "ts"]),
+                                    ("wx_nbm", nbm, wx.NBM_SCHEMA, ["code", "runtime", "ftime"])):
+        f = wx.frame(rows, schema).unique(key, keep="last")
+        _require_rows(name, f)
+        write_table(s.tables_dir, name, f, key=key)
+        result.tables[name] = f.height
+    result.manifest = write_manifest(s.data_dir, "ingest weather", {
+        "start": start, "end": end, "codes": codes}, result.tables, result.raw_files)
     return result
 
 

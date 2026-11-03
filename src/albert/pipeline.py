@@ -393,6 +393,75 @@ def backtest_maker(s: Settings, *, horizons: tuple[float, ...] = (24.0, 6.0), si
     return r.save()
 
 
+def backtest_weather(s: Settings, *, split: datetime, slots: tuple[str, ...] | None = None,
+                     cash: float = 50.0, cfg: RiskConfig = RiskConfig()) -> Path:
+    """NWS-model bets on Kalshi daily-high brackets (research/weather.py)."""
+    from albert.research import weather as w
+
+    slots = slots or tuple(w.SLOTS)
+    markets = read_table(s.tables_dir, "kalshi_markets")
+    candles = read_table(s.tables_dir, "kalshi_candles")
+    cli = read_table(s.tables_dir, "wx_cli").drop_nulls("high")
+    obs = read_table(s.tables_dir, "wx_obs")
+    nbm = read_table(s.tables_dir, "wx_nbm")
+    legs = w.high_markets(markets)
+    split_day = split.date()
+    offsets = w.obs_offsets(cli.filter(pl.col("day") < split_day), obs)["u"]
+    r = Report(s.reports_dir, "backtest-weather")
+    r.text("Setup", f"- {legs['event_ticker'].n_unique()} KXHIGH events ({legs.height} legs), "
+                    f"{legs['code'].n_unique()} stations, {legs['day'].min()} to {legs['day'].max()}\n"
+                    f"- model fit on CLI days before {split_day}, evaluated after; NBM runs used "
+                    f"only after runtime + {w.NBM_LAG}; observations only before the decision\n"
+                    f"- fills at the hourly candle's ask/bid at the decision time, taker fee\n"
+                    f"- risk: {cfg}")
+    rows, sig_frames = [], []
+    for slot in slots:
+        feats = w.features(legs.select("code", "day").unique(), obs, nbm, slot)
+        train = feats.filter(pl.col("day") < split_day)
+        test = feats.filter(pl.col("day") >= split_day)
+        if train.is_empty() or test.is_empty():
+            continue
+        model = w.HighModel.fit(train, cli, offsets).recalibrate(
+            legs.join(train, on=["code", "day"]))
+        q = w.with_model(w.leg_quotes(legs, candles, test), model)
+        q = q.filter(pl.col("yes_ask_close") > pl.col("yes_bid_close"))
+        if q.is_empty():
+            continue
+        sig = w.weather_signals(q, slot)
+        sig_frames.append(sig)
+        # Weather busts are regional: cities on the same date are not independent. Cluster SEs
+        # on the date in the event ticker (KXHIGHNY-26OCT17 -> 26OCT17).
+        flat = lit.flat_signal_returns(sig, min_edge=cfg.min_edge, lo=cfg.min_price, hi=cfg.max_price,
+                                       cluster=pl.col("event_id").str.split("-").list.last())
+        fr = flat.row(0, named=True) if not flat.is_empty() else {}
+        rows.append({"slot": slot, "bias": round(model.bias, 2), "sigma": round(model.sigma, 2),
+                     "tail": round(model.tail_weight, 3),
+                     "platt": f"{model.platt[0]:+.2f},{model.platt[1]:.2f}",
+                     "test_events": q["event_ticker"].n_unique(), "legs": q.height,
+                     "brier_model": w.brier(q["prob"], q["y"]), "brier_market": w.brier(q["mid"], q["y"]),
+                     "flat_trades": fr.get("n", 0), "flat_days": fr.get("clusters"),
+                     "flat_roi": fr.get("roi"), "flat_t": fr.get("t")})
+    r.table("Per decision slot (test period)", pl.DataFrame(rows))
+    signals = pl.concat(sig_frames) if sig_frames else pl.DataFrame(schema=SIGNAL_SCHEMA)
+    result = run_backtest(signals, cash={"kalshi": cash, "pmus": 0.0}, cfg=cfg)
+    r.json("Bankroll (all slots, one position per market)", result.metrics())
+    r.json("Monte Carlo (bootstrap of realized bets)", monte_carlo(result))
+    fills = result.fills_frame()
+    if not fills.is_empty():
+        by = fills.with_columns(pl.col("note").str.split(" ").list.slice(0, 2).list.join(" ").alias("slot")
+                                ).group_by("slot").agg(
+            pl.len().alias("trades"), pl.col("cost").sum().alias("staked"), pl.col("pnl").sum(),
+            (pl.col("pnl") > 0).mean().alias("win_rate")).with_columns(
+            (pl.col("pnl") / pl.col("staked")).alias("roi")).sort("slot")
+        r.table("Bankroll fills by slot", by)
+        r.table("Fills", fills.sort("ts").select("ts", "market_id", "side", "price", "prob", "contracts",
+                                                 "cost", "pnl", "note"), save_as="fills", max_rows=30)
+    if _plot_equity(result, r.dir / "equity.png"):
+        r.image("Equity curve", "equity.png")
+    signals.write_parquet(r.dir / "signals.parquet")
+    return r.save()
+
+
 def backtest(s: Settings, c: Clients | None, *, strategies: list[str], split: datetime,
              cash: dict[str, float], cfg: RiskConfig, horizon_hours: float = 2.0,
              delay_minutes: float = 5.0, top_k: int = 20, prior: float = 200.0,

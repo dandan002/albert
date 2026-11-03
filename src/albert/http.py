@@ -113,6 +113,7 @@ class CachedClient:
         transport: httpx.BaseTransport | None = None,
         sleep=time.sleep,
         record_live: bool = True,
+        user_agent: str = "albert-research/0.2",
     ) -> None:
         self.record_live = record_live
         self.venue = venue
@@ -125,7 +126,7 @@ class CachedClient:
         self._http = httpx.Client(
             timeout=timeout,
             transport=transport,
-            headers={"User-Agent": "albert-research/0.2"},
+            headers={"User-Agent": user_agent},
         )
 
     def get(self, path: str, params: dict[str, Any] | None = None, *, cache: bool = True,
@@ -188,7 +189,10 @@ class CachedClient:
                 continue
             if response.status_code >= 400:
                 raise HttpError(f"{url} {params} -> {response.status_code}: {response.text[:300]}")
-            return response.json()
+            # JSON APIs return parsed JSON; CSV/text endpoints (e.g. IEM) return the raw text.
+            if "json" in response.headers.get("content-type", "") or response.text.lstrip()[:1] in ("[", "{"):
+                return response.json()
+            return response.text
         raise HttpError(f"{url}: retries exhausted")
 
     def _throttle(self) -> None:

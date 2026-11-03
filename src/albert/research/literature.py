@@ -374,7 +374,7 @@ def full_population_legs(markets: pl.DataFrame, series: tuple[str, ...] = GAME_S
 
 
 def flat_signal_returns(signals: pl.DataFrame, *, min_edge: float = 0.03, lo: float = 0.03,
-                        hi: float = 0.97) -> pl.DataFrame:
+                        hi: float = 0.97, cluster: pl.Expr | None = None) -> pl.DataFrame:
     """Flat one-contract returns of signals whose after-fee model edge clears ``min_edge``.
 
     Compounding equity curves are dominated by a few large late bets; this is the per-dollar
@@ -387,7 +387,8 @@ def flat_signal_returns(signals: pl.DataFrame, *, min_edge: float = 0.03, lo: fl
         & pl.col("price").is_between(lo, hi))
     f = f.with_columns((pl.col("payoff") - pl.col("price") - pl.col("fee")).alias("pnl"),
                        (pl.col("price") + pl.col("fee")).alias("stake"),
-                       pl.col("event_id").alias("event_ticker"), pl.lit("all").alias("_k"))
+                       (cluster if cluster is not None else pl.col("event_id")).alias("event_ticker"),
+                       pl.lit("all").alias("_k"))
     if f.is_empty():
         return pl.DataFrame()
     return cluster_ratio(f, ["_k"]).drop("_k")
