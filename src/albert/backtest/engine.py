@@ -102,7 +102,7 @@ class BacktestResult:
 def run_backtest(signals: pl.DataFrame, *, cash: dict[str, float], cfg: RiskConfig = RiskConfig(),
                  settle_open: bool = True) -> BacktestResult:
     sig = signals.filter(pl.col("signal_ts").is_not_null() & pl.col("resolve_ts").is_not_null()
-                         & pl.col("payoff").is_not_null()).sort("signal_ts")
+                         & pl.col("payoff").is_not_null()).sort(["signal_ts", "market_id", "side"])
     wallet_cash = dict(cash)
     start_cash = dict(cash)
     open_heap: list[tuple[datetime, int, Fill]] = []

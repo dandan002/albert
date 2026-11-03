@@ -34,7 +34,8 @@ def longshot_signals(train_obs: pl.DataFrame, test_obs: pl.DataFrame, *, width: 
                   pl.format("bucket {} p={}", "bucket", pl.col("prob").round(3)).alias("note"))
     # Keep only the better side per market, so the engine never sees both.
     both = pl.concat([yes, no]).with_columns((pl.col("prob") - pl.col("price")).alias("_e"))
-    best = both.sort("_e", descending=True).unique("market_id", keep="first").drop("_e")
+    best = (both.sort(["_e", "market_id", "side"], descending=[True, False, False])
+            .unique("market_id", keep="first", maintain_order=True).drop("_e"))
     return best.select(list(SIGNAL_SCHEMA)).cast(SIGNAL_SCHEMA)  # type: ignore[arg-type]
 
 

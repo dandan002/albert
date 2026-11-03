@@ -56,8 +56,11 @@ def research_calibration(s: Settings, *, horizon_hours: float = 2.0, width: floa
     overall = cal.calibration_table(obs, width=width, by_category=False)
     r.table("All categories by price bucket", overall, save_as="overall")
     by_cat = cal.calibration_table(obs, width=width, by_category=True)
-    r.table("By category (|t| >= 2 only)", by_cat.filter(
-        (pl.col("t_yes").abs() >= 2) | (pl.col("t_no").abs() >= 2)), save_as="by_category", max_rows=60)
+    r.table("By category (n >= 30 and |t| >= 2 only)", by_cat.filter(
+        (pl.col("n") >= 30) & ((pl.col("t_yes").abs() >= 2) | (pl.col("t_no").abs() >= 2))),
+        save_as="by_category", max_rows=60)
+    r.text("Caveat", "Markets from the same event (strike ladders, player props) are correlated, so "
+                     "these standard errors are too small. Treat |t| < 3 as noise.")
     r.text("Market efficiency", f"Brier score of the market mid: {cal.brier(obs):.4f} "
                                 f"(0.25 = coin flip).")
     return r.save()
@@ -126,11 +129,15 @@ def research_gaps(s: Settings, c: Clients, *, half_spread: float = 0.01) -> Path
                         right_on="condition_id").select(
         pl.col("token_ids").list.get(pl.col("pm_outcome_index")).alias("token_id"), "start", "end")
     history = fetch_pm_history(s, c, windows, bucket_seconds=3600)
-    g = gaps.gap_table(matches, candles, history, pm_markets, half_spread=half_spread)
+    g = gaps.gap_table(matches, candles, history, pm_markets,
+                       read_table(s.tables_dir, "kalshi_markets"), half_spread=half_spread)
     r = Report(s.reports_dir, "gaps")
     r.text("Setup", "Exactly matched Kalshi and Polymarket game markets. Kalshi executable prices "
                     "come from hourly candles; Polymarket intl prices stand in for Polymarket US with "
-                    f"a {half_spread:.2f} half spread and Polymarket US fees. Indicative only.")
+                    f"a {half_spread:.2f} half spread and Polymarket US fees. Only observations at least "
+                    "4h before the Kalshi close, with unresolved Polymarket prices (2c-98c), are "
+                    "kept, because in-play and post-resolution prints create fake arbitrage. "
+                    "Indicative only.")
     r.json("Summary", gaps.gap_summary(g))
     r.table("Largest locked-in opportunities", g.sort("best_arb", descending=True), save_as="gaps")
     return r.save()
@@ -161,16 +168,17 @@ def _plot_equity(result: BacktestResult, path: Path) -> bool:
 
 def backtest(s: Settings, c: Clients | None, *, strategies: list[str], split: datetime,
              cash: dict[str, float], cfg: RiskConfig, horizon_hours: float = 2.0,
-             delay_minutes: float = 5.0, top_k: int = 20) -> Path:
+             delay_minutes: float = 5.0, top_k: int = 20, prior: float = 200.0) -> Path:
     frames = []
     notes = []
     if "longshot" in strategies:
         obs = kalshi_obs(s, horizon_hours)
         train, test = split_by_time(obs, split)
         notes.append(f"longshot: trained on {train.height} markets resolved before {split:%Y-%m-%d}, "
-                     f"tested on {test.height} decided after it.")
+                     f"tested on {test.height} decided after it; horizon {horizon_hours:g}h, "
+                     f"prior {prior:g}.")
         if train.height and test.height:
-            frames.append(longshot_signals(train, test))
+            frames.append(longshot_signals(train, test, prior=prior))
     if "wallet_follow" in strategies:
         if c is None:
             raise RuntimeError("wallet_follow needs API clients for price history")

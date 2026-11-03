@@ -58,7 +58,7 @@ its trades are on-chain and attributable. Kalshi and Polymarket US trades are an
 
 ```bash
 python3 -m pip install -e ".[dev,plots]"   # Python 3.12+
-python3 -m pytest -q                        # 37 tests, offline, against recorded API responses
+python3 -m pytest -q                        # 41 tests, offline, against recorded API responses
 ```
 
 No API keys are needed for Phases 1-5. All endpoints used are public. `.env` holds Kalshi
@@ -90,12 +90,12 @@ albert research wallets --split 2026-08-15
 albert research gaps
 
 # 4. Backtests
-albert backtest run --strategy longshot --split 2026-10-01
+albert backtest run --strategy longshot --split 2026-10-01 --prior 20
 albert backtest run --strategy wallet_follow --split 2026-08-15 --delay 5
 
 # 5. Paper trading on live quotes
 albert paper reset --kalshi-cash 50 --pmus-cash 50
-albert paper run --interval 300            # Ctrl-C to stop; state persists
+albert paper run --interval 300 --prior 20 # Ctrl-C to stop; state persists
 albert paper status
 ```
 
@@ -327,7 +327,119 @@ data/
 
 ## Results so far
 
-RESULTS_PLACEHOLDER
+All numbers below come from the data ingested on 2026-11-03 and are reproducible with the
+Quick start commands (reports are in `data/reports/`). **None of this is evidence of a
+tradeable edge yet.** Read it as "what survived a first honest test".
+
+### Data collected
+
+| Source | Rows | Window |
+|---|---|---|
+| Kalshi settled non-financial markets | 469,608 (94% Sports) | 2026-08-15 to 2026-11-01 |
+| Kalshi hourly candles | 1.30M for 4,200 markets (top 600 per category) | same |
+| Polymarket intl wallet trades | 743,781 from 134 leaderboard wallets (88% on resolved markets) | 2026-05-01 to 2026-11-02 |
+| Polymarket intl markets | ~140k with resolutions | mostly 2026-05 to 2026-11 |
+| Polymarket US markets | 17,429 (moneylines + politics/culture/science) | 2026-10-20 to 2026-11-02 |
+
+### 1. Smart wallets: no persistent skill found
+
+Wallets were scored on markets first traded before a split date and evaluated on markets first
+traded after it (`albert research wallets`):
+
+| Split | Wallets evaluated | Spearman(A score, B ROI) | Top-10 ROI in B | Top-20 ROI in B | All-wallet ROI in B |
+|---|---|---|---|---|---|
+| 2026-07-15 | 56 | −0.07 | +0.5% | +1.6% | +3.5% |
+| 2026-08-15 | 56 | −0.12 | +2.7% | +2.4% | +3.8% |
+| 2026-09-15 | 48 | +0.11 | +2.3% | +2.8% | +5.0% |
+
+Within this sample, **past performance does not predict future performance**. The rank
+correlation is about zero, and the top-ranked wallets did *worse* afterwards than the average
+leaderboard wallet. The positive all-wallet ROI is biased by hindsight, because wallets were
+picked from today's all-time leaderboard.
+
+### 2. Copying wallets loses money after delay and fees
+
+`albert backtest run --strategy wallet_follow --split 2026-08-15` copies the top-20 window-A
+wallets' first BUY per market in window B, at the price N minutes later + 1c, with Polymarket US
+fees, $100 split $50/$50, quarter Kelly:
+
+| Copy delay | Trades | End equity | ROI per $ staked | Fees | Monte Carlo P(loss) |
+|---|---|---|---|---|---|
+| 1 min | 544 | $68.14 | −7.3% | $16.20 | 90% |
+| 5 min | 416 | $84.95 | −2.2% (gross +1.6%) | $25.84 | 72% |
+| 30 min | 283 | $51.03 | −31.8% | $7.43 | 100% |
+
+The model expected a +14.6% edge per trade, and the realized edge was about zero before fees.
+**Verdict: do not copy-trade.** The 1-minute and 5-minute rows both use 5-minute price buckets,
+so their difference is noise.
+
+### 3. Calibration / favorite-longshot bias: small, fragile signal
+
+`albert research calibration` (2,068 markets at close − 2h; 2,817 at close − 24h):
+
+- Across all categories, prices are close to calibrated. The Brier score of the market mid is
+  0.118 at 2h and 0.155 at 24h. No all-category price bucket reaches |t| > 3 (the largest is
+  3.0), and these standard errors are too small because markets within one event are
+  correlated.
+- **Tails outside sports:** in Elections, Entertainment, Mentions, Politics and
+  Science/Tech, contracts priced 95c+ resolved YES 100% of the time (30-90 markets per bucket),
+  and the matching 1-5c longshots never hit. After fees, buying the favorite earned +1.0 to
+  +2.5c per contract. **This is not proven**: one upset costs about 97c, so the edge only
+  holds if the true upset rate is under about 1%, which 50-90 observations cannot establish.
+
+Longshot strategy backtest (train before 2026-10-01, trade October, Kalshi $50):
+
+| Horizon | Model prior k | Risk | Trades | End equity ($100 total) | ROI per $ | Monte Carlo P(loss) |
+|---|---|---|---|---|---|---|
+| 2h / 24h | 200 (default) | either | 0 | $100.00 | n/a (model defers to the market) | n/a |
+| 2h | 20 | default | 92 | $109.12 | +11.1% | 37% |
+| 2h | 20 | tails allowed | 206 | $118.87 | +7.8% | 23% |
+| 2h | 50 | default | 11 | $104.04 | +67.8% (11 trades) | 35% |
+| 2h | 50 | tails allowed | 56 | $103.73 | +10.0% | 39% |
+| 24h | 20 | default | 229 | $87.37 | −7.3% | 79% |
+| 24h | 20 | tails allowed | 322 | $90.04 | −4.8% | 77% |
+| 24h | 50 | default | 91 | $103.11 | +5.6% | 39% |
+| 24h | 50 | tails allowed | 174 | $104.89 | +5.8% | 35% |
+
+"Tails allowed" means `--min-edge 0.01 --max-price 0.99`. All of the profit and loss is on the
+$50 Kalshi bankroll; the Polymarket US $50 sits idle.
+
+The 2h-before-close version is positive in every configuration tried. The 24h version is
+mixed. **Twelve configurations were tried on one month of test data**, so the best rows are
+flattered by selection. This is the strategy most worth paper trading, with a weak prior
+(`--prior 20`), not one to fund.
+
+### 4. Cross-venue gaps: venues agree; no free money
+
+- Matching is accurate. Kalshi ↔ Polymarket intl: **882/882** settled pairs agree on the
+  winner. Polymarket US ↔ intl: 270/270 by slug and 901/904 by names.
+- Pre-game Kalshi vs Polymarket prices on 165 matched games: median |gap| **0.5c**, 90th
+  percentile 1.5c. The few "arbitrage" prints left after filtering are stale placeholder prices
+  (e.g. 0.50 two weeks before kickoff), not executable books.
+- Live order-book scans (paper `xvenue`, 46 matched games quoted on both venues): the best
+  combined cost of both sides after fees was **2.6-2.9c above $1** on every tick so far.
+
+### 5. Paper trading
+
+The paper trader runs all three strategies against live quotes. On the first ticks (overnight
+US time) it scanned 60 Kalshi markets closing in the window, 20 followed wallets and 46 matched
+games, and found nothing above threshold. That is the expected behavior given results 1-4.
+It needs at least 2 weeks of running (`albert paper run --prior 20`) before any comparison with
+the backtest means anything.
+
+### What this means for the $100 goal
+
+Nothing found so far supports "exponential growth". The honest summary:
+
+- **The insider/high-win-rate thesis fails** on this data: skill does not persist out of
+  sample, and copying it after a realistic delay loses money.
+- **Cross-venue arbitrage** between Kalshi and Polymarket US is priced out by fees most of
+  the time.
+- **The calibration edge is the only live candidate.** It is a few cents per contract on
+  short-horizon, non-sports markets, which is incompatible with small-bankroll exponential
+  growth: a 5-10% monthly return on $50 is a few dollars, and fee rounding takes a large share.
+- The best use of the $100 right now is paper trading until the calibration edge either holds
+  up for a few hundred live signals or disappears.
 
 ---
 

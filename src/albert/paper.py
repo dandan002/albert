@@ -92,7 +92,9 @@ class PaperState:
 class PaperTrader:
     def __init__(self, s: Settings, c: Clients, *, cfg: RiskConfig = RiskConfig(),
                  strategies: tuple[str, ...] = ("longshot", "wallet_follow", "xvenue"),
-                 horizon_hours: float = 2.0, top_k: int = 20, arb_min_profit: float = 0.01) -> None:
+                 horizon_hours: float = 2.0, top_k: int = 20, arb_min_profit: float = 0.01,
+                 prior: float = 200.0) -> None:
+        self.prior = prior
         self.s, self.c, self.cfg = s, c, cfg
         self.strategies = strategies
         self.horizon = horizon_hours
@@ -246,7 +248,7 @@ class PaperTrader:
                                           horizon_hours=self.horizon)
             if obs.height < 500:
                 raise RuntimeError(f"only {obs.height} calibration observations; ingest more history")
-            self._model = cal.CalibrationModel.fit(obs)
+            self._model = cal.CalibrationModel.fit(obs, prior=self.prior)
         return self._model
 
     def run_longshot(self, window_minutes: float = 30.0) -> int:
@@ -265,6 +267,8 @@ class PaperTrader:
                    and (r["volume"] or 0) >= 1000 and r["yes_bid"] and r["yes_ask"]
                    and 0 < r["yes_ask"] - r["yes_bid"] <= 0.10]
         fills = 0
+        scan = {"closing_in_window": len(rows), "eligible": len(markets), "quoted": 0,
+                "best_edge": None}
         for m in markets:
             if m["ticker"] in self._held():
                 continue
@@ -275,6 +279,9 @@ class PaperTrader:
             prob = float(self.model().predict(obs)["prob"][0])
             yes_edge = prob - q["yes_ask"]
             no_edge = (1 - prob) - (1 - q["yes_bid"])
+            scan["quoted"] += 1
+            best = round(max(yes_edge, no_edge), 4)
+            scan["best_edge"] = best if scan["best_edge"] is None else max(scan["best_edge"], best)
             if yes_edge >= no_edge:
                 side, price, p, avail = "yes", q["yes_ask"], prob, q["yes_ask_size"]
             else:
@@ -283,6 +290,7 @@ class PaperTrader:
                                     side=side, event_id=m["event_ticker"], price=price, prob=p,
                                     available=avail, fee_type=m["fee_type"],
                                     multiplier=m["fee_multiplier"], note=f"{m['category']} mid->{prob:.3f}")
+        self.log("scan", strategy="longshot", **scan)
         return fills
 
     # ---- strategy: wallet_follow --------------------------------------------------------------
@@ -302,6 +310,7 @@ class PaperTrader:
         self.state.wallet_poll_ts = _now().isoformat()
         seen = set(self.state.seen_trades)
         fills = 0
+        scan = {"wallets": edges.height, "new_buys": 0}
         for row in edges.iter_rows(named=True):
             for page in self.c.pm.recent_wallet_trades(row["wallet"], since):
                 for t in pm.trade_rows(page.payload):
@@ -310,7 +319,9 @@ class PaperTrader:
                         continue
                     seen.add(key)
                     self.state.seen_trades.append(key)
+                    scan["new_buys"] += 1
                     fills += self._follow_trade(t, row["shrunk_edge_pts"], row["wallet"])
+        self.log("scan", strategy="wallet_follow", since=since.isoformat(), **scan)
         return fills
 
     def _kalshi_ticker(self, intl_event_slug: str, outcome_index: int) -> str | None:

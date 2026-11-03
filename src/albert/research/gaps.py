@@ -17,20 +17,32 @@ from albert.fees import fee
 
 
 def gap_table(matches: pl.DataFrame, kalshi_candles: pl.DataFrame, pm_history: pl.DataFrame,
-              pm_markets: pl.DataFrame, *, half_spread: float = 0.01,
-              tolerance_minutes: float = 30.0, pm_venue: str = "pmus") -> pl.DataFrame:
+              pm_markets: pl.DataFrame, kalshi_markets: pl.DataFrame | None = None, *,
+              half_spread: float = 0.01, tolerance_minutes: float = 30.0,
+              pre_close_hours: float = 4.0, pm_venue: str = "pmus") -> pl.DataFrame:
+    """Gap observations, restricted to quiet pre-close periods.
+
+    In-play prices move faster than hourly candles can follow, and history keeps printing 0/1
+    after one venue resolves. Both create fake arbitrage, so we keep only observations at least
+    ``pre_close_hours`` before the Kalshi close and with unresolved Polymarket prices.
+    """
     tokens = pm_markets.select("condition_id", "token_ids")
     m = matches.join(tokens, left_on="pm_condition_id", right_on="condition_id").with_columns(
         pl.col("token_ids").list.get(pl.col("pm_outcome_index")).alias("token_id"))
     k = kalshi_candles.filter(pl.col("yes_ask_close").is_between(0.01, 0.99)
                               & pl.col("yes_bid_close").is_between(0.01, 0.99))
     pairs = k.join(m.select("kalshi_ticker", "token_id"), left_on="ticker",
-                   right_on="kalshi_ticker").sort("end_ts")
+                   right_on="kalshi_ticker")
+    if kalshi_markets is not None:
+        pairs = pairs.join(kalshi_markets.select("ticker", "close_time"), on="ticker").filter(
+            pl.col("end_ts") <= pl.col("close_time") - timedelta(hours=pre_close_hours)
+        ).drop("close_time")
+    pairs = pairs.sort("end_ts")
     j = pairs.join_asof(
         pm_history.sort("ts").select("token_id", pl.col("ts").alias("pm_ts"), pl.col("price").alias("pm_price")),
         left_on="end_ts", right_on="pm_ts", by="token_id", strategy="nearest",
         tolerance=timedelta(minutes=tolerance_minutes),
-    ).filter(pl.col("pm_price").is_not_null())
+    ).filter(pl.col("pm_price").is_between(0.02, 0.98))
     rows = []
     for r in j.iter_rows(named=True):
         ka, kb, p = r["yes_ask_close"], r["yes_bid_close"], r["pm_price"]

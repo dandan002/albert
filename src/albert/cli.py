@@ -169,7 +169,10 @@ def backtest_run(
     kelly: float = typer.Option(0.25, help="Fraction of full Kelly"),
     min_edge: float = typer.Option(0.03, help="Required edge per contract after fees"),
     max_bet: float = typer.Option(10.0, help="Max dollars per order"),
+    min_price: float = typer.Option(0.03, help="Skip contracts cheaper than this"),
+    max_price: float = typer.Option(0.97, help="Skip contracts dearer than this"),
     horizon: float = typer.Option(2.0, help="longshot: hours before close"),
+    prior: float = typer.Option(200.0, help="longshot: pseudo-observations at the market price"),
     delay: float = typer.Option(5.0, help="wallet_follow: minutes after the wallet's trade"),
     top_k: int = typer.Option(20, help="wallet_follow: wallets to copy"),
 ) -> None:
@@ -178,10 +181,11 @@ def backtest_run(
     from albert.risk import RiskConfig
 
     s, c = _clients()
-    cfg = RiskConfig(kelly_fraction=kelly, min_edge=min_edge, max_bet_dollars=max_bet)
+    cfg = RiskConfig(kelly_fraction=kelly, min_edge=min_edge, max_bet_dollars=max_bet,
+                     min_price=min_price, max_price=max_price)
     typer.echo(backtest(s, c, strategies=strategy, split=_day(split),
                         cash={"kalshi": kalshi_cash, "pmus": pmus_cash}, cfg=cfg,
-                        horizon_hours=horizon, delay_minutes=delay, top_k=top_k))
+                        horizon_hours=horizon, delay_minutes=delay, top_k=top_k, prior=prior))
 
 
 # ---- paper trading -------------------------------------------------------------------------------
@@ -209,6 +213,7 @@ def paper_run(
     interval: float = typer.Option(300.0, help="Seconds between ticks"),
     iterations: int = typer.Option(0, help="Number of ticks (0 = run until stopped)"),
     horizon: float = typer.Option(2.0, help="longshot: hours before close"),
+    prior: float = typer.Option(200.0, help="longshot: pseudo-observations at the market price"),
     kelly: float = typer.Option(0.25),
     min_edge: float = typer.Option(0.03),
     max_bet: float = typer.Option(10.0),
@@ -221,7 +226,8 @@ def paper_run(
     s, c = _clients()
     trader = PaperTrader(s, c, cfg=RiskConfig(kelly_fraction=kelly, min_edge=min_edge,
                                               max_bet_dollars=max_bet),
-                         strategies=tuple(strategy), horizon_hours=horizon, top_k=top_k)
+                         strategies=tuple(strategy), horizon_hours=horizon, top_k=top_k,
+                         prior=prior)
     run_loop(trader, interval_seconds=interval, iterations=iterations)
 
 
