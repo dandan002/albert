@@ -1,35 +1,10 @@
-import importlib
-
-import pytest
 from typer.testing import CliRunner
 
-
-runner = CliRunner()
-
-
-def _load_app():
-    try:
-        module = importlib.import_module("albert.cli")
-    except ModuleNotFoundError as exc:
-        pytest.fail(f"albert.cli is not importable: {exc}")
-    return module.app
+from albert import __version__
+from albert.cli import app
 
 
-def test_root_help_lists_phase_one_command_groups() -> None:
-    app = _load_app()
-
-    result = runner.invoke(app, ["--help"])
-
+def test_version_command() -> None:
+    result = CliRunner().invoke(app, ["version"])
     assert result.exit_code == 0
-    for command_name in ("ingest", "model", "backtest", "report"):
-        assert command_name in result.stdout
-
-
-def test_placeholder_status_commands_are_wired() -> None:
-    app = _load_app()
-
-    for command_name in ("ingest", "model", "backtest", "report"):
-        result = runner.invoke(app, [command_name, "status"])
-
-        assert result.exit_code == 0
-        assert "Phase 1 only wires command structure" in result.stdout
+    assert result.stdout.strip() == __version__

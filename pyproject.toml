@@ -4,16 +4,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "albert"
-version = "0.1.0"
+version = "0.2.0"
+description = "Prediction-market research and small-bankroll systematic trading"
 requires-python = ">=3.12"
 dependencies = [
     "typer>=0.25.0",
-    "pydantic>=2.13.3",
-    "pydantic-settings>=2.14.0",
-    "platformdirs>=4.9.6",
     "httpx>=0.28.1",
     "polars>=1.40.1",
     "pyarrow>=24.0.0",
+    "pydantic>=2.13.3",
 ]
 
 [project.optional-dependencies]

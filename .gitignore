@@ -42,3 +42,5 @@ ENV/
 # env
 .env
 .env.example
+# Albert local data
+data/

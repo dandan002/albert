@@ -1,87 +1,64 @@
-# Albert
+# Albert: Project
 
-## What This Is
+Restarted 2026-11-02. The previous BTC 15-minute / Deribit backtest was discarded. Its code is in
+git history before this restart.
 
-Albert is a Python research CLI for evaluating whether crypto derivatives data can predict and trade Kalshi 15-minute Bitcoin event contracts. It ingests Kalshi market data and Deribit BTC derivatives data, computes short-horizon probabilities, and backtests conservative trading rules before any live or paper trading work.
+## Goal
 
-The first milestone is not a trading bot. It is an evidence engine that can tell whether the proposed edge is positive after realistic market frictions.
+Find and exploit repeatable edges in **non-financial** prediction markets with a **$100** starting
+bankroll, and compound the bankroll through systematic small bets.
 
-## Core Value
+## Venues (decided 2026-11-03)
 
-Produce a reproducible, conservative backtest showing whether derivatives-implied Bitcoin probabilities create positive expected value on Kalshi after costs.
+| Venue | Role | Auth | Notes |
+|---|---|---|---|
+| Kalshi | trade | RSA-PSS | broad non-financial coverage; `category` on events |
+| Polymarket US | trade | Ed25519: `X-PM-Access-Key`, `X-PM-Timestamp`, `X-PM-Signature` over `{ts_ms}{METHOD}{path}` | public data at `gateway.polymarket.us/v1`, trading at `api.polymarket.us`; keys at polymarket.us/developer after KYC; 24/7 except Thu 06:00-08:00 ET maintenance |
+| Polymarket intl | data only | none | on-chain wallet signals; US geoblocked for trading |
 
-## Requirements
+Bankroll: about $50 on each trading venue.
 
-### Validated
+Polymarket US active markets sampled on 2026-11-03: 416 sports, 45 politics, 27 finance, 12
+culture (out of 500). It is mostly sports, so wallet signals from Polymarket intl must be matched
+to US markets. The shared slugs (e.g. NFL games) should make that easier than matching to Kalshi.
 
-- [x] Phase 1 validated cache/config/run-manifest foundations for DATA-04: raw and normalized cache path helpers, provenance-rich run manifests, deterministic config hashing, and local verification commands.
-- [x] Phase 2 validated Kalshi market data ingestion for DATA-01 and DATA-02: CLI discovery command, cursor-paginated trade retrieval, strict normalization with quality assessment, and schema-preserving Parquet outputs.
+### Fees (as of 2026-11-03; re-check before live trading)
 
-### Active
+- **Polymarket US taker:** `0.0695 × C × p × (1 − p)`. Table tennis uses 0.10. Banker's rounding to
+  $0.01. Maker rebates (tiers 2-4) and taker rebates are based on the prior month's volume.
+  Source: docs.polymarket.us/fees.
+- **Kalshi taker:** roughly `0.07 × C × p × (1 − p)`, rounded **up** per order. Verify against
+  Kalshi's current schedule.
 
-- [ ] Retrieve Deribit BTC futures/options data needed to estimate short-horizon terminal probabilities.
-- [ ] Retrieve Deribit BTC futures/options data needed to estimate short-horizon terminal probabilities.
-- [ ] Compute derivatives-implied probabilities for eligible Kalshi contracts before the simulated decision time.
-- [ ] Backtest trades using conservative fills, fees, liquidity assumptions, and explicit risk limits.
-- [ ] Report PnL, calibration, drawdown, turnover, exposure, and per-contract attribution.
+## Research questions
 
-### Out of Scope
+1. **Smart wallets:** do some Polymarket wallets have persistent, statistically significant edge
+   (not luck, and not just buying favorites)? Does following their trades stay profitable after
+   realistic delay and the Kalshi execution price?
+2. **Market inefficiencies:**
+   - Favorite-longshot bias by category and price bucket.
+   - Stale or thin markets.
+   - Kalshi vs Polymarket price gaps on the same event.
+   - Late-resolution drift.
+3. **Small-bankroll economics:** which strategies survive Kalshi's per-order fee rounding at $1-5
+   sizes? Maker (resting) orders vs taker; few high-edge bets vs many small ones.
 
-- Live Kalshi trading - v1 must prove an offline edge before introducing order placement risk.
-- Paper trading - useful after v1, but not required to establish the research loop.
-- Polymarket integration - deferred until Kalshi plus Deribit produces a validated baseline.
-- Multi-exchange derivatives aggregation - deferred to avoid widening ingestion and data-quality risk before the core signal is tested.
-- Production deployment, alerting, and hosted dashboards - v1 is a local research CLI.
+## Sizing principles
 
-## Context
+- Fractional Kelly (start at <= 0.25 Kelly) on an edge estimate that has been shrunk toward zero.
+- Hard caps: per-bet stake, per-event exposure, daily loss, and drawdown kill switch.
+- The first $100 mainly buys evidence. Scale only after live results confirm the backtested edge.
 
-The initial strategy hypothesis is that short-dated crypto derivatives prices contain enough information about near-term Bitcoin movement to price Kalshi's 15-minute Bitcoin contracts better than the market. The first user-facing artifact should be a command-line research workflow that can fetch/cache data, run backtests, and emit tables and plots.
+## Data available (verified against live APIs, 2026-11-02)
 
-Phase 1 is complete. The repository now has an installable Python package, Typer CLI skeleton, deterministic config loading, safe cache path helpers, provenance manifest models, reusable fixtures, and Makefile verification commands. Phase 2 is complete — Kalshi market data ingestion, normalization, cursor-paginated trade retrieval, and schema-preserving Parquet writes are all implemented and verified. Phase 3 starts Deribit derivatives data ingestion.
+| Source | Endpoint | Gives |
+|---|---|---|
+| Kalshi | `/trade-api/v2/events`, `/markets` | `category`, `series_ticker`, market metadata, `result` |
+| Kalshi | `/markets/trades` | anonymous trades: `count_fp`, `yes_price_dollars`, `taker_side`, `created_time` |
+| Kalshi | `/markets/{t}/candlesticks`, `/historical/*` | bid/ask history; older data on historical endpoints |
+| Polymarket | `gamma-api /markets`, `/events` | market metadata, tags, resolution |
+| Polymarket | `data-api /v2/trades`, `/v2/activity` | **per-wallet** trades (`proxy_wallet`, `side`, `price`, `size`, `timestamp`, `condition_id`) |
+| Polymarket | `data-api /v2/positions?user=` | per-wallet positions with realized and unrealized PnL |
+| Polymarket | `data-api /v2/leaderboard` | ranked wallets by PnL / volume (cursor pagination) |
 
-Relevant ecosystem facts as of 2026-04-28:
-
-- Kalshi exposes market discovery, trades, order books, candlesticks, and historical endpoints through its API documentation.
-- Kalshi partitions older exchange data into historical endpoints for markets, market candlesticks, trades, and orders.
-- Deribit exposes public BTC futures/options market data, including OHLC chart data and instrument trade history.
-- Polymarket has public Gamma/Data APIs and CLOB APIs, but Polymarket is not part of v1 implementation.
-
-## Constraints
-
-- **Strategy scope**: Start with Kalshi plus Deribit only - keeps v1 focused on proving the derivatives-implied probability signal.
-- **Backtest horizon**: Target the last 12 months - provides more observations than the live-data window and requires deliberate historical-data stitching.
-- **Execution realism**: Use conservative fills at available bid/ask with fees and liquidity constraints - mid-price backtests are too optimistic for thin binary markets.
-- **Trading safety**: No live or paper trading in v1 - avoid execution risk until the offline evidence is strong.
-- **Interface**: Build a Python research CLI first - lower overhead and better fit for reproducible research than an early dashboard.
-- **Data provenance**: Every run must be traceable to source endpoints, timestamps, and cached raw inputs - prevents accidental look-ahead and irreproducible results.
-
-## Key Decisions
-
-| Decision | Rationale | Outcome |
-|----------|-----------|---------|
-| Build a Python research CLI first | Fastest path to reproducible ingestion, modeling, backtesting, and reports | - Pending |
-| Scope v1 to Kalshi plus Deribit | Focuses on the core signal before broader cross-market complexity | - Pending |
-| Defer Polymarket to v2 | Polymarket is useful for comparison later but not needed to test the first hypothesis | - Pending |
-| Use the last 12 months for initial backtests | More observations than a short live-data window, with explicit historical stitching | - Pending |
-| Simulate conservative bid/ask fills with fees and liquidity checks | Reduces the chance of approving a strategy that only works under optimistic execution | - Pending |
-| Require positive EV after costs as the v1 success bar | Aligns model work with tradable strategy evidence | - Pending |
-
-## Evolution
-
-This document evolves at phase transitions and milestone boundaries.
-
-**After each phase transition** (via `/gsd-transition`):
-1. Requirements invalidated? Move to Out of Scope with reason
-2. Requirements validated? Move to Validated with phase reference
-3. New requirements emerged? Add to Active
-4. Decisions to log? Add to Key Decisions
-5. "What This Is" still accurate? Update if drifted
-
-**After each milestone** (via `/gsd-complete-milestone`):
-1. Full review of all sections
-2. Core Value check - still the right priority?
-3. Audit Out of Scope - reasons still valid?
-4. Update Context with current state
-
----
-*Last updated: 2026-04-28 after Phase 2 completion*
+Note: Polymarket Data API v1 is retired. Use v2 (responses wrapped in `{"data": [...]}`).

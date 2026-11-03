@@ -1,10 +1,15 @@
 import typer
 
-from albert.commands import backtest, ingest, model, report
+app = typer.Typer(help="Albert: prediction-market research and systematic trading.")
 
 
-app = typer.Typer(help="Albert research CLI")
-app.add_typer(ingest.app, name="ingest")
-app.add_typer(model.app, name="model")
-app.add_typer(backtest.app, name="backtest")
-app.add_typer(report.app, name="report")
+@app.callback()
+def main() -> None:
+    """Albert research CLI."""
+
+
+@app.command()
+def version() -> None:
+    from albert import __version__
+
+    typer.echo(__version__)
