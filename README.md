@@ -121,6 +121,8 @@ albert paper status
 | `albert research gaps` | Kalshi vs Polymarket price gaps and locked-in opportunities on exact matches. |
 | `albert research literature` | Re-tests five published effects on our data: maker vs taker returns, sum-of-legs arbitrage, calibration slope by category (plus a full-population sports check), rolling-minimum mean reversion, pre-close move reversal. |
 | `albert backtest run` | Runs `longshot`, `slope` and/or `wallet_follow` through the backtester. `--anchor scheduled` (default) places Kalshi decisions at scheduled expiry − horizon; `--anchor close` reproduces the old leaky timing for comparison. `--universe population` restricts Kalshi to the volume-blind game sample. Writes a report with metrics, Monte Carlo, fills and an equity curve. |
+| `albert ingest weather` | NWS CLI reports, ASOS observations and NBM guidance (IEM archive) for every Kalshi temperature city. |
+| `albert backtest weather` | NWS model vs Kalshi daily-high brackets: calibration vs market per decision slot, model bets through the backtester. |
 | `albert backtest maker` | Resting bids on Kalshi favorites, filled only by later real trades into our price (`--horizon`, `--ttl`, `--size`, `--cash`, `--category`). |
 | `albert paper reset/run/status` | Paper trading account (see [Paper trading](#5-paper-trading-paperpy)). Default strategy: `maker`. |
 | `albert compact-raw` | Compresses legacy plain-JSON raw cache files to `.json.zst` (lossless, verified). |
@@ -557,6 +559,51 @@ Rule change from live testing: ticker start times (`ticker_start`, US Eastern, v
 ~80k games) now cap every order at 15 minutes before the game. A fixed 20h TTL let orders
 rest into cricket and KBO games, whose scheduled expiry is 4-8h after the start.
 
+### 6. Weather: NWS data vs Kalshi daily-high brackets (`albert backtest weather`)
+
+Kalshi's `KXHIGH*` markets (24 cities, six 2°F brackets per city and day) settle on the
+NWS Daily Climate Report (CLI). They trade until about 1am ET the next day, so most of the
+day's temperature is observed while they are open. Data: CLI reports, ASOS observations
+and NBM forecast guidance from the IEM archive of NWS products (`albert ingest weather`).
+`api.weather.gov` keeps about a week of observations and no past forecasts, so it is the
+live source only. There are hourly Kalshi prices for all 10,670 legs (1,783 events, Aug 16 -
+Oct 30, `ingest kalshi-detail --all-legs`).
+
+**Data checks.** Bracket outcomes recomputed from the CLI match Kalshi's settlement on
+99.98% of legs (2 mismatches, one Miami day). The CLI day runs on local *standard* time.
+The CLI high is at or above the max hourly observation 99.8% of the time (+0°F on 38% of
+days, +1°F on 51%, +2°F on 9%). NBM's max-temperature error is about 2.4°F at 1-2 days,
+with fat tails: regional busts of about 10°F, e.g. the whole Northeast on Oct 17.
+
+**Model** (`research/weather.py`). The high is max(observed max so far + U, rest-of-day
+max). U is the CLI-minus-observed offset. The rest-of-day max is centred on the NBM
+forecast, floored at the latest observation, and uses a fat-tailed error with per-station
+bias, all fit on days before Oct 1. Probabilities are Platt-recalibrated on training legs.
+Only NBM runs available at the decision time (runtime + 2h) and earlier observations are
+used. Decision slots are 3pm the day before, and 10am, 1pm and 4pm local on the day.
+
+| Slot | Brier: model | Brier: market mid | Model bets (flat, edge ≥ 5c) | ROI per $ | t (by date) |
+|---|---|---|---|---|---|
+| d-1 15h | 0.127 | **0.097** | 676 | −16.8% | −5.1 |
+| d 10h | 0.123 | **0.083** | 682 | −26.5% | −5.8 |
+| d 13h | 0.112 | **0.068** | 620 | −20.2% | −3.2 |
+| d 16h | 0.070 | **0.024** | 460 | −35.6% | −4.8 |
+
+$50 bankroll: **$19.97**, with the drawdown stop hit on Oct 5. Adding the model's
+probability to the market price in a logistic fit makes October predictions *worse* at
+every slot, so the NWS model adds no information the market lacks.
+
+**Already-decided brackets are priced correctly.** Over 34,539 leg-hours where the observed
+max was already at least 1°F above a bracket's top, the average YES bid was 0.02c (0.06% of
+hours ever bid ≥ 2c). "X or above" brackets already reached were offered at $1.00 every
+time. At hourly resolution the market absorbs observations immediately.
+
+**Conclusion:** Kalshi weather traders already use more than one NBM run plus live
+observations. A slower, public NWS feed is not an edge. What remains untested: sub-minute
+latency on new observations (needs a live 1-5 minute feed and order-book polling; this is
+competitive and practitioners report bots already doing it), and a volume-blind maker test
+on weather brackets.
+
 ### What this means for the $100 goal
 
 Nothing found so far supports "exponential growth". The honest summary:
@@ -569,6 +616,9 @@ Nothing found so far supports "exponential growth". The honest summary:
 - **Being a maker loses less than taking, but has no positive edge on major-league
   games** once the sample is volume-blind (−1.7% per filled dollar on 1,179 fills). The
   apparent +3-5% premium came from samples that cut out the busiest (upset-heavy) games.
+- **NWS weather data does not beat Kalshi weather prices.** The market is better calibrated
+  than a calibrated NBM + observations model at every decision time, and already-decided
+  brackets are priced at 0c/100c.
 - Do not fund anything. The maker paper trader keeps running as a live check of the fill
   model (live fill rates vs simulated), not as a money-maker.
 

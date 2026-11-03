@@ -61,6 +61,8 @@ Each phase ends with a **live smoke run that produces non-empty, sanity-checked 
       backoff, no live raw recording), Dockerfile + deploy/gcp.md. Started locally 2026-11-03.
 - [x] Holdout (2,978 new markets) and volume-blind population test (2,357 games, windowed
       trades): maker 24h/20h = −1.7% per filled $ (t = −0.8). No edge on major leagues.
+- [x] Weather (NWS/IEM): model loses to the market at every slot; decided brackets priced
+      correctly. No edge at hourly resolution.
 - [ ] Volume-blind maker test for Weather and minor sports (needs candles + windowed trades
       for every leg of each event).
 - [ ] Move the paper loop to a GCE VM (deploy/gcp.md).
