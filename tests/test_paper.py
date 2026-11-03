@@ -56,3 +56,87 @@ def test_drawdown_halts_new_trading(trader, monkeypatch):
 def test_requires_reset(tmp_path):
     with pytest.raises(RuntimeError):
         PaperTrader(replace(Settings(), data_dir=tmp_path / "none"), c=None, strategies=())
+
+
+def _order(trader, *, contracts=10, bid=0.61, improved=True, hours_left=5.0, placed_minutes_ago=30):
+    from datetime import UTC, datetime, timedelta
+
+    from albert.fees import kalshi_fee
+    from albert.paper import RestingOrder
+
+    now = datetime.now(UTC)
+    reserve = contracts * bid + kalshi_fee(contracts, bid, maker=True)
+    o = RestingOrder("K1", "E1", "Sports", "yes", bid, contracts, improved, reserve,
+                     (now - timedelta(minutes=placed_minutes_ago)).isoformat(),
+                     (now + timedelta(hours=hours_left)).isoformat(),
+                     (now - timedelta(minutes=placed_minutes_ago)).isoformat(), "quadratic", 1.0)
+    trader.state.cash["kalshi"] -= reserve
+    trader.state.orders.append(o)
+    return o
+
+
+def _trades(*rows):
+    from datetime import UTC, datetime, timedelta
+
+    import polars as pl
+
+    from albert.venues import kalshi as k
+
+    now = datetime.now(UTC)
+    return pl.DataFrame([{"trade_id": str(i), "ticker": "K1", "created_time": now - timedelta(minutes=m),
+                          "count": n, "yes_price": px, "taker_side": side}
+                         for i, (m, px, side, n) in enumerate(rows)], schema=k.TRADE_SCHEMA)
+
+
+def test_maker_order_fills_only_from_trades_into_our_price(trader, monkeypatch):
+    equity0 = trader.state.equity()
+    _order(trader, contracts=10)
+    assert trader.state.equity() == pytest.approx(equity0)  # reserved collateral counts as equity
+    monkeypatch.setattr(trader, "_new_trades", lambda ticker, after: _trades(
+        (20, 0.61, "yes", 50.0),   # taker bought YES: not a fill for our YES bid
+        (10, 0.61, "no", 4.0),     # taker sold YES at our price: fill 4
+    ))
+    assert trader.update_orders() == 1
+    o, pos = trader.state.orders[0], trader.state.positions[0]
+    assert (o.filled, pos.contracts, pos.price, pos.strategy) == (4, 4, 0.61, "maker")
+    assert trader.state.equity() == pytest.approx(equity0)  # filling moves value, not equity
+    # Later polls only see newer trades; the same prints are not counted twice.
+    monkeypatch.setattr(trader, "_new_trades", lambda ticker, after: _trades()[:0])
+    assert trader.update_orders() == 0 and trader.state.orders[0].filled == 4
+
+
+def test_maker_order_ttl_releases_unfilled_collateral(trader, monkeypatch):
+    _order(trader, contracts=10, hours_left=-0.1)
+    monkeypatch.setattr(trader, "_new_trades", lambda ticker, after: _trades(
+        (10, 0.60, "no", 3.0),  # before the cancel time: fills
+        (2, 0.55, "no", 9.0),   # after the cancel time: ignored
+    ))
+    trader.update_orders()
+    assert trader.state.orders == []
+    pos = trader.state.positions[0]
+    assert pos.contracts == 3
+    assert trader.state.cash["kalshi"] == pytest.approx(50 - pos.cost)
+
+
+def test_halt_cancels_resting_orders(trader):
+    _order(trader)
+    trader.state.peak_equity = 300.0
+    trader.strategies = ("maker",)
+    counts = trader.tick()
+    assert counts["cancelled"] == 1 and trader.state.orders == []
+    assert trader.state.cash["kalshi"] == pytest.approx(50.0)
+
+
+def test_old_state_files_without_orders_still_load(trader):
+    raw = json.loads(trader.state_path.read_text())
+    raw.pop("orders", None)
+    raw.pop("maker_scan_ts", None)
+    trader.state_path.write_text(json.dumps(raw))
+    assert PaperState.load(trader.state_path).orders == []
+
+
+def test_game_key_groups_markets_on_the_same_match():
+    from albert.paper import _game_key
+
+    assert _game_key("KXCS2SPREAD-26NOV040430PRVMOUZ") == _game_key("KXCS2GAME-26NOV040430PRVMOUZ")
+    assert _game_key("KXHIGHNY-26NOV04") != _game_key("KXHIGHCHI-26NOV05")

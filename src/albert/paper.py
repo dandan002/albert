@@ -13,9 +13,15 @@ Strategies:
   moneyline, buy the same outcome on the cheaper of Kalshi or Polymarket US.
 * ``xvenue``: matched Kalshi / Polymarket US moneylines. Buy both sides when the combined
   cost plus fees is below $1.
+* ``maker``: resting bids on Kalshi Weather/Sports favorites posted ``maker_horizon`` hours
+  before scheduled expiry and cancelled ``maker_ttl`` hours later. Uses the same order and fill
+  rules as ``backtest maker``: a paper order fills only when a later *real* trade sells into
+  our price (at it if we improved the best bid, through it if we joined the queue).
+  Collateral is reserved while an order rests, as on Kalshi.
 """
 
 import json
+import signal
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -24,9 +30,10 @@ from typing import Any
 
 import polars as pl
 
+from albert.backtest import maker as mk
 from albert.categories import kalshi_is_non_financial
 from albert.config import Settings
-from albert.fees import fee
+from albert.fees import fee, kalshi_fee
 from albert.http import HttpError
 from albert.ingest import Clients, kalshi_series
 from albert.matching import kalshi_ticker_for, match_pmus_pm
@@ -59,6 +66,25 @@ class Position:
 
 
 @dataclass
+class RestingOrder:
+    ticker: str
+    event_id: str
+    category: str
+    side: str
+    bid: float
+    contracts: int          # order size
+    improved: bool          # True: we set a new best bid (first in queue)
+    reserved: float         # collateral still held for this order
+    placed_at: str
+    cancel_at: str
+    last_trade_ts: str      # fills are counted from trades strictly after this time
+    fee_type: str | None = None
+    fee_multiplier: float | None = None
+    filled: int = 0
+    fee_paid: float = 0.0
+
+
+@dataclass
 class PaperState:
     cash: dict[str, float]
     positions: list[Position] = field(default_factory=list)
@@ -70,11 +96,14 @@ class PaperState:
     seen_trades: list[str] = field(default_factory=list)
     realized_pnl: float = 0.0
     settled: int = 0
+    orders: list[RestingOrder] = field(default_factory=list)
+    maker_scan_ts: str | None = None
 
     @classmethod
     def load(cls, path: Path) -> "PaperState":
         raw = json.loads(path.read_text())
         raw["positions"] = [Position(**p) for p in raw.get("positions", [])]
+        raw["orders"] = [RestingOrder(**o) for o in raw.get("orders", [])]
         return cls(**raw)
 
     def save(self, path: Path) -> None:
@@ -86,15 +115,24 @@ class PaperState:
         tmp.replace(path)
 
     def equity(self) -> float:
-        return sum(self.cash.values()) + sum(p.cost for p in self.positions)
+        """Cash + open positions at cost + collateral reserved by resting orders."""
+        return (sum(self.cash.values()) + sum(p.cost for p in self.positions)
+                + sum(o.reserved for o in self.orders))
 
 
 class PaperTrader:
     def __init__(self, s: Settings, c: Clients, *, cfg: RiskConfig = RiskConfig(),
                  strategies: tuple[str, ...] = ("longshot", "wallet_follow", "xvenue"),
                  horizon_hours: float = 2.0, top_k: int = 20, arb_min_profit: float = 0.01,
-                 prior: float = 200.0) -> None:
+                 prior: float = 200.0, maker_horizon: float = 24.0, maker_ttl: float = 20.0,
+                 maker_size_dollars: float = 10.0,
+                 maker_categories: tuple[str, ...] = ("Climate and Weather", "Sports"),
+                 maker_scan_minutes: float = 10.0) -> None:
         self.prior = prior
+        self.maker_horizon, self.maker_ttl = maker_horizon, maker_ttl
+        self.maker_size_dollars = maker_size_dollars
+        self.maker_categories = maker_categories
+        self.maker_scan_minutes = maker_scan_minutes
         self.s, self.c, self.cfg = s, c, cfg
         self.strategies = strategies
         self.horizon = horizon_hours
@@ -136,7 +174,10 @@ class PaperTrader:
             if not self.state.halted:
                 self.log("halted", equity=eq, peak=self.state.peak_equity)
             self.state.halted = True
-        if not self.state.halted and eq >= self.state.day_start_equity * (1 - self.cfg.daily_loss_fraction):
+        daily_stop = eq < self.state.day_start_equity * (1 - self.cfg.daily_loss_fraction)
+        if self.state.halted or daily_stop:
+            counts["cancelled"] = self.cancel_all_orders("halted" if self.state.halted else "daily_loss")
+        if not self.state.halted and not daily_stop:
             for name in self.strategies:
                 try:
                     counts[name] = getattr(self, f"run_{name}")()
@@ -147,10 +188,11 @@ class PaperTrader:
         return counts
 
     def _held(self) -> set[str]:
-        return {p.market_id for p in self.state.positions}
+        return {p.market_id for p in self.state.positions} | {o.ticker for o in self.state.orders}
 
     def _event_exposure(self, event_id: str) -> float:
-        return sum(p.cost for p in self.state.positions if p.event_id == event_id)
+        return (sum(p.cost for p in self.state.positions if p.event_id == event_id)
+                + sum(o.reserved for o in self.state.orders if o.event_id == event_id))
 
     def _try_fill(self, *, strategy: str, venue: str, market_id: str, side: str, event_id: str,
                   price: float, prob: float, available: float | None, note: str = "",
@@ -291,6 +333,132 @@ class PaperTrader:
                                     available=avail, fee_type=m["fee_type"],
                                     multiplier=m["fee_multiplier"], note=f"{m['category']} mid->{prob:.3f}")
         self.log("scan", strategy="longshot", **scan)
+        return fills
+
+    # ---- strategy: maker ----------------------------------------------------------------------
+    def cancel_all_orders(self, reason: str) -> int:
+        n = len(self.state.orders)
+        for o in self.state.orders:
+            self.state.cash["kalshi"] += o.reserved
+            self.log("cancel", strategy="maker", market_id=o.ticker, reason=reason, filled=o.filled,
+                     released=round(o.reserved, 4))
+        self.state.orders = []
+        return n
+
+    def _new_trades(self, ticker: str, after: datetime) -> pl.DataFrame:
+        rows: list[dict] = []
+        for page in self.c.kalshi._cursor_pages(
+                "/markets/trades", {"ticker": ticker, "limit": 1000, "min_ts": int(after.timestamp())},
+                "trades", cache=False):
+            rows.extend(k.trade_rows(page.payload))
+        return pl.DataFrame(rows, schema=k.TRADE_SCHEMA).filter(pl.col("created_time") > after)
+
+    def update_orders(self) -> int:
+        """Apply real trades since the last check to each resting order; cancel expired ones."""
+        now, fills, keep = _now(), 0, []
+        for o in self.state.orders:
+            after = datetime.fromisoformat(o.last_trade_ts)
+            cancel_at = datetime.fromisoformat(o.cancel_at)
+            try:
+                trades = self._new_trades(o.ticker, after)
+            except HttpError as error:
+                self.log("strategy_error", strategy="maker", market_id=o.ticker, error=str(error))
+                keep.append(o)
+                continue
+            if not trades.is_empty():
+                frame = pl.DataFrame([{
+                    "ticker": o.ticker, "event_ticker": o.event_id, "category": o.category,
+                    "decision_ts": after, "cancel_ts": min(cancel_at, now), "resolve_ts": cancel_at,
+                    "side": o.side, "bid": o.bid, "ask": None, "improved": o.improved, "payoff": None,
+                    "fee_type": o.fee_type, "fee_multiplier": o.fee_multiplier}], schema=mk.ORDER_SCHEMA)
+                got = int(mk.simulate_fills(frame, trades, size=o.contracts - o.filled)["filled"][0])
+                o.last_trade_ts = trades["created_time"].max().isoformat()
+                if got:
+                    total_fee = kalshi_fee(o.filled + got, o.bid, maker=True,
+                                           fee_type=o.fee_type or "quadratic", multiplier=o.fee_multiplier)
+                    fee_now = total_fee - o.fee_paid
+                    cost = got * o.bid + fee_now
+                    o.filled += got
+                    o.fee_paid = total_fee
+                    o.reserved = max(o.reserved - cost, 0.0)
+                    pos = Position("maker", "kalshi", o.ticker, o.side, o.event_id, got, o.bid, fee_now,
+                                   cost, o.bid, now.isoformat(),
+                                   f"{o.category} {'improved' if o.improved else 'joined'} fill {o.filled}/{o.contracts}")
+                    self.state.positions.append(pos)
+                    self.log("fill", **asdict(pos))
+                    fills += 1
+            if o.filled >= o.contracts or now >= cancel_at:
+                self.state.cash["kalshi"] += o.reserved
+                self.log("cancel", strategy="maker", market_id=o.ticker,
+                         reason="filled" if o.filled >= o.contracts else "ttl", filled=o.filled,
+                         released=round(o.reserved, 4))
+                continue
+            keep.append(o)
+        self.state.orders = keep
+        return fills
+
+    def place_orders(self) -> int:
+        now = _now()
+        if self._series is None:
+            self._series = kalshi_series(self.s, self.c)
+        target = now + timedelta(hours=self.maker_horizon)
+        window = timedelta(minutes=max(self.maker_scan_minutes, 15.0))
+        rows: list[dict] = []
+        # The API filters on close_time only. Open game markets carry close_time = the backstop
+        # latest_expiration_time (~2 days after the game) while weather closes before its
+        # scheduled expiry, so query wide and filter on expected_expiration_time locally.
+        for page in self.c.kalshi._cursor_pages("/markets", {
+                "status": "open", "mve_filter": "exclude", "limit": 1000,
+                "min_close_ts": int(now.timestamp()),
+                "max_close_ts": int((target + window + timedelta(days=3)).timestamp())},
+                "markets", cache=False):
+            rows.extend(k.market_rows(page.payload, self._series, "live"))
+        busy_events = ({_game_key(p.event_id) for p in self.state.positions}
+                       | {_game_key(o.event_id) for o in self.state.orders})
+        cands = [r for r in rows if r["category"] in self.maker_categories
+                 and r["expected_expiration_time"] is not None
+                 and abs(r["expected_expiration_time"] - target) <= window
+                 and r["ticker"] not in self._held() and _game_key(r["event_ticker"]) not in busy_events]
+        scan = {"open_in_window": len(rows), "candidates": len(cands), "quoted": 0, "placed": 0}
+        for m in cands:
+            q = self.kalshi_quote(m["ticker"])
+            if not q:
+                continue
+            scan["quoted"] += 1
+            if _game_key(m["event_ticker"]) in busy_events:
+                continue  # one order per game: both legs, spreads and totals are correlated bets
+            rule = mk.quote_order(q["yes_bid"], q["yes_ask"])
+            if rule is None:
+                continue
+            # Same sizing as backtest maker: 5% of free Kalshi cash, capped per order.
+            cash = self.state.cash["kalshi"]
+            budget = min(self.cfg.max_bet_fraction * cash, self.maker_size_dollars)
+            n = int(budget // (rule["bid"] * 1.02))
+            reserve = n * rule["bid"] + kalshi_fee(n, rule["bid"], maker=True,
+                                                   fee_type=m["fee_type"] or "quadratic",
+                                                   multiplier=m["fee_multiplier"]) if n else 0.0
+            if n < 1 or reserve > cash:
+                self.log("skip", strategy="maker", market_id=m["ticker"], reason="insufficient_cash"
+                         if n >= 1 else "below_min_size", bid=rule["bid"])
+                continue
+            cancel_at = min(now + timedelta(hours=self.maker_ttl), m["close_time"])
+            o = RestingOrder(m["ticker"], m["event_ticker"], m["category"], rule["side"], rule["bid"], n,
+                             rule["improved"], reserve, now.isoformat(), cancel_at.isoformat(),
+                             now.isoformat(), m["fee_type"], m["fee_multiplier"])
+            self.state.cash["kalshi"] -= reserve
+            self.state.orders.append(o)
+            busy_events.add(_game_key(m["event_ticker"]))
+            self.log("order", **asdict(o))
+            scan["placed"] += 1
+        self.log("scan", strategy="maker", **scan)
+        return scan["placed"]
+
+    def run_maker(self) -> int:
+        fills = self.update_orders()
+        last = self.state.maker_scan_ts
+        if last is None or _now() - datetime.fromisoformat(last) >= timedelta(minutes=self.maker_scan_minutes):
+            self.place_orders()
+            self.state.maker_scan_ts = _now().isoformat()
         return fills
 
     # ---- strategy: wallet_follow --------------------------------------------------------------
@@ -439,27 +607,69 @@ class PaperTrader:
 
 
 def run_loop(trader: PaperTrader, *, interval_seconds: float, iterations: int) -> None:
-    n = 0
-    while iterations <= 0 or n < iterations:
+    """Tick until stopped. Built to run as a service (e.g. a container on a VM):
+
+    * SIGTERM/SIGINT finish the current tick, save state and exit cleanly;
+    * an unexpected error in one tick is logged to the ledger and retried with backoff
+      instead of killing the process;
+    * ``data/paper/heartbeat.json`` is rewritten after every tick for health checks.
+    """
+    stop = {"flag": False}
+
+    def _stop(signum, frame):  # noqa: ARG001
+        stop["flag"] = True
+        print(f"[{_now():%Y-%m-%d %H:%M:%S}] signal {signum}: stopping after this tick", flush=True)
+
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(sig, _stop)
+    heartbeat = trader.s.paper_dir / "heartbeat.json"
+    n, failures = 0, 0
+    while not stop["flag"] and (iterations <= 0 or n < iterations):
         n += 1
-        counts = trader.tick()
+        try:
+            counts = trader.tick()
+            failures = 0
+        except Exception as error:  # keep the service alive; the ledger records what happened
+            failures += 1
+            trader.log("tick_error", error=repr(error), consecutive=failures)
+            counts = {"error": repr(error)[:200]}
         st = trader.state
-        print(f"[{_now():%Y-%m-%d %H:%M:%S}] tick {n}: {counts} equity={st.equity():.2f} "
-              f"cash={ {k_: round(v, 2) for k_, v in st.cash.items()} } open={len(st.positions)}",
-              flush=True)
-        if iterations <= 0 or n < iterations:
-            time.sleep(interval_seconds)
+        line = {"ts": _now().isoformat(), "tick": n, "counts": counts, "equity": round(st.equity(), 4),
+                "cash": {k_: round(v, 4) for k_, v in st.cash.items()}, "positions": len(st.positions),
+                "orders": len(st.orders), "halted": st.halted}
+        print(json.dumps(line, default=str), flush=True)
+        heartbeat.parent.mkdir(parents=True, exist_ok=True)
+        tmp = heartbeat.with_suffix(".tmp")
+        tmp.write_text(json.dumps(line, default=str))
+        tmp.replace(heartbeat)
+        if stop["flag"] or (iterations > 0 and n >= iterations):
+            break
+        wait = interval_seconds * min(2 ** failures, 16)
+        deadline = time.monotonic() + wait
+        while not stop["flag"] and time.monotonic() < deadline:
+            time.sleep(min(1.0, deadline - time.monotonic()))
+    trader.state.save(trader.state_path)
 
 
 def status(s: Settings) -> str:
     st = PaperState.load(s.paper_dir / "state.json")
     lines = [f"equity {st.equity():.2f} (peak {st.peak_equity:.2f}) realized_pnl {st.realized_pnl:+.2f} "
              f"settled {st.settled} halted={st.halted}",
-             f"cash {st.cash}", f"open positions: {len(st.positions)}"]
+             f"cash {st.cash}", f"open positions: {len(st.positions)}",
+             f"resting orders: {len(st.orders)} (reserved {sum(o.reserved for o in st.orders):.2f})"]
+    for o in st.orders:
+        lines.append(f"  order {o.placed_at[:16]} {o.ticker} {o.side} bid {o.bid:.2f} "
+                     f"{o.filled}/{o.contracts} until {o.cancel_at[:16]}")
     for p in st.positions:
         lines.append(f"  {p.opened_at[:16]} {p.strategy:13} {p.venue:6} {p.market_id} {p.side} "
                      f"x{p.contracts} @ {p.price:.3f} cost {p.cost:.2f} p={p.prob:.3f}")
     return "\n".join(lines)
+
+
+def _game_key(event_ticker: str) -> str:
+    """``KXCS2SPREAD-26NOV040430PRVMOUZ`` and ``KXCS2GAME-26NOV040430PRVMOUZ`` are one match:
+    the part after the series prefix identifies the underlying game/date/place."""
+    return event_ticker.split("-", 1)[1] if "-" in event_ticker else event_ticker
 
 
 def _now() -> datetime:

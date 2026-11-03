@@ -91,7 +91,7 @@ class Fetched:
     url: str
     params: dict[str, Any]
     fetched_at: datetime
-    raw_path: Path
+    raw_path: Path | None   # None for live responses that were not recorded
     payload: Any
     from_cache: bool
 
@@ -112,7 +112,9 @@ class CachedClient:
         timeout: float = 30.0,
         transport: httpx.BaseTransport | None = None,
         sleep=time.sleep,
+        record_live: bool = True,
     ) -> None:
+        self.record_live = record_live
         self.venue = venue
         self.base_url = base_url.rstrip("/")
         self.raw_dir = raw_dir / venue
@@ -147,6 +149,8 @@ class CachedClient:
                 )
         payload = self._request(url, params)
         fetched_at = datetime.now(UTC)
+        if not cache and not self.record_live:
+            return Fetched(url, params, fetched_at, None, payload, from_cache=False)
         name = key if cache else f"{key}-{fetched_at.strftime('%Y%m%dT%H%M%S%fZ')}"
         raw_path = self.raw_dir / f"{name}{RAW_SUFFIX}"
         record = {

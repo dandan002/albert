@@ -16,6 +16,9 @@ class Settings:
     pm_gamma_base: str = "https://gamma-api.polymarket.com"
     pm_data_base: str = "https://data-api.polymarket.com/v2"
     pmus_base: str = "https://gateway.polymarket.us/v1"
+    # Save live (uncached) responses too. Off by default: a long-running paper/live loop would
+    # write hundreds of MB a day, and its decisions are already in the ledger.
+    record_live: bool = field(default_factory=lambda: os.environ.get("ALBERT_RECORD_LIVE", "0") == "1")
 
     @property
     def raw_dir(self) -> Path:

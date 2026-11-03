@@ -22,14 +22,20 @@ class Clients:
     pmus: pmus.PolymarketUS
 
     @classmethod
-    def build(cls, s: Settings) -> "Clients":
+    def build(cls, s: Settings, *, record_live: bool = True) -> "Clients":
+        """``record_live=False`` skips saving uncached (live) responses; use it for long-running
+        loops. Research ingests keep the default so their manifests point at real files."""
         return cls(
-            kalshi=k.Kalshi(CachedClient("kalshi", s.kalshi_base, s.raw_dir, min_interval=0.08)),
+            kalshi=k.Kalshi(CachedClient("kalshi", s.kalshi_base, s.raw_dir, min_interval=0.08,
+                                           record_live=record_live)),
             pm=pm.Polymarket(
-                CachedClient("pm_gamma", s.pm_gamma_base, s.raw_dir, min_interval=0.12),
-                CachedClient("pm_data", s.pm_data_base, s.raw_dir, min_interval=0.12),
+                CachedClient("pm_gamma", s.pm_gamma_base, s.raw_dir, min_interval=0.12,
+                             record_live=record_live),
+                CachedClient("pm_data", s.pm_data_base, s.raw_dir, min_interval=0.12,
+                             record_live=record_live),
             ),
-            pmus=pmus.PolymarketUS(CachedClient("pmus", s.pmus_base, s.raw_dir, min_interval=0.1)),
+            pmus=pmus.PolymarketUS(CachedClient("pmus", s.pmus_base, s.raw_dir, min_interval=0.1,
+                                               record_live=record_live)),
         )
 
 
@@ -150,8 +156,8 @@ def ingest_kalshi_detail(s: Settings, c: Clients, *, sample_per_category: int = 
                          multi_events: int = 0, max_outcomes: int = 12, seed: int = 7,
                          trades: bool = True, candles: bool = True, max_trade_pages: int = 10,
                          candle_minutes: int = 60, series: list[str] | None = None,
-                         start: datetime | None = None, end: datetime | None = None
-                         ) -> IngestResult:
+                         start: datetime | None = None, end: datetime | None = None,
+                         categories: list[str] | None = None) -> IngestResult:
     """Trades/candles for a reproducible *sample* of already-ingested settled markets.
 
     ``ingest kalshi --max-markets`` takes the top-N by volume, which over-represents a few huge
@@ -169,6 +175,8 @@ def ingest_kalshi_detail(s: Settings, c: Clients, *, sample_per_category: int = 
     parts = []
     if sample_per_category:
         band = markets.filter(pl.col("volume").is_between(min_volume, max_volume))
+        if categories:
+            band = band.filter(pl.col("category").is_in(categories))
         parts.append(band.sample(fraction=1.0, shuffle=True, seed=seed)
                      .group_by("category", maintain_order=True).head(sample_per_category)
                      .select(markets.columns))
@@ -198,7 +206,7 @@ def ingest_kalshi_detail(s: Settings, c: Clients, *, sample_per_category: int = 
         "sample_per_category": sample_per_category, "min_volume": min_volume,
         "max_volume": max_volume, "multi_events": multi_events, "max_outcomes": max_outcomes,
         "seed": seed, "trades": trades, "candles": candles, "max_trade_pages": max_trade_pages,
-        "series": series, "start": start, "end": end,
+        "series": series, "start": start, "end": end, "categories": categories,
     }, result.tables, result.raw_files)
     return result
 

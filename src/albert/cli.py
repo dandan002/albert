@@ -15,11 +15,11 @@ def _day(value: str) -> datetime:
     return datetime.combine(date.fromisoformat(value), time.min, tzinfo=UTC)
 
 
-def _clients():
+def _clients(*, live_loop: bool = False):
     from albert.ingest import Clients
 
     s = settings()
-    return s, Clients.build(s)
+    return s, Clients.build(s, record_live=s.record_live if live_loop else True)
 
 
 @app.command()
@@ -64,6 +64,7 @@ def ingest_kalshi_detail(
     series: list[str] = typer.Option(None, help="Every market of this series (one leg per event, no volume filter); repeatable"),
     start: str = typer.Option(None, help="YYYY-MM-DD, with --series"),
     end: str = typer.Option(None, help="YYYY-MM-DD, with --series"),
+    category: list[str] = typer.Option(None, help="Restrict --sample-per-category to these categories"),
 ) -> None:
     """Trades/candles for a seeded sample of already-ingested settled Kalshi markets."""
     from albert.ingest import ingest_kalshi_detail as run
@@ -73,7 +74,7 @@ def ingest_kalshi_detail(
                  max_volume=max_volume, multi_events=multi_events, max_outcomes=max_outcomes,
                  seed=seed, trades=trades, candles=candles, max_trade_pages=max_trade_pages,
                  series=series or None, start=_day(start) if start else None,
-                 end=_day(end) if end else None)
+                 end=_day(end) if end else None, categories=category or None)
     typer.echo(result.summary())
 
 
@@ -204,6 +205,23 @@ def research_literature() -> None:
     typer.echo(run(settings()))
 
 
+@backtest_app.command("maker")
+def backtest_maker(
+    horizon: list[float] = typer.Option([24.0, 6.0], help="Hours before scheduled expiry to post"),
+    size: int = typer.Option(5, help="Contracts per order in the flat test"),
+    cash: float = typer.Option(50.0, help="Kalshi bankroll for the compounding simulation"),
+    category: list[str] = typer.Option(["Climate and Weather", "Sports"], help="Kalshi categories"),
+    lo: float = typer.Option(0.50, help="Lowest favorite bid"),
+    hi: float = typer.Option(0.95, help="Highest favorite bid"),
+    ttl: float = typer.Option(None, help="Cancel after N hours (default: at market close)"),
+) -> None:
+    """Resting bids on Kalshi favorites, filled only by later real trades into our price."""
+    from albert.pipeline import backtest_maker as run
+
+    typer.echo(run(settings(), horizons=tuple(horizon), size=size, cash=cash,
+                   categories=tuple(category), lo=lo, hi=hi, ttl_hours=ttl))
+
+
 @backtest_app.command("run")
 def backtest_run(
     strategy: list[str] = typer.Option(["longshot"], help="longshot, slope, and/or wallet_follow"),
@@ -256,8 +274,8 @@ def paper_reset(kalshi_cash: float = typer.Option(50.0), pmus_cash: float = type
 
 @paper_app.command("run")
 def paper_run(
-    strategy: list[str] = typer.Option(["longshot", "wallet_follow", "xvenue"]),
-    interval: float = typer.Option(300.0, help="Seconds between ticks"),
+    strategy: list[str] = typer.Option(["maker"], help="maker, longshot, wallet_follow, xvenue"),
+    interval: float = typer.Option(60.0, help="Seconds between ticks"),
     iterations: int = typer.Option(0, help="Number of ticks (0 = run until stopped)"),
     horizon: float = typer.Option(2.0, help="longshot: hours before close"),
     prior: float = typer.Option(200.0, help="longshot: pseudo-observations at the market price"),
@@ -265,16 +283,20 @@ def paper_run(
     min_edge: float = typer.Option(0.03),
     max_bet: float = typer.Option(10.0),
     top_k: int = typer.Option(20, help="wallet_follow: wallets to follow"),
+    maker_horizon: float = typer.Option(24.0, help="maker: post this many hours before scheduled expiry"),
+    maker_ttl: float = typer.Option(20.0, help="maker: cancel unfilled orders after N hours"),
+    maker_size: float = typer.Option(10.0, help="maker: max dollars per order"),
 ) -> None:
     """Poll live quotes, simulate fills, and settle positions as markets resolve."""
     from albert.paper import PaperTrader, run_loop
     from albert.risk import RiskConfig
 
-    s, c = _clients()
+    s, c = _clients(live_loop=True)
     trader = PaperTrader(s, c, cfg=RiskConfig(kelly_fraction=kelly, min_edge=min_edge,
                                               max_bet_dollars=max_bet),
                          strategies=tuple(strategy), horizon_hours=horizon, top_k=top_k,
-                         prior=prior)
+                         prior=prior, maker_horizon=maker_horizon, maker_ttl=maker_ttl,
+                         maker_size_dollars=maker_size)
     run_loop(trader, interval_seconds=interval, iterations=iterations)
 
 

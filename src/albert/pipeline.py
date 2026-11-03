@@ -309,6 +309,66 @@ def research_literature(s: Settings, *, reversion_grid: tuple = ((24, 6), (24, 2
     return r.save()
 
 
+def backtest_maker(s: Settings, *, horizons: tuple[float, ...] = (24.0, 6.0), size: int = 5,
+                   cash: float = 50.0, categories: tuple[str, ...] = ("Climate and Weather", "Sports"),
+                   lo: float = 0.50, hi: float = 0.95, ttl_hours: float | None = None) -> Path:
+    """Resting-bid backtest on Kalshi favorites with a trade-driven fill model (backtest/maker.py)."""
+    from albert.backtest import maker
+
+    markets = read_table(s.tables_dir, "kalshi_markets")
+    candles = read_table(s.tables_dir, "kalshi_candles")
+    # The random-sample volume band only: top-N-by-volume markets are selected on the outcome.
+    band = markets.filter(pl.col("volume").is_between(500, 200_000))["ticker"].implode()
+    trades = read_table(s.tables_dir, "kalshi_trades").filter(pl.col("ticker").is_in(band))
+    r = Report(s.reports_dir, "backtest-maker")
+    r.text("Setup", f"- categories {list(categories)}, favorite bid in [{lo}, {hi}], {size} contracts "
+                    f"per order for the flat test, ttl {ttl_hours or 'until close'}\n"
+                    f"- {trades['ticker'].n_unique()} randomly sampled markets with trades "
+                    "(volume 500-200k)\n- fill = later real taker trades selling into our price "
+                    "(at it if we improved the best bid, through it if we joined); held to settlement; "
+                    "maker fee.\n- taker benchmark = same market and side bought at the ask at the "
+                    "decision time, taker fee.")
+    rows, all_orders = [], []
+    for h in horizons:
+        orders = maker.maker_orders(markets, candles, trades, horizon_hours=h, categories=categories,
+                                    lo=lo, hi=hi, ttl_hours=ttl_hours)
+        if orders.is_empty():
+            continue
+        fills = maker.with_pnl(maker.simulate_fills(orders, trades, size=size)).with_columns(
+            pl.lit(h).alias("horizon_h"), pl.col("decision_ts").dt.strftime("%Y-%m").alias("month"))
+        all_orders.append(fills)
+        taker = maker.taker_benchmark(orders).with_columns(pl.lit("all").alias("_k"))
+        flat = maker.summarize(fills.with_columns(pl.lit("all").alias("_k")), ["_k"])
+        tk = maker.summarize(taker, ["_k"]).row(0, named=True)
+        fr = flat.row(0, named=True) if not flat.is_empty() else {}
+        rows.append({"horizon_h": h, "orders": orders.height,
+                     "fill_rate": float((fills["filled"] > 0).mean()),
+                     "full_fill_rate": float((fills["filled"] == size).mean()),
+                     "improved_share": float(orders["improved"].mean()),
+                     "maker_roi": fr.get("roi"), "maker_t": fr.get("t"), "maker_events": fr.get("clusters"),
+                     "maker_pnl_per_order": float(fills["pnl"].sum() / orders.height),
+                     "taker_roi": tk["roi"], "taker_t": tk["t"]})
+        r.table(f"{h:g}h: maker ROI by category", maker.summarize(fills, ["category"]))
+        r.table(f"{h:g}h: maker ROI by month", maker.summarize(fills, ["month"]))
+        r.table(f"{h:g}h: maker ROI by queue position", maker.summarize(fills, ["improved"]))
+        r.table(f"{h:g}h: taker benchmark by category", maker.summarize(taker, ["category"]))
+    r.table("Summary (flat size)", pl.DataFrame(rows))
+    if all_orders:
+        pl.concat(all_orders).write_parquet(r.dir / "orders.parquet")
+    bank = {}
+    for h in horizons:
+        orders = maker.maker_orders(markets, candles, trades, horizon_hours=h, categories=categories,
+                                    lo=lo, hi=hi, ttl_hours=ttl_hours)
+        if orders.is_empty():
+            continue
+        b = maker.run_maker_bankroll(orders, trades, cash=cash)
+        bank[f"{h:g}h"] = {"start": b.start_cash, "end": round(b.end_cash, 2),
+                           "orders_placed": b.orders_placed, "orders_filled": b.orders_filled,
+                           "skipped_no_cash": b.skipped_no_cash, "max_drawdown": round(b.max_drawdown, 4)}
+    r.json(f"Bankroll simulation (${cash:g} Kalshi, 5% / $10 per order, 10% per event)", bank)
+    return r.save()
+
+
 def backtest(s: Settings, c: Clients | None, *, strategies: list[str], split: datetime,
              cash: dict[str, float], cfg: RiskConfig, horizon_hours: float = 2.0,
              delay_minutes: float = 5.0, top_k: int = 20, prior: float = 200.0,

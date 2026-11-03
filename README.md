@@ -121,7 +121,8 @@ albert paper status
 | `albert research gaps` | Kalshi vs Polymarket price gaps and locked-in opportunities on exact matches. |
 | `albert research literature` | Re-tests five published effects on our data: maker vs taker returns, sum-of-legs arbitrage, calibration slope by category (plus a full-population sports check), rolling-minimum mean reversion, pre-close move reversal. |
 | `albert backtest run` | Runs `longshot`, `slope` and/or `wallet_follow` through the backtester. `--anchor scheduled` (default) places Kalshi decisions at scheduled expiry − horizon; `--anchor close` reproduces the old leaky timing for comparison. `--universe population` restricts Kalshi to the volume-blind game sample. Writes a report with metrics, Monte Carlo, fills and an equity curve. |
-| `albert paper reset/run/status` | Paper trading account (see [Paper trading](#5-paper-trading)). |
+| `albert backtest maker` | Resting bids on Kalshi favorites, filled only by later real trades into our price (`--horizon`, `--ttl`, `--size`, `--cash`, `--category`). |
+| `albert paper reset/run/status` | Paper trading account (see [Paper trading](#5-paper-trading-paperpy)). Default strategy: `maker`. |
 | `albert compact-raw` | Compresses legacy plain-JSON raw cache files to `.json.zst` (lossless, verified). |
 | `albert capture` | Records small real API responses into `tests/fixtures/` for parser tests. |
 
@@ -240,6 +241,15 @@ probability of loss, probability of halving).
    Polymarket US market status).
 2. **Risk checks**: drawdown kill switch and daily loss stop.
 3. **Strategies**:
+   - **`maker`** (default): resting bids on Kalshi Weather/Sports favorites. Every
+     `--interval` it applies new *real* trades to each resting order (the same fill rule as
+     `backtest maker`) and cancels orders after `--maker-ttl` hours (default 20) or at close.
+     Every 10 minutes it scans open markets whose scheduled expiry is `--maker-horizon` hours
+     away (default 24), quotes the favorite at best bid + 1c (or joins the best bid when the
+     spread is 1c), and reserves the collateral. Rules: one order per underlying game (the
+     moneyline, spread and totals of a match are one bet), 5% of free Kalshi cash per order,
+     capped at `--maker-size` dollars. If the drawdown or daily-loss stop trips, every resting
+     order is cancelled.
    - **`longshot`**: Kalshi markets closing about `--horizon` hours from now, priced by the
      calibration model fit on all ingested history. Order books are read live.
    - **`wallet_follow`**: polls the followed wallets' Polymarket intl trades since the last
@@ -251,8 +261,15 @@ probability of loss, probability of halving).
 4. **Fills are simulated** at the live best ask, capped at the displayed size, using the same
    `size_order()` as the backtester.
 
-State is in `data/paper/state.json`. Every fill, skip (with reason), scan and settlement is
-appended to `data/paper/ledger.jsonl`.
+State is in `data/paper/state.json`. Every order, fill, cancel, skip (with reason), scan and
+settlement is appended to `data/paper/ledger.jsonl`.
+
+**Running as a service.** `paper run` is built to run unattended: SIGTERM/SIGINT finish the
+current tick and save state; an error in one tick is logged (`tick_error`) and retried with
+backoff instead of crashing; each tick prints one JSON line to stdout and rewrites
+`data/paper/heartbeat.json`. Live responses are *not* written to the raw cache unless
+`ALBERT_RECORD_LIVE=1` (they would add hundreds of MB a day, and the ledger already records
+every decision). A `Dockerfile` and a Compute Engine guide are in [`deploy/gcp.md`](deploy/gcp.md).
 
 ---
 
@@ -473,13 +490,36 @@ Polymarket on-chain combinatorial arbitrage (not tradable from the US).
 - Live order-book scans (paper `xvenue`, 46 matched games quoted on both venues): the best
   combined cost of both sides after fees was **2.6-2.9c above $1** on every tick so far.
 
-### 5. Paper trading
+### 5. Maker backtest: positive, not yet significant (`albert backtest maker`)
 
-The paper trader runs all three strategies against live quotes. On the first ticks (overnight
-US time) it scanned 60 Kalshi markets closing in the window, 20 followed wallets and 46 matched
-games, and found nothing above threshold. That is the expected behavior given results 1-4.
-Its `longshot` strategy is now known to have no edge (section 3), so running it is only
-useful as a plumbing test. The next paper-trading work is a maker mode (section 3a).
+Section 3a shows that *other people's* filled maker bids on favorites earned a premium. The
+maker backtest asks whether *our* bids would have filled, and what the fills earned:
+
+- **Order:** at scheduled expiry − h, bid for the favorite at best bid + 1c (we become the
+  best bid, first in queue) or join the best bid if the spread is 1c. One order per game.
+- **Fill:** only from later real Kalshi trades in which a taker *sold* into our side at our
+  price (if we improved) or through it (if we joined, since the queue ahead must clear
+  first). Held to settlement, maker fee. Unfilled orders cancel at the TTL or at close.
+- **Sample:** 3,515 randomly sampled Weather and Sports markets with trades (volume
+  500-200k), Aug-Oct 2026. Standard errors clustered by *game*.
+
+| Post h before expiry / cancel after | Fill rate | Maker ROI on fills | t | Taker, same bets | $50 bankroll |
+|---|---|---|---|---|---|
+| 24h / until close (sports: in-game) | 91% | +4.5% | 1.9 | +2.7% | $91 |
+| 6h / until close | 92% | −2.0% | −1.1 | −2.4% | $16 |
+| 24h / 20h (cancel pre-game) | 66% | +7.6% | 2.8 | +2.7% | $119 |
+| **24h / 20h, one order per game** | 60% | **+4.6%** | **1.0** | +0.6% | **$72** |
+
+The first three rows count each event separately. A match's moneyline, spread and totals are
+one bet, though, and counting them separately overstated both the sample and the t-stat.
+With one order per game (last row, the rule the paper trader uses) the result is still
+positive and still beats taking the same bets, but **it is not statistically distinguishable
+from zero**, and it varies by month (+0.3%, +13.2%, −0.3% in Aug/Sep/Oct). Resting into
+in-game trading is clearly bad (6h row): fills arrive exactly when the favorite is collapsing.
+
+A larger Weather/Sports trade sample (1,500 more markets per category) is being ingested to
+tighten this. The paper trader now runs the 24h / 20h maker rule live
+(`albert paper run --strategy maker`), started 2026-11-03.
 
 ### What this means for the $100 goal
 
@@ -491,11 +531,11 @@ Nothing found so far supports "exponential growth". The honest summary:
 - **Taker strategies on public prices have no edge.** The calibration "edge" from Phase 5 was
   look-ahead plus sample selection, and mean reversion and move-fading lose after costs.
 - **Being a maker is the only edge in the data**: a few percent per dollar on favorites in
-  Weather and Sports, per the literature and our replication. That is slow, linear growth
-  (a few dollars a month on $50), not exponential, and it is unproven for *our* orders until
-  a maker paper-trading mode has run.
-- Do not fund anything yet. Next: build maker-mode paper trading on Kalshi Weather and Sports
-  favorites and run it for a few weeks.
+  Weather and Sports, per the literature and our replication. Our own simulated bids earn
+  about +4.6% per filled dollar, but that is not yet significant. Even if real, it is slow,
+  roughly linear growth (a few dollars a month on $50), not exponential.
+- Do not fund anything yet. The maker paper trader is running; compare its fills and PnL
+  with the backtest after a few hundred fills.
 
 ---
 
@@ -506,6 +546,10 @@ Nothing found so far supports "exponential growth". The honest summary:
   (`--series`, or the seeded random sample), and `backtest run --universe population`.
 - **Kalshi `close_time` is when a settled market actually closed.** Never anchor a
   decision on it; use `expected_expiration_time` (the default `--anchor scheduled`).
+- **Maker fill model.** Fills come from real prints at or through our price. It ignores
+  other makers who might join ahead of us at a newly improved price in the same instant, and
+  any reaction to our own order. Fill rates are therefore optimistic, and the paper trader
+  measures the same quantity live.
 - **Hourly candles.** Kalshi calibration and gap research use hourly candle closes. That is
   fine for "is this price miscalibrated 2h out" but too coarse for latency-sensitive edges.
 - **Polymarket price history has no bid/ask.** Intl prices are mids or last trades. Albert
