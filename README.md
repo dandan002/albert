@@ -537,6 +537,22 @@ maker gain (including the "joined" subgroup), come from selection. The clean tes
 `ingest kalshi-trade-windows` (all trades in each order's window, for one leg of *every*
 game) followed by `backtest maker --universe population`.
 
+**Clean test: no maker edge on major-league games.** All 2,357 NFL/NBA/NCAAF/MLB/NHL/WNBA
+games Aug 15 - Oct 31, 3.85M trades with complete coverage of every order window, 24h / 20h,
+one order per game:
+
+| Queue mode | Fills | Maker ROI on fills | t | Taker, same bets | $50 bankroll |
+|---|---|---|---|---|---|
+| any (paper-trader rule) | 1,179 | **−1.7%** | −0.8 | −2.4% | **$27.53** |
+| join a 1c-spread best bid | 828 | −3.5% | −1.4 | −2.7% | $27.68 |
+| improve the best bid by 1c | 351 | +2.5% | 0.7 | −0.9% | $54.00 |
+
+By month (any): +2.1%, +4.2%, −8.7% (Aug/Sep/Oct). The "joined +17%" subgroup and the
+positive holdout were the volume-band selection. Being a maker is still less bad than
+taking, which matches the literature, but there is no positive edge to compound on
+major-league favorites. Weather and minor sports (esports, KHL, cricket and others, which the
+paper trader also quotes) have not been tested volume-blind.
+
 Rule change from live testing: ticker start times (`ticker_start`, US Eastern, validated on
 ~80k games) now cap every order at 15 minutes before the game. A fixed 20h TTL let orders
 rest into cricket and KBO games, whose scheduled expiry is 4-8h after the start.
@@ -550,12 +566,11 @@ Nothing found so far supports "exponential growth". The honest summary:
 - **Cross-venue and sum-of-legs arbitrage** are priced out by fees.
 - **Taker strategies on public prices have no edge.** The calibration "edge" from Phase 5 was
   look-ahead plus sample selection, and mean reversion and move-fading lose after costs.
-- **Being a maker is the only edge in the data**: a few percent per dollar on favorites in
-  Weather and Sports, per the literature and our replication. Our own simulated bids earn
-  about +4.6% per filled dollar, but that is not yet significant. Even if real, it is slow,
-  roughly linear growth (a few dollars a month on $50), not exponential.
-- Do not fund anything yet. The maker paper trader is running; compare its fills and PnL
-  with the backtest after a few hundred fills.
+- **Being a maker loses less than taking, but has no positive edge on major-league
+  games** once the sample is volume-blind (−1.7% per filled dollar on 1,179 fills). The
+  apparent +3-5% premium came from samples that cut out the busiest (upset-heavy) games.
+- Do not fund anything. The maker paper trader keeps running as a live check of the fill
+  model (live fill rates vs simulated), not as a money-maker.
 
 ---
 

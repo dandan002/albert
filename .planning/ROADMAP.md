@@ -59,7 +59,10 @@ Each phase ends with a **live smoke run that produces non-empty, sanity-checked 
       SEs. 24h/20h: +4.6% per filled $ (t = 1.0), not yet significant.
 - [x] Maker paper mode (`paper run --strategy maker`), service-ready (SIGTERM, heartbeat,
       backoff, no live raw recording), Dockerfile + deploy/gcp.md. Started locally 2026-11-03.
-- [ ] Larger Weather/Sports trade sample to tighten the maker estimate (ingest running).
+- [x] Holdout (2,978 new markets) and volume-blind population test (2,357 games, windowed
+      trades): maker 24h/20h = −1.7% per filled $ (t = −0.8). No edge on major leagues.
+- [ ] Volume-blind maker test for Weather and minor sports (needs candles + windowed trades
+      for every leg of each event).
 - [ ] Move the paper loop to a GCE VM (deploy/gcp.md).
 - [ ] Run it for >= 2 weeks or >= 100 fills and compare to the historical maker returns.
 
