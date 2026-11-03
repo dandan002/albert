@@ -30,3 +30,26 @@ def test_map_markets_share_ratings_with_match_markets():
     rows = _event(0, "Alpha", "Bravo", "Alpha", "KXCS2GAME") + _event(1, "Alpha", "Bravo", "Alpha", "KXCS2MAP")
     preds = elo_predictions(pl.DataFrame(rows)).sort("start")
     assert preds["elo_p"][1] > 0.5
+
+
+def test_walk_forward_fits_only_on_earlier_months():
+    import numpy as np
+
+    from albert.research.ratings import walk_forward
+
+    rng = np.random.default_rng(3)
+    rows = []
+    for month in (1, 2, 3, 4):
+        for i in range(400):
+            elo = rng.uniform(0.2, 0.8)
+            mid = float(np.clip(0.5 + 0.5 * (elo - 0.5) + rng.normal(0, 0.05), 0.05, 0.95))
+            truth = elo  # Elo is the true probability; the market is too timid
+            rows.append({"decision_ts": datetime(2026, month, 1 + i % 27, 12, tzinfo=UTC), "mid": mid,
+                         "yes_bid": mid - 0.01, "yes_ask": mid + 0.01, "elo_p": elo,
+                         "y": float(rng.random() < truth), "fee_type": "quadratic", "fee_multiplier": 1.0})
+    per_month, bets = walk_forward(pl.DataFrame(rows), margin=0.03, first_test="2026-02", min_train=300)
+    assert per_month["month"].to_list() == ["2026-02", "2026-03", "2026-04"]
+    assert per_month["train"].to_list() == [400, 800, 1200]
+    assert all(w > 0 for w in per_month["elo_weight"].to_list())
+    assert (per_month["brier_blend"] < per_month["brier_market"]).all()
+    assert bets["pnl"].sum() > 0

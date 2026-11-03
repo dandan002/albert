@@ -98,3 +98,76 @@ def elo_predictions(markets: pl.DataFrame, *, k: float = 32.0, k_new: float = 48
 def logit(p: float) -> float:
     p = min(max(p, 1e-3), 1 - 1e-3)
     return math.log(p / (1 - p))
+
+
+# ---- walk-forward evaluation ----------------------------------------------------------------------
+def fit_blend(train: pl.DataFrame) -> tuple[float, float, float]:
+    """Logistic y ~ a + b*logit(mid) + c*logit(elo_p) (Newton's method)."""
+    import numpy as np
+
+    def lg(col: pl.Series) -> "np.ndarray":
+        x = np.clip(col.to_numpy(), 1e-3, 1 - 1e-3)
+        return np.log(x / (1 - x))
+
+    X = np.column_stack([np.ones(train.height), lg(train["mid"]), lg(train["elo_p"])])
+    y = train["y"].to_numpy()
+    w = np.array([0.0, 1.0, 0.0])
+    for _ in range(60):
+        p = 1 / (1 + np.exp(-X @ w))
+        step = np.linalg.solve(-(X.T * (p * (1 - p))) @ X - 1e-6 * np.eye(3), X.T @ (y - p))
+        w -= step
+        if np.abs(step).max() < 1e-10:
+            break
+    return float(w[0]), float(w[1]), float(w[2])
+
+
+def bets_for(test: pl.DataFrame, coef: tuple[float, float, float], margin: float) -> pl.DataFrame:
+    """Flat one-contract bets where the blend beats the ask (YES) or 1 - bid (NO) + taker fee."""
+    from albert.fees import kalshi_fee
+
+    p = [blend(m, e, coef) for m, e in test.select("mid", "elo_p").iter_rows()]
+    fy = [kalshi_fee(100, a, fee_type=ft or "quadratic", multiplier=fm) / 100
+          for a, ft, fm in test.select("yes_ask", "fee_type", "fee_multiplier").iter_rows()]
+    fn = [kalshi_fee(100, 1 - b, fee_type=ft or "quadratic", multiplier=fm) / 100
+          for b, ft, fm in test.select("yes_bid", "fee_type", "fee_multiplier").iter_rows()]
+    t = test.with_columns(pl.Series("p", p, dtype=pl.Float64), pl.Series("fee_yes", fy, dtype=pl.Float64),
+                          pl.Series("fee_no", fn, dtype=pl.Float64))
+    t = t.with_columns((pl.col("p") - pl.col("yes_ask") - pl.col("fee_yes")).alias("e_yes"),
+                       ((1 - pl.col("p")) - (1 - pl.col("yes_bid")) - pl.col("fee_no")).alias("e_no"))
+    yes = t.filter((pl.col("e_yes") >= margin) & (pl.col("e_yes") >= pl.col("e_no"))).with_columns(
+        pl.lit("yes").alias("side"), pl.col("yes_ask").alias("price"), pl.col("p").alias("prob"),
+        pl.col("y").alias("payoff"), pl.col("fee_yes").alias("fee"))
+    no = t.filter((pl.col("e_no") >= margin) & (pl.col("e_no") > pl.col("e_yes"))).with_columns(
+        pl.lit("no").alias("side"), (1 - pl.col("yes_bid")).alias("price"), (1 - pl.col("p")).alias("prob"),
+        (1 - pl.col("y")).alias("payoff"), pl.col("fee_no").alias("fee"))
+    return pl.concat([yes, no]).with_columns(
+        (pl.col("payoff") - pl.col("price") - pl.col("fee")).alias("pnl"),
+        (pl.col("price") + pl.col("fee")).alias("stake"),
+        pl.col("decision_ts").dt.strftime("%Y-%m-%d").alias("date"),
+        pl.col("decision_ts").dt.strftime("%G-W%V").alias("week"),
+        pl.col("decision_ts").dt.strftime("%Y-%m").alias("month"))
+
+
+def walk_forward(obs: pl.DataFrame, *, margin: float, first_test: str, min_train: int = 300
+                 ) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """For each month >= ``first_test``: fit the blend on all earlier observations, bet in
+    that month. Returns (per-month summary, all bets)."""
+    obs = obs.with_columns(pl.col("decision_ts").dt.strftime("%Y-%m").alias("month"))
+    months = sorted(m for m in obs["month"].unique().to_list() if m >= first_test)
+    rows, all_bets = [], []
+    for mo in months:
+        train = obs.filter(pl.col("month") < mo)
+        test = obs.filter(pl.col("month") == mo)
+        if train.height < min_train or test.is_empty():
+            continue
+        coef = fit_blend(train)
+        p = [blend(m, e, coef) for m, e in test.select("mid", "elo_p").iter_rows()]
+        y = test["y"].to_numpy()
+        bets = bets_for(test, coef, margin)
+        all_bets.append(bets)
+        rows.append({"month": mo, "train": train.height, "test": test.height, "elo_weight": round(coef[2], 3),
+                     "brier_market": float(((test["mid"].to_numpy() - y) ** 2).mean()),
+                     "brier_blend": float(((pl.Series(p).to_numpy() - y) ** 2).mean()),
+                     "bets": bets.height, "pnl": float(bets["pnl"].sum()) if bets.height else 0.0,
+                     "roi": float(bets["pnl"].sum() / bets["stake"].sum()) if bets.height else None})
+    return pl.DataFrame(rows), (pl.concat(all_bets) if all_bets else pl.DataFrame())

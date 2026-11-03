@@ -446,6 +446,54 @@ def refresh_elo_markets(s: Settings, c: Clients, *, since: datetime,
     return 0
 
 
+def ingest_elo_history(s: Settings, c: Clients, *, series: tuple[str, ...] | None = None) -> IngestResult:
+    """Every settled market of the Elo series, historical and live, into ``elo_markets``."""
+    from albert.research.ratings import ELO_SERIES
+
+    result = IngestResult()
+    info = kalshi_series(s, c)
+    rows: list[dict] = []
+    for ser in series or ELO_SERIES:
+        for page in c.kalshi._cursor_pages("/historical/markets", {"series_ticker": ser, "limit": 1000},
+                                           "markets", cache=True):
+            result.raw_files.append(page.raw_path)
+            rows.extend(k.market_rows(page.payload, info, "historical"))
+        for page in c.kalshi.series_markets(ser, "settled", cache=True):
+            result.raw_files.append(page.raw_path)
+            rows.extend(k.market_rows(page.payload, info, "live"))
+        print(f"  {ser}: {len(rows)} rows so far", flush=True)
+    frame = k.markets_frame(rows).filter(pl.col("result").is_in(["yes", "no"]))
+    _require_rows("elo_markets", frame)
+    write_table(s.tables_dir, "elo_markets", frame, key=["ticker"])
+    result.tables["elo_markets"] = frame.height
+    result.manifest = write_manifest(s.data_dir, "ingest elo-history", {"series": list(series or ELO_SERIES)},
+                                     result.tables, result.raw_files)
+    return result
+
+
+def ingest_elo_candles(s: Settings, c: Clients, *, start: datetime, end: datetime,
+                       per_series_month: int = 250, seed: int = 41) -> IngestResult:
+    """Candles for a volume-blind sample of Elo-series events: up to ``per_series_month``
+    random events per (series, month), one leg each (the alphabetically first ticker, the
+    leg Elo predicts). Legs that already have candles are skipped."""
+    result = IngestResult()
+    m = read_table(s.tables_dir, "elo_markets").filter(
+        (pl.col("close_time") >= start) & (pl.col("close_time") < end))
+    legs = m.sort("ticker").unique("event_ticker", keep="first", maintain_order=True).with_columns(
+        pl.col("close_time").dt.strftime("%Y-%m").alias("_month"))
+    picked = (legs.sample(fraction=1.0, shuffle=True, seed=seed)
+              .group_by("series_ticker", "_month", maintain_order=True).head(per_series_month))
+    have = read_table(s.tables_dir, "kalshi_candles")["ticker"].unique().implode()
+    todo = picked.filter(~pl.col("ticker").is_in(have)).drop("_month")
+    print(f"elo candles: {picked.height} sampled legs, {todo.height} to fetch", flush=True)
+    if todo.height:
+        _kalshi_candles(s, c, todo, c.kalshi.cutoff(), 60, result)
+    result.manifest = write_manifest(s.data_dir, "ingest elo-candles", {
+        "start": start, "end": end, "per_series_month": per_series_month, "seed": seed},
+        result.tables, result.raw_files)
+    return result
+
+
 def ingest_kalshi_open(s: Settings, c: Clients) -> pl.DataFrame:
     """Snapshot open markets (for matching and paper trading). Not written as the settled table."""
     series_info = kalshi_series(s, c)

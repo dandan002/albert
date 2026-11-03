@@ -627,6 +627,54 @@ def research_elo(s: Settings, *, series: list[str], lead: float = 1.0,
     return r.save()
 
 
+def research_elo_walk(s: Settings, *, lead: float = 1.0, margins: tuple[float, ...] = (0.03, 0.06),
+                      k: float = 32.0, min_games: int = 10, exclude: tuple[str, ...] = (),
+                      first_test: str = "2026-04", cash: float = 50.0,
+                      cfg: RiskConfig = RiskConfig()) -> Path:
+    """Monthly walk-forward of the Elo + market blend over all history with prices."""
+    from albert.research import ratings as rt
+
+    markets = read_table(s.tables_dir, "elo_markets").filter(~pl.col("series_ticker").is_in(list(exclude)))
+    preds = rt.elo_predictions(markets, k=k)
+    legs = markets.filter(pl.col("ticker").is_in(preds["ticker"].implode()))
+    candles = read_table(s.tables_dir, "kalshi_candles").filter(pl.col("ticker").is_in(legs["ticker"].implode()))
+    obs = cal.kalshi_observations(legs, candles, horizon_hours=lead, anchor="start", staleness_hours=2.0)
+    obs = obs.join(preds.select(pl.col("ticker").alias("market_id"), "elo_p", "n_min",
+                                pl.col("series").alias("ser")), on="market_id").filter(pl.col("n_min") >= min_games)
+    r = Report(s.reports_dir, "research-elo-walk")
+    r.text("Setup", f"- {obs.height} priced games ({obs['ser'].n_unique()} series), lead {lead:g}h, K {k:g}, "
+                    f"min games {min_games}, excluded {list(exclude) or 'none'}\n- each month's blend is fit "
+                    f"on all earlier months only; flat one-contract bets; SEs clustered by date")
+    out: dict = {}
+    for mg in margins:
+        per_month, bets = rt.walk_forward(obs, margin=mg, first_test=first_test)
+        r.table(f"Margin {mg:g}: by month", per_month)
+        if bets.is_empty():
+            continue
+        tot = lit.cluster_ratio(bets.with_columns(pl.lit("all").alias("k"), pl.col("date").alias("event_ticker")),
+                                ["k"]).row(0, named=True)
+        wk = bets.group_by("week").agg(pl.col("pnl").sum())
+        out[f"m{mg:g}"] = {"bets": tot["n"], "dates": tot["clusters"], "roi": tot["roi"], "t": tot["t"],
+                           "months_positive": int((per_month["pnl"] > 0).sum()), "months": per_month.height,
+                           "weeks_positive": int((wk["pnl"] > 0).sum()), "weeks": wk.height}
+        r.table(f"Margin {mg:g}: by series", lit.cluster_ratio(bets.with_columns(pl.col("date").alias("event_ticker")),
+                                                              ["ser"]), max_rows=25)
+        if mg == margins[0]:
+            signals = bets.select(pl.lit("elo").alias("strategy"), "venue", "event_id",
+                                  pl.col("decision_ts").alias("signal_ts"), "resolve_ts",
+                                  pl.lit(None, dtype=pl.Float64).alias("available"), "fee_type", "fee_multiplier",
+                                  "market_id", "side", "price", "prob", "payoff",
+                                  pl.col("ser").alias("note")).select(list(SIGNAL_SCHEMA)).cast(SIGNAL_SCHEMA)
+            result = run_backtest(signals, cash={"kalshi": cash, "pmus": 0.0}, cfg=replace(cfg, min_edge=mg))
+            out["bankroll"] = {k_: v for k_, v in result.metrics().items()
+                               if k_ in ("start_equity", "end_equity", "max_drawdown", "trades", "roi_per_dollar",
+                                         "halted_at")}
+            if _plot_equity(result, r.dir / "equity.png"):
+                r.image("Equity curve", "equity.png")
+    r.json("Summary", out)
+    return r.save()
+
+
 def backtest_weather(s: Settings, *, split: datetime, slots: tuple[str, ...] | None = None,
                      cash: float = 50.0, cfg: RiskConfig = RiskConfig()) -> Path:
     """NWS-model bets on Kalshi daily-high brackets (research/weather.py)."""

@@ -116,6 +116,28 @@ def ingest_weather(
     typer.echo(run(s, c, _day(start), _day(end), codes=code or None).summary())
 
 
+@ingest_app.command("elo-history")
+def ingest_elo_history() -> None:
+    """All settled markets (historical + live) for the Elo series."""
+    from albert.ingest import ingest_elo_history as run
+
+    s, c = _clients()
+    typer.echo(run(s, c).summary())
+
+
+@ingest_app.command("elo-candles")
+def ingest_elo_candles(
+    start: str = typer.Option(..., help="YYYY-MM-DD"), end: str = typer.Option(..., help="YYYY-MM-DD"),
+    per_series_month: int = typer.Option(250), seed: int = typer.Option(41),
+) -> None:
+    """Candles for a volume-blind sample of Elo-series events (per series and month)."""
+    from albert.ingest import ingest_elo_candles as run
+
+    s, c = _clients()
+    typer.echo(run(s, c, start=_day(start), end=_day(end), per_series_month=per_series_month,
+                   seed=seed).summary())
+
+
 @ingest_app.command("kalshi-events")
 def ingest_kalshi_events(min_legs: int = typer.Option(3, help="Only events with >= N legs")) -> None:
     """Event metadata (mutually_exclusive, leg count) for multi-leg events with candles."""
@@ -268,6 +290,19 @@ def research_elo(
     from albert.pipeline import research_elo as run
 
     typer.echo(run(settings(), series=series, lead=lead, split=_day(split), cash=cash))
+
+
+@research_app.command("elo-walk")
+def research_elo_walk(
+    lead: float = typer.Option(1.0), k: float = typer.Option(32.0), min_games: int = typer.Option(10),
+    exclude: list[str] = typer.Option(None, help="Series to leave out; repeatable"),
+    first_test: str = typer.Option("2026-04", help="First test month (YYYY-MM)"),
+) -> None:
+    """Monthly walk-forward of the Elo + market blend (fit on earlier months only)."""
+    from albert.pipeline import research_elo_walk as run
+
+    typer.echo(run(settings(), lead=lead, k=k, min_games=min_games, exclude=tuple(exclude or ()),
+                   first_test=first_test))
 
 
 @research_app.command("literature")
