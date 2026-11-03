@@ -57,24 +57,42 @@ def blend(mid: float, elo_p: float, coef: tuple[float, float, float] = BLEND) ->
 
 
 def elo_predictions(markets: pl.DataFrame, *, k: float = 32.0, k_new: float = 48.0,
-                    new_games: int = 10, init: float = 1500.0,
+                    new_games: int = 10, init: float = 1500.0, lead_hours: float = 1.0,
                     state: dict | None = None) -> pl.DataFrame:
     """Pre-match P(first leg wins) for every settled two-leg event with a ticker start time.
+
+    No look-ahead: a match is *predicted* at its start - ``lead_hours`` and its result is
+    *applied* to the ratings at its close time (when the result became known). Events are
+    processed in time order, so a prediction only uses results that closed before it. This
+    matters because the match-winner and every map market of one match share the same
+    start time: processing them by start would leak the match (and earlier maps) into
+    later maps' predictions.
 
     The "first leg" is the alphabetically first ticker, the same leg the volume-blind price
     samples use. ``n_min`` is the smaller number of earlier rated games of the two sides.
     """
+    from datetime import timedelta
+
     m = markets.filter(pl.col("result").is_in(["yes", "no"]))
     ev = (m.sort("ticker").group_by("event_ticker", "series_ticker", maintain_order=True)
-          .agg(pl.col("ticker"), pl.col("yes_sub_title"), pl.col("result"))
+          .agg(pl.col("ticker"), pl.col("yes_sub_title"), pl.col("result"), pl.col("close_time").max())
           .filter(pl.col("ticker").list.len() == 2)
           .with_columns(pl.col("event_ticker").map_elements(
               ticker_start, return_dtype=pl.Datetime("us", "UTC")).alias("start"))
-          .drop_nulls("start").sort("start", "event_ticker"))
+          .drop_nulls("start"))
+    # Timeline: (time, kind, event). kind 0 = apply a result, 1 = predict; at equal times,
+    # results that closed strictly earlier are already applied, so order 0 before 1 only
+    # when the close is strictly before the prediction (enforced by the timestamps).
+    timeline = []
+    for e in ev.iter_rows(named=True):
+        timeline.append((e["start"] - timedelta(hours=lead_hours), 1, e["event_ticker"], e))
+        close = e["close_time"] or e["start"]
+        timeline.append((max(close, e["start"]), 2, e["event_ticker"], e))
+    timeline.sort(key=lambda x: (x[0], x[1], x[2]))
     ratings: dict[tuple[str, str], float] = {}
     games: dict[tuple[str, str], int] = {}
     rows = []
-    for e in ev.iter_rows(named=True):
+    for _, kind, _, e in timeline:
         sport = _sport(e["series_ticker"])
         a, b = (sport, _name(e["yes_sub_title"][0])), (sport, _name(e["yes_sub_title"][1]))
         if not a[1] or not b[1] or a == b:
@@ -83,9 +101,11 @@ def elo_predictions(markets: pl.DataFrame, *, k: float = 32.0, k_new: float = 48
         na, nb = games.get(a, 0), games.get(b, 0)
         p = 1 / (1 + 10 ** ((rb - ra) / 400))
         ya = 1.0 if e["result"][0] == "yes" else 0.0
-        rows.append({"ticker": e["ticker"][0], "event_ticker": e["event_ticker"],
-                     "series": e["series_ticker"], "start": e["start"], "elo_p": p,
-                     "n_min": min(na, nb), "y": ya})
+        if kind == 1:
+            rows.append({"ticker": e["ticker"][0], "event_ticker": e["event_ticker"],
+                         "series": e["series_ticker"], "start": e["start"], "elo_p": p,
+                         "n_min": min(na, nb), "y": ya})
+            continue
         step = k if min(na, nb) >= new_games else k_new
         ratings[a] = ra + step * (ya - p)
         ratings[b] = rb - step * (ya - p)

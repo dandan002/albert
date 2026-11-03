@@ -75,3 +75,6 @@ Each phase ends with a **live smoke run that produces non-empty, sanity-checked 
       audit log.
 - [ ] Cross-venue trades (buying opposite sides on two venues) only after checking that the
       resolution criteria are identical.
+
+- [x] Elo + market blend for minor sports: the apparent edge was a look-ahead (same-start
+      match/map events). Leak-free walk-forward May-Oct: no edge. Paper `elo` removed.

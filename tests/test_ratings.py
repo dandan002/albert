@@ -6,12 +6,13 @@ from albert.research.ratings import elo_predictions
 
 
 def _event(i, a, b, winner, series="KXTTELITEMATCH"):
-    start = datetime(2026, 10, 1, 12, tzinfo=UTC) + timedelta(hours=i)
+    start = datetime(2026, 10, 1, 12, tzinfo=UTC) + timedelta(hours=3 * i)
     stamp = (start.astimezone(__import__("zoneinfo").ZoneInfo("America/New_York"))
              .strftime("%y%b%d%H%M").upper())
     ev = f"{series}-{stamp}{a[:3].upper()}{b[:3].upper()}"
     return [{"ticker": f"{ev}-{x[:3].upper()}", "event_ticker": ev, "series_ticker": series,
-             "yes_sub_title": x, "result": "yes" if x == winner else "no"} for x in (a, b)]
+             "yes_sub_title": x, "result": "yes" if x == winner else "no",
+             "close_time": start + timedelta(minutes=30)} for x in (a, b)]
 
 
 def test_elo_uses_only_earlier_matches_and_learns_the_stronger_player():
@@ -27,7 +28,8 @@ def test_elo_uses_only_earlier_matches_and_learns_the_stronger_player():
 
 
 def test_map_markets_share_ratings_with_match_markets():
-    rows = _event(0, "Alpha", "Bravo", "Alpha", "KXCS2GAME") + _event(1, "Alpha", "Bravo", "Alpha", "KXCS2MAP")
+    # A later match's map market uses the earlier (closed) match result.
+    rows = _event(0, "Alpha", "Bravo", "Alpha", "KXCS2GAME") + _event(8, "Alpha", "Bravo", "Alpha", "KXCS2MAP")
     preds = elo_predictions(pl.DataFrame(rows)).sort("start")
     assert preds["elo_p"][1] > 0.5
 
@@ -53,3 +55,16 @@ def test_walk_forward_fits_only_on_earlier_months():
     assert all(w > 0 for w in per_month["elo_weight"].to_list())
     assert (per_month["brier_blend"] < per_month["brier_market"]).all()
     assert bets["pnl"].sum() > 0
+
+
+def test_same_match_maps_and_match_do_not_leak_into_each_other():
+    # Match + map 1 + map 2 share one start time. Alpha wins all three. With no history,
+    # every prediction must be 0.5: none of these results is known an hour before start.
+    rows = (_event(0, "Alpha", "Bravo", "Alpha", "KXCS2GAME")
+            + _event(0, "Alpha", "Bravo", "Alpha", "KXCS2MAP")
+            + [dict(r, event_ticker=r["event_ticker"] + "-2", ticker=r["ticker"].replace("-", "-2-", 1))
+               for r in _event(0, "Alpha", "Bravo", "Alpha", "KXCS2MAP")])
+    for r in rows:
+        r["close_time"] = datetime(2026, 10, 1, 15, tzinfo=UTC)
+    preds = elo_predictions(pl.DataFrame(rows))
+    assert preds.height == 3 and (preds["elo_p"] == 0.5).all()

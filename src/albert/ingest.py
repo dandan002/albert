@@ -135,7 +135,8 @@ def _kalshi_trades(s: Settings, c: Clients, selected: pl.DataFrame, cutoff: dict
 
 
 def _kalshi_candles(s: Settings, c: Clients, selected: pl.DataFrame, cutoff: dict,
-                    candle_minutes: int, result: IngestResult, batch_size: int = 60) -> None:
+                    candle_minutes: int, result: IngestResult, batch_size: int = 60,
+                    workers: int = 6) -> None:
     """Candles per market. Post-cutoff markets go through the batch endpoint, grouped by a
     shared time window, which cuts the request count by ~``batch_size``x."""
     candle_rows: list[dict] = []
@@ -149,17 +150,25 @@ def _kalshi_candles(s: Settings, c: Clients, selected: pl.DataFrame, cutoff: dic
     for m in selected.iter_rows(named=True):
         old = bool(cutoff["market_settled_ts"] and m["close_time"] < cutoff["market_settled_ts"])
         (historical if old else live).append(m)
-    for i, m in enumerate(historical, 1):
+    # Historical markets have no batch endpoint and each request takes ~1s, so fetch them on
+    # a few threads (httpx clients are thread-safe; the cache is per-request files).
+    from concurrent.futures import ThreadPoolExecutor
+
+    def one(m: dict):
         lo, hi = window(m)
         try:
-            page = c.kalshi.candles(m["ticker"], lo, hi, candle_minutes, True)
+            return m["ticker"], c.kalshi.candles(m["ticker"], lo, hi, candle_minutes, True)
         except RuntimeError as error:  # one bad market should not kill a long run
-            print(f"skip candles {m['ticker']}: {error}")
-            continue
-        result.raw_files.append(page.raw_path)
-        candle_rows.extend(k.candle_rows(page.payload, m["ticker"], candle_minutes))
-        if i % 250 == 0:
-            print(f"  candles (historical): {i}/{len(historical)} markets, {len(candle_rows)} rows", flush=True)
+            print(f"skip candles {m['ticker']}: {str(error)[:160]}")
+            return m["ticker"], None
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        for i, (ticker, page) in enumerate(pool.map(one, historical), 1):
+            if page is not None:
+                result.raw_files.append(page.raw_path)
+                candle_rows.extend(k.candle_rows(page.payload, ticker, candle_minutes))
+            if i % 250 == 0:
+                print(f"  candles (historical): {i}/{len(historical)} markets, {len(candle_rows)} rows", flush=True)
     # Batch live markets: sort by window, then grow each chunk while (markets x periods in the
     # chunk's span) stays under the endpoint's 10,000-candle cap.
     live.sort(key=lambda m: (window(m)[0], m["ticker"]))
