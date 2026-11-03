@@ -93,6 +93,18 @@ def match_kalshi_pm(kalshi: pl.DataFrame, pm: pl.DataFrame) -> pl.DataFrame:
     return pl.DataFrame(rows, schema=MATCH_SCHEMA)
 
 
+def kalshi_ticker_for(intl_event_slug: str, outcome_index: int) -> str | None:
+    """Kalshi game ticker for a Polymarket intl moneyline outcome (inverse of match_kalshi_pm)."""
+    g = parse_pm_game(intl_event_slug or "")
+    league_to_series = {v: k for k, v in KALSHI_GAME_LEAGUES.items()}
+    if not g or g["league"] not in league_to_series:
+        return None
+    y, mo, d = g["date"].split("-")
+    month = {v: k for k, v in MONTHS.items()}[int(mo)]
+    pick = (g["a"] if outcome_index == 0 else g["b"]).upper()
+    return f"{league_to_series[g['league']]}-{y[2:]}{month}{d}{g['a'].upper()}{g['b'].upper()}-{pick}"
+
+
 def _strip_prefix(event_slug: str, known: set[str]) -> str | None:
     if event_slug in known:
         return event_slug

@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 import polars as pl
 
-from albert.matching import match_kalshi_pm, parse_kalshi_game
+from albert.matching import kalshi_ticker_for, match_kalshi_pm, parse_kalshi_game
 from albert.research.calibration import CalibrationModel, kalshi_observations
 from albert.research.wallets import resolved_trades
 
@@ -64,3 +64,11 @@ def test_real_matched_pair_agrees_on_outcome(fixture):
     for row in out.iter_rows(named=True):
         k = next(r for r in pair["kalshi"] if r["ticker"] == row["kalshi_ticker"])
         assert (k["result"] == "yes") == (row["pm_outcome_index"] == winner)
+
+
+def test_kalshi_ticker_for_inverts_the_real_match(fixture):
+    pair = fixture("matching_pair.json")
+    event = pair["polymarket"][0]["event_slug"]
+    built = {kalshi_ticker_for(event, i) for i in (0, 1)}
+    assert built == {r["ticker"] for r in pair["kalshi"]}
+    assert kalshi_ticker_for("ucl-ars-bay-2026-10-21", 0) is None  # soccer (3-way) unsupported

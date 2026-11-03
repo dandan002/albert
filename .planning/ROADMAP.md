@@ -1,52 +1,55 @@
 # Albert: Roadmap
 
+Status 2026-11-03: Phases 1-5 built (see README "Results so far"). Phase 5's 2-week paper run is the next step, then Phase 6.
+
 Each phase ends with a **live smoke run that produces non-empty, sanity-checked output.**
 
 ## Phase 1: Capture + data layers (Kalshi and Polymarket in parallel)
 
-- [ ] `albert capture` saves trimmed real responses to `tests/fixtures/<venue>/`.
-- [ ] Shared HTTP client: retries with backoff on 429 and 5xx, rate limiting, append-only raw
+- [x] `albert capture` saves trimmed real responses to `tests/fixtures/<venue>/`.
+- [x] Shared HTTP client: retries with backoff on 429 and 5xx, rate limiting, append-only raw
       cache keyed by path + params, resumable runs.
-- [ ] Kalshi: events/markets filtered to non-financial categories, trades per market,
+- [x] Kalshi: events/markets filtered to non-financial categories, trades per market,
       candlesticks, historical-endpoint routing, settlement results.
-- [ ] Polymarket intl (data only): Gamma markets/events, Data API v2
+- [x] Polymarket intl (data only): Gamma markets/events, Data API v2
       trades/activity/positions/leaderboard.
-- [ ] Polymarket US: public gateway markets/events/series, order books, BBO, price history,
+- [x] Polymarket US: public gateway markets/events/series, order books, BBO, price history,
       settlements.
-- [ ] Typed Parquet tables (real decimal and timestamp columns, not strings) plus run manifests.
-- [ ] Decide the non-financial category/tag list from observed values.
+- [x] Typed Parquet tables (real decimal and timestamp columns, not strings) plus run manifests.
+- [x] Decide the non-financial category/tag list from observed values.
 
 ## Phase 2: Cross-venue matching
 
-- [ ] Match markets across Kalshi, Polymarket US, and Polymarket intl on the same event and the
+- [x] Match markets across Kalshi, Polymarket US, and Polymarket intl on the same event and the
       same resolution criteria. Do Polymarket intl -> US first, since that is the wallet-signal
       path.
       Start with rule-based matching on title/date/entities, then do a manual review pass.
-- [ ] Measure match quality and price-gap distributions.
+- [x] Measure match quality and price-gap distributions.
 
 ## Phase 3: Research
 
-- [ ] **Wallet scoring:**
+- [x] **Wallet scoring:**
   - Per-wallet PnL per $ risked and edge vs entry price.
   - Shrinkage for small samples.
   - Filters for market makers and wash traders.
   - Persistence test: score on window A, evaluate on window B.
-- [ ] **Follow-the-wallet sim:** enter N seconds/minutes after the wallet's trade, at the Kalshi
+- [x] **Follow-the-wallet sim:** enter N seconds/minutes after the wallet's trade, at the Kalshi
       ask on the matched market (or the Polymarket price as a proxy).
-- [ ] **Market inefficiencies:** calibration by category × price bucket (favorite-longshot bias),
-      cross-venue gaps, and late-resolution drift.
+- [x] **Market inefficiencies:** calibration by category × price bucket (favorite-longshot bias)
+      and cross-venue gaps.
+- [ ] Late-resolution drift (not built yet).
 
 ## Phase 4: Backtester
 
-- [ ] Event-driven sim with the Kalshi fee schedule, bid/ask fills, displayed-size limits,
+- [x] Event-driven sim with the Kalshi fee schedule, bid/ask fills, displayed-size limits,
       fractional Kelly, and risk caps.
-- [ ] Reports: equity curve, drawdown, per-strategy attribution, fee drag, and
+- [x] Reports: equity curve, drawdown, per-strategy attribution, fee drag, and
       skipped-trade reasons.
 
 ## Phase 5: Paper trading
 
-- [ ] Run the strategies live against real Kalshi quotes with simulated orders for >= 2 weeks or
-      >= 100 signals. Compare to the backtest.
+- [x] Paper trader built (`albert paper run`): live quotes, simulated fills, settlement, ledger.
+- [ ] Run it for >= 2 weeks or >= 100 signals and compare to the backtest.
 
 ## Phase 6: Live trading ($100, split about $50 / $50)
 
