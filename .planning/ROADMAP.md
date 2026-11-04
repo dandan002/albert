@@ -78,3 +78,5 @@ Each phase ends with a **live smoke run that produces non-empty, sanity-checked 
 
 - [x] Elo + market blend for minor sports: the apparent edge was a look-ahead (same-start
       match/map events). Leak-free walk-forward May-Oct: no edge. Paper `elo` removed.
+- [x] PandaScore esports ratings (24k matches, 99.84% winner agreement with Kalshi):
+      Elo worse than market, blend adds nothing. No edge.

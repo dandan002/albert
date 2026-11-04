@@ -675,6 +675,62 @@ def research_elo_walk(s: Settings, *, lead: float = 1.0, margins: tuple[float, .
     return r.save()
 
 
+def research_esports_ratings(s: Settings, c: Clients, *, lead: float = 1.0, k: float = 24.0,
+                             margins: tuple[float, ...] = (0.03, 0.06), first_test: str = "2026-04",
+                             min_games: int = 10) -> Path:
+    """PandaScore map-level Elo (all pro matches) blended with Kalshi esports prices.
+
+    Walk-forward by month; ratings are leak-free (research/esports.py).
+    """
+    from albert.research import esports as es
+    from albert.research import ratings as rt
+
+    kalshi = read_table(s.tables_dir, "elo_markets")
+    psm = read_table(s.tables_dir, "esports_matches")
+    psg = read_table(s.tables_dir, "esports_games")
+    mapping = es.match_kalshi_pandascore(kalshi, psm)
+    # Winner check: match markets vs PandaScore match winner; map markets vs that map's winner.
+    chk = mapping.join(psm.select("match_id", "winner_id"), on="match_id", how="left").join(
+        psg.select("match_id", pl.col("position").alias("map_no"), pl.col("winner_id").alias("map_winner")),
+        on=["match_id", "map_no"], how="left").with_columns(
+        pl.when(pl.col("map_no").is_null()).then(pl.col("winner_id")).otherwise(pl.col("map_winner")).alias("w"))
+    chk = chk.drop_nulls("w").with_columns(((pl.col("w") == pl.col("first_team_id")) == pl.col("kalshi_first_won"))
+                                           .alias("agree"))
+    bad = set(chk.filter(~pl.col("agree"))["kalshi_ticker"].to_list())
+    mapping = mapping.filter(~pl.col("kalshi_ticker").is_in(list(bad)))
+    preds = es.predictions(mapping, psm, psg, lead_hours=lead, k=k)
+    legs = kalshi.filter(pl.col("ticker").is_in(mapping["kalshi_ticker"].implode()))
+    candles = read_table(s.tables_dir, "kalshi_candles").filter(pl.col("ticker").is_in(legs["ticker"].implode()))
+    obs = cal.kalshi_observations(legs, candles, horizon_hours=lead, anchor="start", staleness_hours=2.0)
+    obs = obs.join(preds.rename({"kalshi_ticker": "market_id"}), on="market_id").join(
+        mapping.select(pl.col("kalshi_ticker").alias("market_id"), pl.col("series").alias("ser")), on="market_id"
+    ).filter(pl.col("n_min") >= min_games)
+    r = Report(s.reports_dir, "research-esports-ratings")
+    r.text("Setup", f"- PandaScore: {psm.height} matches, {psg.height} maps (all tiers)\n"
+                    f"- Kalshi esports events matched: {mapping.height + len(bad)}; winner agreement "
+                    f"{float(chk['agree'].mean()):.4f} on {chk.height} checked ({len(bad)} disagreeing dropped)\n"
+                    f"- priced games (lead {lead:g}h, both teams >= {min_games} rated maps): {obs.height}\n"
+                    "- map-level Elo (K {k:g}) from all maps, applied at each map's end time; blend fit "
+                    "on earlier months only".replace("{k:g}", f"{k:g}"))
+    out = {}
+    for mg in margins:
+        per_month, bets = rt.walk_forward(obs, margin=mg, first_test=first_test, min_train=300)
+        r.table(f"Margin {mg:g}: by month", per_month)
+        if bets.is_empty():
+            continue
+        tot = lit.cluster_ratio(bets.with_columns(pl.lit("all").alias("k"), pl.col("date").alias("event_ticker")),
+                                ["k"]).row(0, named=True)
+        wk = bets.group_by("week").agg(pl.col("pnl").sum())
+        out[f"m{mg:g}"] = {"bets": tot["n"], "dates": tot["clusters"], "roi": tot["roi"], "t": tot["t"],
+                           "months_positive": int((per_month["pnl"] > 0).sum()), "months": per_month.height,
+                           "weeks_positive": int((wk["pnl"] > 0).sum()), "weeks": wk.height}
+        r.table(f"Margin {mg:g}: by series", lit.cluster_ratio(
+            bets.with_columns(pl.col("date").alias("event_ticker")), ["ser"]), max_rows=12)
+    r.json("Summary", out)
+    obs.write_parquet(r.dir / "observations.parquet")
+    return r.save()
+
+
 def backtest_weather(s: Settings, *, split: datetime, slots: tuple[str, ...] | None = None,
                      cash: float = 50.0, cfg: RiskConfig = RiskConfig()) -> Path:
     """NWS-model bets on Kalshi daily-high brackets (research/weather.py)."""

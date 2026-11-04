@@ -318,6 +318,18 @@ def research_elo_walk(
                    first_test=first_test))
 
 
+@research_app.command("esports-ratings")
+def research_esports_ratings(
+    lead: float = typer.Option(1.0), k: float = typer.Option(24.0),
+    first_test: str = typer.Option("2026-04"), min_games: int = typer.Option(10),
+) -> None:
+    """PandaScore Elo + Kalshi price blend for esports, monthly walk-forward."""
+    from albert.pipeline import research_esports_ratings as run
+
+    s, c = _clients()
+    typer.echo(run(s, c, lead=lead, k=k, first_test=first_test, min_games=min_games))
+
+
 @research_app.command("literature")
 def research_literature() -> None:
     """Re-test published effects: maker/taker, leg-sum arb, category slopes, reversion, moves."""

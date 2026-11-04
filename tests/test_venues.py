@@ -164,3 +164,12 @@ def test_kalshi_batch_candles_parse_per_market(fixture):
     assert len({r["ticker"] for r in rows}) == 2
     assert all(r["yes_ask_close"] is None or 0 <= r["yes_ask_close"] <= 1 for r in rows)
     assert any(r["yes_bid_close"] is not None for r in rows)
+
+
+def test_pandascore_matches_and_maps_parse(fixture):
+    from albert.venues import pandascore as ps
+
+    matches, maps = ps.match_rows(fixture("pandascore/csgo_matches_past.json"), "csgo")
+    assert matches and all(m["a_id"] and m["b_id"] and m["begin_at"] for m in matches)
+    assert all(m["winner_id"] in (m["a_id"], m["b_id"]) for m in matches if m["status"] == "finished")
+    assert maps and all(g["position"] >= 1 for g in maps)

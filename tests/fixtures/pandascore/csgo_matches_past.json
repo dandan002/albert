@@ -1,0 +1,236 @@
+[
+ {
+  "begin_at": "2026-10-01T08:02:58Z",
+  "end_at": "2026-10-01T10:40:12Z",
+  "forfeit": false,
+  "games": [
+   {
+    "begin_at": "2026-10-01T08:03:02Z",
+    "complete": true,
+    "detailed_stats": true,
+    "end_at": "2026-10-01T08:42:28Z",
+    "finished": true,
+    "forfeit": false,
+    "id": 232126,
+    "length": 2365,
+    "match_id": 1700484,
+    "position": 1,
+    "status": "finished",
+    "winner": {
+     "id": 138370,
+     "type": "Team"
+    },
+    "winner_type": "Team"
+   },
+   {
+    "begin_at": "2026-10-01T08:49:53Z",
+    "complete": true,
+    "detailed_stats": true,
+    "end_at": "2026-10-01T10:18:15Z",
+    "finished": true,
+    "forfeit": true,
+    "id": 232127,
+    "length": 5301,
+    "match_id": 1700484,
+    "position": 2,
+    "status": "finished",
+    "winner": {
+     "id": 127911,
+     "type": "Team"
+    },
+    "winner_type": "Team"
+   },
+   {
+    "begin_at": "2026-10-01T10:18:31Z",
+    "complete": true,
+    "detailed_stats": true,
+    "end_at": "2026-10-01T10:40:13Z",
+    "finished": true,
+    "forfeit": false,
+    "id": 232128,
+    "length": 1301,
+    "match_id": 1700484,
+    "position": 3,
+    "status": "finished",
+    "winner": {
+     "id": 138370,
+     "type": "Team"
+    },
+    "winner_type": "Team"
+   }
+  ],
+  "id": 1700484,
+  "league": {
+   "name": "CCT Europe"
+  },
+  "name": "Round 2: MSC vs LVKD",
+  "number_of_games": 3,
+  "opponents": [
+   {
+    "opponent": {
+     "acronym": "MSC",
+     "id": 127911,
+     "name": "MASONIC"
+    },
+    "type": "Team"
+   },
+   {
+    "opponent": {
+     "acronym": "LVKD",
+     "id": 138370,
+     "name": "Lavked"
+    },
+    "type": "Team"
+   }
+  ],
+  "scheduled_at": "2026-10-01T08:00:00Z",
+  "serie": {
+   "full_name": "Series #10 2026"
+  },
+  "status": "finished",
+  "tournament": {
+   "id": 21997,
+   "name": "Group Stage",
+   "tier": "c"
+  },
+  "winner_id": 138370
+ },
+ {
+  "begin_at": "2026-10-01T08:10:54Z",
+  "end_at": "2026-10-01T09:52:01Z",
+  "forfeit": false,
+  "games": [
+   {
+    "begin_at": "2026-10-01T08:10:54Z",
+    "complete": true,
+    "detailed_stats": false,
+    "end_at": "2026-10-01T08:49:49Z",
+    "finished": true,
+    "forfeit": false,
+    "id": 233232,
+    "length": 2334,
+    "match_id": 1712144,
+    "position": 1,
+    "status": "finished",
+    "winner": {
+     "id": 138110,
+     "type": "Team"
+    },
+    "winner_type": "Team"
+   },
+   {
+    "begin_at": "2026-10-01T09:22:56Z",
+    "complete": true,
+    "detailed_stats": false,
+    "end_at": "2026-10-01T09:52:02Z",
+    "finished": true,
+    "forfeit": true,
+    "id": 233233,
+    "length": 1745,
+    "match_id": 1712144,
+    "position": 2,
+    "status": "finished",
+    "winner": {
+     "id": 138110,
+     "type": "Team"
+    },
+    "winner_type": "Team"
+   }
+  ],
+  "id": 1712144,
+  "league": {
+   "name": "United21"
+  },
+  "name": "Winners Match: CTRL vs TU",
+  "number_of_games": 3,
+  "opponents": [
+   {
+    "opponent": {
+     "acronym": "CTRL",
+     "id": 138117,
+     "name": "CTRL Esports"
+    },
+    "type": "Team"
+   },
+   {
+    "opponent": {
+     "acronym": "TU",
+     "id": 138110,
+     "name": "THE UNIT"
+    },
+    "type": "Team"
+   }
+  ],
+  "scheduled_at": "2026-10-01T08:10:00Z",
+  "serie": {
+   "full_name": "Season 56 2026"
+  },
+  "status": "finished",
+  "tournament": {
+   "id": 22063,
+   "name": "Group B",
+   "tier": "d"
+  },
+  "winner_id": 138110
+ },
+ {
+  "begin_at": "2026-10-01T08:30:08Z",
+  "end_at": "2026-10-01T09:14:17Z",
+  "forfeit": false,
+  "games": [
+   {
+    "begin_at": "2026-10-01T08:30:08Z",
+    "complete": true,
+    "detailed_stats": true,
+    "end_at": "2026-10-01T09:14:17Z",
+    "finished": true,
+    "forfeit": false,
+    "id": 233496,
+    "length": 2649,
+    "match_id": 1720370,
+    "position": 1,
+    "status": "finished",
+    "winner": {
+     "id": 138688,
+     "type": "Team"
+    },
+    "winner_type": "Team"
+   }
+  ],
+  "id": 1720370,
+  "league": {
+   "name": "FOX Legacy Cup"
+  },
+  "name": "NAVI.J vs NXT",
+  "number_of_games": 1,
+  "opponents": [
+   {
+    "opponent": {
+     "acronym": "NAVI.J",
+     "id": 126491,
+     "name": "NAVI Junior"
+    },
+    "type": "Team"
+   },
+   {
+    "opponent": {
+     "acronym": "NXT",
+     "id": 138688,
+     "name": "Next UP"
+    },
+    "type": "Team"
+   }
+  ],
+  "scheduled_at": "2026-10-01T08:30:00Z",
+  "serie": {
+   "full_name": "Season 1 2026"
+  },
+  "status": "finished",
+  "tournament": {
+   "id": 22084,
+   "name": "Group A",
+   "tier": "d"
+  },
+  "winner_id": 138688
+ }
+]

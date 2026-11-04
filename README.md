@@ -666,6 +666,33 @@ blend's Brier equals the market's every month. Only 21 bets in six months clear 
 The paper `elo` strategy, whose coefficients came from the leaky fit, was removed from the
 paper loop after 4 fills.
 
+### 9. Independent esports ratings (PandaScore): no edge (`ingest pandascore`, `research esports-ratings`)
+
+External data, so the ratings see matches Kalshi never listed. PandaScore (free tier,
+`PANDASCORE_TOKEN` in `.env`) gives 24,482 pro CS2/LoL/Dota 2/Valorant matches and 54,594
+maps, all tiers, Dec 2025 - Nov 2026.
+
+- **Matching:** 27,961 Kalshi esports events (matches and maps) matched to PandaScore on
+  game, start time within 3h, and both team names or acronyms. **Winner agreement 99.84%**
+  (the 46 disagreements were dropped).
+- **Model:** map-level Elo (K = 24) from every map. Each result is applied at that map's
+  `end_at`, so a prediction (start − 1h) never sees its own match. Map markets use the map
+  probability; match markets use the best-of-N series probability.
+- **Ratings on their own are sensible but worse than the market:**
+
+| Kalshi market | Games | Brier: market | Brier: Elo | Winner picked: market | Winner picked: Elo | corr |
+|---|---|---|---|---|---|---|
+| match | 5,123 | **0.200** | 0.221 | **68.7%** | 64.6% | 0.74 |
+| map | 4,536 | **0.219** | 0.232 | **64.2%** | 60.7% | 0.73 |
+
+- **Walk-forward blend** (May-Oct, each month fit on earlier months): Elo's weight is
+  0.01-0.14, and the blend's Brier equals the market's every month. Only 3 bets in six months
+  clear a 3c margin.
+
+Kalshi esports prices already contain what a results-based rating knows, including results
+from matches Kalshi never listed. Beating them would take information that is not in
+public match results (rosters and stand-ins, map vetoes, patches) or faster reaction.
+
 ### What this means for the $100 goal
 
 Nothing found so far supports "exponential growth". The honest summary:
@@ -682,6 +709,8 @@ Nothing found so far supports "exponential growth". The honest summary:
   under-confident before the game, but not by enough to pay the spread and fee. The maker
   subgroup that looked good failed its holdout. Kalshi esports prices track Polymarket within
   about 1c.
+- **Independent esports ratings (PandaScore, all pro matches) add nothing either**
+  (section 9).
 - **Elo ratings add nothing to minor-sports prices** once a look-ahead bug in the rating
   updates is fixed (section 8). The apparent +4.5%/month edge came from match results
   leaking into same-match map predictions.
