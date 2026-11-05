@@ -94,6 +94,21 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     One hour, not significant.
   - Its churn (about 28k orders/h) would exceed Kalshi Basic write limits, so real strategies
     must re-peg sparingly.
+- **Maker-flow study (7 recorded hours, 2,218 executions, 2026-11-05 04–11 UTC):** executions that
+  do *not* clear their price level (front-of-queue makers) earn; executions that clear the level
+  (the only fills a back-of-queue 1-lot receives) lose 2–4c at 60s–30min when the spread is ≤4c
+  (t ≈ −3 to −5, clustered by market). Joining the back of a tight queue is structurally adverse.
+- **Quoter strategy** (`albert backtest l2`, default `--strategy quote`): one tick inside the best
+  when the spread ≥ 5c (alone at the front of a new level), spread band, cooldown after fills,
+  queue-depletion pull, 10 writes/s budget (Kalshi Basic).
+  - Dev hours 04–08: improve@5c +1.6c/contract at 5 min, +2.4c marked to last mid (t ≈ 2.8);
+    holdout 08–11 (overnight, few fills): same sign, not significant (+1.4c, t 1.4, 58 fills).
+  - Latency 100 ms vs 500 ms makes no difference; joining instead of improving is ~0.
+  - Settled so far: 10 markets / 29 fills, +$0.80. Caveats: mark-to-mid in wide markets
+    overstates realizable value; other bots cannot react to our replayed quote (only live 1-lot
+    can test that); some fills were in live NBA games (exclude in-play sports before live).
+- **Paired recording** (`albert record --paired-days 3`, running since 11:28 UTC): Kalshi game
+  moneylines + the matching Polymarket intl moneyline token, for the lead/pull-signal study.
 - **Next:** accumulate ≥4 weeks; add a rate-limit model to the simulator; implement the ranked
   strategies (reward-aware quoting, quote-pull overlay with a PM-intl lead signal, weather
   overnight, pre-game sports). PM-intl ↔ Kalshi matching is needed for the lead signal (record PM

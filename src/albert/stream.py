@@ -225,6 +225,58 @@ def select_kalshi(series_info: dict[str, dict], n: int, *, days: float = 7.0, ma
     return picked
 
 
+def select_paired(days: float = 3.0) -> list[dict[str, Any]]:
+    """Kalshi game moneylines played within ``days`` paired with the Polymarket intl moneyline
+    token for the same team (exact match via ``albert.matching`` conventions; data only on intl).
+
+    Polymarket slugs list the two team codes in an order we cannot read off the Kalshi ticker
+    (codes vary in length), so each split of the concatenated codes is tried."""
+    from albert.matching import KALSHI_GAME_LEAGUES, parse_kalshi_game
+
+    today = datetime.now(UTC).date()
+    last = (datetime.now(UTC) + timedelta(days=days)).date().isoformat()
+    games: dict[tuple[str, str, str], list[str]] = defaultdict(list)
+    with httpx.Client(timeout=30) as http:
+        for series in KALSHI_GAME_LEAGUES:
+            cursor = None
+            while True:
+                params = {"series_ticker": series, "status": "open", "limit": 1000}
+                if cursor:
+                    params["cursor"] = cursor
+                r = http.get(f"{KALSHI_REST}/markets", params=params)
+                r.raise_for_status()
+                page = r.json()
+                for m in page.get("markets") or []:
+                    g = parse_kalshi_game(m["ticker"])
+                    if g and today.isoformat() <= g["date"] <= last:
+                        games[(g["league"], g["date"], g["teams"])].append(m["ticker"])
+                cursor = page.get("cursor")
+                if not cursor or not page.get("markets"):
+                    break
+        out: list[dict[str, Any]] = []
+        for (league, date, teams), tickers in sorted(games.items()):
+            for i in range(2, len(teams) - 1):
+                a, b = teams[:i], teams[i:]
+                slug = f"{league}-{a}-{b}-{date}"
+                r = http.get("https://gamma-api.polymarket.com/events", params={"slug": slug})
+                r.raise_for_status()
+                events = r.json()
+                if not events:
+                    continue
+                ml = next((m for m in events[0].get("markets") or [] if m.get("slug") == slug), None)
+                if not ml or ml.get("closed") or not ml.get("enableOrderBook"):
+                    break
+                tokens = json.loads(ml.get("clobTokenIds") or "[]")
+                for t in tickers:
+                    pick = t.rsplit("-", 1)[1].lower()
+                    if pick in (a, b) and len(tokens) == 2:
+                        # one recorded token per game (team a); team b's price is its complement
+                        out.append({"kalshi_ticker": t, "token_id": tokens[0], "complement": pick == b,
+                                    "pm_slug": slug, "question": ml.get("question")})
+                break
+    return out
+
+
 def select_pm(n: int, *, events: int = 200) -> list[dict[str, Any]]:
     """Polymarket intl YES tokens from the most active open non-financial events (data only)."""
     out: list[dict[str, Any]] = []

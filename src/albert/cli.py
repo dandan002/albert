@@ -508,6 +508,8 @@ def record_cmd(
     check_sample: int = typer.Option(5, help="Markets per REST cross-check (0 = off)"),
     seed: int = typer.Option(0, help="Seed for the Kalshi market sample"),
     min_free_gb: float = typer.Option(10.0, help="Stop when free disk space drops below this"),
+    paired_days: float = typer.Option(0.0, help="Also record Kalshi game moneylines played within "
+                                      "N days and their Polymarket intl moneyline (0 = off)"),
 ) -> None:
     """Record live order books and trades over WebSocket into data/raw/stream (append-only)."""
     import asyncio
@@ -518,12 +520,20 @@ def record_cmd(
     from albert.store import write_manifest
     from pathlib import Path
 
-    from albert.stream import Recorder, record, select_kalshi, select_pm
+    from albert.stream import Recorder, record, select_kalshi, select_paired, select_pm
     from albert.venues.kalshi_auth import KalshiSigner
 
     s, c = _clients()
     k_rows = select_kalshi(kalshi_series(s, c), kalshi, days=days, seed=seed) if kalshi else []
     pm_rows = select_pm(pm) if pm else []
+    pairs = select_paired(paired_days) if paired_days else []
+    have_k, have_pm = {m["ticker"] for m in k_rows}, {m["token_id"] for m in pm_rows}
+    k_rows += [{"ticker": p["kalshi_ticker"], "event_ticker": p["kalshi_ticker"].rsplit("-", 1)[0],
+                "category": "Sports"} for p in pairs if p["kalshi_ticker"] not in have_k]
+    for p in pairs:
+        if p["token_id"] not in have_pm:
+            have_pm.add(p["token_id"])
+            pm_rows.append({"token_id": p["token_id"], "question": p["question"], "pm_slug": p["pm_slug"]})
     typer.echo(f"recording {len(k_rows)} Kalshi markets and {len(pm_rows)} Polymarket tokens "
                f"for {minutes:g} min")
     if kalshi and not k_rows:
@@ -552,7 +562,7 @@ def record_cmd(
     path = write_manifest(s.data_dir, "record", {
         "minutes": minutes, "days": days, "min_free_gb": min_free_gb, "chunk": chunk, "seed": seed, "started_at": started,
         "kalshi_markets": [{k: m[k] for k in ("ticker", "event_ticker", "category")} for m in k_rows],
-        "pm_tokens": pm_rows,
+        "pm_tokens": pm_rows, "pairs": pairs,
     }, {"files": [asdict(f) for f in files], "stats": stats, "book_checks": checks,
         "stopped_reason": rec.stopped_reason},
         [Path(f.path) for f in files])
