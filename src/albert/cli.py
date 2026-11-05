@@ -569,15 +569,25 @@ def record_cmd(
 def backtest_l2_cmd(
     start: str = typer.Option(None, help="First hour, YYYY-MM-DDTHH (UTC)"),
     end: str = typer.Option(None, help="End hour (exclusive), YYYY-MM-DDTHH (UTC)"),
-    strategy: str = typer.Option("join", help="Strategy name (join)"),
+    strategy: str = typer.Option("quote", help="Strategy name: quote | join"),
     latency_ms: float = typer.Option(100.0, help="Decision-to-exchange latency for place and cancel"),
     queue: str = typer.Option("risk_averse", help="risk_averse or optimistic cancel attribution"),
-    min_spread: float = typer.Option(0.03, help="join: quote only when the spread is at least this"),
-    max_pos: float = typer.Option(3.0, help="join: max net contracts per market"),
+    writes_per_s: float = typer.Option(10.0, help="Order write budget per second (0 = unlimited)"),
+    min_spread: float = typer.Option(0.05, help="Quote only when the spread is at least this"),
+    max_spread: float = typer.Option(1.0, help="quote: and at most this"),
+    max_pos: float = typer.Option(3.0, help="Max net contracts per market"),
+    improve: bool = typer.Option(True, help="quote: one tick inside the best instead of joining"),
+    cooldown_s: float = typer.Option(0.0, help="quote: pause a market this long after a fill"),
+    pull_frac: float = typer.Option(0.0, help="quote: cancel when the queue ahead shrinks by this"),
+    category: list[str] = typer.Option(None, help="quote: series categories to trade (repeatable)"),
 ) -> None:
     """Replay recorded Kalshi order books and simulate a maker strategy with queue position."""
     from albert.backtest.l2 import backtest_l2
 
+    params: dict = {"min_spread": min_spread, "max_pos": max_pos}
+    if strategy == "quote":
+        params |= {"max_spread": max_spread, "improve": improve, "cooldown_s": cooldown_s,
+                   "pull_frac": pull_frac, "categories": set(category) if category else None}
     s, c = _clients()
     typer.echo(backtest_l2(s, c, start=start, end=end, strategy=strategy, latency_ms=latency_ms,
-                           queue=queue, params={"min_spread": min_spread, "max_pos": max_pos}))
+                           queue=queue, writes_per_s=writes_per_s or None, params=params))

@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from albert.backtest.l2 import (Event, JoinBest, SimConfig, Simulator, _mark_executions,
+from albert.backtest.l2 import (Event, JoinBest, Quoter, SimConfig, Simulator, _mark_executions,
                                 events_from_rows, markouts)
 
 FIX = Path(__file__).parent / "fixtures" / "kalshi"
@@ -87,3 +87,42 @@ def test_post_only_reject_trade_through_and_cancel_latency():
     assert sim.fills and sim.fills[0].how == "through" and sim.fills[0].price == 0.45
     rows = markouts(sim)
     assert rows[0]["side"] == "yes" and "mo_1s" in rows[0]
+
+
+def test_quoter_improves_one_tick_and_keeps_its_place_when_others_join():
+    sim = Simulator(SimConfig(latency_ms=0))
+    q = Quoter(min_spread=0.05, improve=True)
+    sim.apply(_snap(T0, [(0.40, 10)], [(0.50, 5)]))        # yes 0.40 / 0.50, spread 10c
+    q.on_event(sim, "M")
+    live = {o.side: o.price for o in sim.live_orders("M")}
+    assert live == {"yes": 0.41, "no": 0.51}
+    sim.apply(_delta(T0 + MS, "yes", 0.41, 3))               # someone joins behind our yes bid
+    q.on_event(sim, "M")
+    assert sim.orders[1].status == "active" and sim.orders[1].price == 0.41
+    sim.apply(_delta(T0 + 2 * MS, "yes", 0.41, -1, exec_=True))   # front of the level: ours
+    assert sim.fills and sim.fills[0].oid == 1 and sim.fills[0].how == "queue"
+
+
+def test_quoter_respects_spread_band_and_cooldown():
+    sim = Simulator(SimConfig(latency_ms=0))
+    q = Quoter(min_spread=0.05, improve=True, cooldown_s=60, min_requote_s=0)
+    sim.apply(_snap(T0, [(0.40, 10)], [(0.57, 5)]))        # spread 3c: below the band
+    q.on_event(sim, "M")
+    assert not sim.live_orders("M")
+    sim.apply(_delta(T0 + MS, "no", 0.57, -5))                # no-side best now 0.50: spread 10c
+    sim.apply(_snap(T0 + MS, [(0.40, 10)], [(0.50, 5)]))
+    q.on_event(sim, "M")
+    assert len(sim.live_orders("M")) == 2
+    sim.apply(_delta(T0 + 2 * MS, "yes", 0.40, -2, exec_=True))   # sells through our 0.41
+    q.on_event(sim, "M")
+    assert sim.fills and all(o.status != "active" or o.side == "no" for o in sim.orders.values())
+    assert not [o for o in sim.live_orders("M")]                     # both pulled for the cooldown
+
+
+def test_write_budget_throttles_places():
+    sim = Simulator(SimConfig(latency_ms=0, writes_per_s=2))
+    sim.apply(_snap(T0, [(0.40, 10)], [(0.50, 5)]))
+    ids = [sim.place("M", "yes", 0.40) for _ in range(3)]
+    assert ids[2] is None and sim.diag["throttled_places"] == 1
+    sim.now = T0 + 10**9                                       # one second refills the bucket
+    assert sim.place("M", "yes", 0.40) is not None

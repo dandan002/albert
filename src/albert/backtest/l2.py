@@ -202,6 +202,10 @@ class SimConfig:
     latency_ms: float = 100.0
     queue: str = "risk_averse"          # risk_averse | optimistic
     fee_info: dict[str, dict] = field(default_factory=dict)   # series -> {fee_type, fee_multiplier}
+    # Write budget (token bucket): Kalshi Basic tier allows 10 order writes/s; a cancel costs
+    # ``cancel_cost`` of a write (50 cancels/s). None disables the limit.
+    writes_per_s: float | None = 10.0
+    cancel_cost: float = 0.2
 
 
 class Simulator:
@@ -219,9 +223,26 @@ class Simulator:
         self.quotes: dict[str, tuple[list[int], list[tuple]]] = defaultdict(lambda: ([], []))
         self.diag: dict[str, int] = defaultdict(int)
         self.synced: set[str] = set()   # markets whose snapshot we have seen
+        self._tokens = cfg.writes_per_s or 0.0
+        self._tokens_ns = 0
 
     # -- strategy API --
-    def place(self, market: str, side: str, price: float, qty: float = 1.0) -> int:
+    def _spend(self, cost: float) -> bool:
+        rate = self.cfg.writes_per_s
+        if rate is None:
+            return True
+        self._tokens = min(rate, self._tokens + (self.now - self._tokens_ns) / 1e9 * rate)
+        self._tokens_ns = self.now
+        if self._tokens < cost - EPS:
+            return False
+        self._tokens -= cost
+        return True
+
+    def place(self, market: str, side: str, price: float, qty: float = 1.0) -> int | None:
+        """Returns the order id, or None when the write budget is exhausted (nothing sent)."""
+        if not self._spend(1.0):
+            self.diag["throttled_places"] += 1
+            return None
         oid = self._next
         self._next += 1
         lat = int(self.cfg.latency_ms * 1e6)
@@ -231,12 +252,17 @@ class Simulator:
         heapq.heappush(self._sched, (o.active_ns, oid, "activate"))
         return oid
 
-    def cancel(self, oid: int) -> None:
+    def cancel(self, oid: int) -> bool:
+        """Returns False when the write budget is exhausted (the order stays live)."""
         o = self.orders[oid]
         if o.status in ("pending", "active"):
+            if not self._spend(self.cfg.cancel_cost):
+                self.diag["throttled_cancels"] += 1
+                return False
             o.status = "cancelling" if o.status == "active" else "cancel_pending"
             o.cancel_ns = self.now + int(self.cfg.latency_ms * 1e6)
             heapq.heappush(self._sched, (o.cancel_ns, oid, "cancel"))
+        return True
 
     def live_orders(self, market: str) -> list[Order]:
         return [self.orders[i] for i in self.by_market[market]
@@ -464,7 +490,103 @@ class JoinBest:
                 sim.place(market, side, want[side], self.size)
 
 
-STRATEGIES = {"join": JoinBest}
+class Quoter:
+    """Two-sided 1-lot quoting with the levers the recorded maker markouts point at.
+
+    * ``improve``: quote one tick inside the best (alone at the front of a new level) instead
+      of joining the back of the queue. Recorded executions that clear the whole level (the only
+      ones a back-of-queue order receives) lose 2-4c at spreads of 4c or less.
+    * ``min_spread`` / ``max_spread``: quote only in this spread band (measured before us).
+    * ``pull_frac``: when joining, cancel if the external size ahead of us shrinks by this
+      fraction (the queue is being eaten or pulled: the price is about to move).
+    * ``cooldown_s``: after any fill in a market, pull both sides and wait.
+    * ``min_requote_s``: at most one new order per market side in this interval (rate limits).
+    * ``categories``: series categories to trade (None = all).
+    """
+
+    def __init__(self, min_spread: float = 0.03, max_spread: float = 1.0, lo: float = 0.05,
+                 hi: float = 0.95, max_pos: float = 3.0, size: float = 1.0, improve: bool = False,
+                 pull_frac: float = 0.0, cooldown_s: float = 0.0, min_requote_s: float = 1.0,
+                 categories: set[str] | None = None, category_of: dict[str, str] | None = None,
+                 markets: set[str] | None = None) -> None:
+        self.min_spread, self.max_spread, self.lo, self.hi = min_spread, max_spread, lo, hi
+        self.max_pos, self.size, self.improve = max_pos, size, improve
+        self.pull_frac, self.cooldown_ns = pull_frac, int(cooldown_s * 1e9)
+        self.requote_ns = int(min_requote_s * 1e9)
+        self.categories, self.category_of, self.markets = categories, category_of or {}, markets
+        self._last_place: dict[tuple[str, str], int] = {}
+        self._ahead0: dict[int, float] = {}
+        self._cool_until: dict[str, int] = {}
+        self._seen_fills = 0
+
+    def _eligible(self, market: str) -> bool:
+        if self.markets is not None and market not in self.markets:
+            return False
+        if self.categories is not None:
+            return self.category_of.get(market.split("-", 1)[0]) in self.categories
+        return True
+
+    def _wanted(self, sim: Simulator, market: str) -> dict[str, float | None]:
+        want: dict[str, float | None] = {"yes": None, "no": None}
+        if sim.now < self._cool_until.get(market, 0):
+            return want
+        q = sim.markets[market].quote()
+        if q["yes_bid"] is None or q["yes_ask"] is None:
+            return want
+        spread = q["yes_ask"] - q["yes_bid"]
+        mid = (q["yes_ask"] + q["yes_bid"]) / 2
+        if not (self.min_spread - EPS <= spread <= self.max_spread + EPS and self.lo <= mid <= self.hi):
+            return want
+        tick = 0.01 if self.improve and spread >= 0.03 - EPS else 0.0
+        pos = sim.position[market]
+        if pos < self.max_pos:
+            want["yes"] = round(q["yes_bid"] + tick, 6)
+        if pos > -self.max_pos:
+            want["no"] = round(1 - q["yes_ask"] + tick, 6)
+        return want
+
+    def on_event(self, sim: Simulator, market: str) -> None:
+        for f in sim.fills[self._seen_fills:]:
+            if self.cooldown_ns:
+                self._cool_until[f.market] = f.t_ns + self.cooldown_ns
+        self._seen_fills = len(sim.fills)
+        if market not in sim.synced or not self._eligible(market):
+            return
+        want = self._wanted(sim, market)
+        m = sim.markets[market]
+        for side in ("yes", "no"):
+            mine = [o for o in sim.live_orders(market) if o.side == side]
+            keep = []
+            for o in mine:
+                ok = want[side] is not None and (
+                    abs(o.price - want[side]) < EPS
+                    # improved order that others have since joined: we are still at the front
+                    or (self.improve and abs(o.price + 0.01 - want[side]) < EPS
+                        and o.price >= (m.best(side) or (0.0,))[0] - EPS))
+                if ok and self.pull_frac and o.status == "active" and o.oid in self._ahead0:
+                    lev = m.levels[side].get(o.price)
+                    ext = lev.ext_total() if lev else 0.0
+                    if ext < (1 - self.pull_frac) * self._ahead0[o.oid] - EPS:
+                        ok = False
+                        self._cool_until[market] = sim.now + max(self.cooldown_ns, self.requote_ns)
+                if ok:
+                    keep.append(o)
+                elif not sim.cancel(o.oid):
+                    keep.append(o)   # throttled: still live
+            if want[side] is None or keep:
+                continue
+            if sim.now - self._last_place.get((market, side), -(2**62)) < self.requote_ns:
+                continue
+            if sim.now < self._cool_until.get(market, 0):
+                continue
+            oid = sim.place(market, side, want[side], self.size)
+            if oid is not None:
+                self._last_place[(market, side)] = sim.now
+                lev = m.levels[side].get(want[side])
+                self._ahead0[oid] = lev.ext_total() if lev else 0.0
+
+
+STRATEGIES = {"join": JoinBest, "quote": Quoter}
 
 
 def run(files: list[Path], strategy, cfg: SimConfig) -> tuple[Simulator, dict[str, int]]:
@@ -522,7 +644,7 @@ def _cluster_t(frame, col: str, cluster: str = "market") -> tuple[float | None, 
 
 
 def backtest_l2(s, c, *, start: str | None, end: str | None, strategy: str, latency_ms: float,
-                queue: str, params: dict[str, Any]) -> Path:
+                queue: str, params: dict[str, Any], writes_per_s: float | None = 10.0) -> Path:
     import polars as pl
 
     from albert.ingest import kalshi_series
@@ -531,13 +653,18 @@ def backtest_l2(s, c, *, start: str | None, end: str | None, strategy: str, late
     files = stream_files(s.raw_dir / "stream", start, end)
     if not files:
         raise RuntimeError("no recorded Kalshi stream files in range; run `albert record` first")
-    cfg = SimConfig(latency_ms=latency_ms, queue=queue, fee_info=kalshi_series(s, c))
+    series = kalshi_series(s, c)
+    cfg = SimConfig(latency_ms=latency_ms, queue=queue, fee_info=series, writes_per_s=writes_per_s)
+    if strategy == "quote":
+        params = params | {"category_of": {k: v.get("category") for k, v in series.items()}}
     strat = STRATEGIES[strategy](**params)
     sim, stats = run(files, strat, cfg)
     rows = markouts(sim)
     rep = Report(s.reports_dir, f"backtest-l2-{strategy}")
     rep.json("Run", {"files": len(files), "first": str(files[0]), "last": str(files[-1]),
-                     "strategy": strategy, "params": params, "latency_ms": latency_ms,
+                     "strategy": strategy, "latency_ms": latency_ms, "writes_per_s": writes_per_s,
+                     "params": {k: sorted(v) if isinstance(v, set) else v
+                                for k, v in params.items() if k != "category_of"},
                      "queue": queue, "events": stats["events"],
                      "trades": stats["trades"], "trades_matched_to_deltas": stats["trades_matched"],
                      "orders": len(sim.orders), "diag": dict(sim.diag)})
@@ -562,11 +689,14 @@ def backtest_l2(s, c, *, start: str | None, end: str | None, strategy: str, late
         (pl.when(pl.col("side") == "yes").then(pl.col("final_yes")).otherwise(1 - pl.col("final_yes"))
          - pl.col("price") - pl.col("fee") / pl.col("qty")).alias("pnl_per_contract"),
     )
+    fills = fills.with_columns(pl.col("market").str.replace(r"-[^-]+$", "").alias("event"))
     summary = []
     for col in [f"mo_{h}s" for h in HORIZONS_S] + ["pnl_per_contract"]:
         mean, t, k = _cluster_t(fills, col)
-        summary.append({"metric": col, "mean_per_contract": mean, "t_clustered": t, "markets": k})
-    rep.table("Markouts and PnL per contract (clustered by market)", pl.DataFrame(summary))
+        _, te, ke = _cluster_t(fills, col, "event")
+        summary.append({"metric": col, "mean_per_contract": mean, "t_by_market": t, "markets": k,
+                        "t_by_event": te, "events": ke})
+    rep.table("Markouts and PnL per contract (clustered by market and by event)", pl.DataFrame(summary))
     rep.json("Totals", {
         "fills": fills.height, "contracts": fills["qty"].sum(),
         "notional": (fills["qty"] * fills["price"]).sum(), "fees": fills["fee"].sum(),
