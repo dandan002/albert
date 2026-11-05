@@ -1,0 +1,74 @@
+# Maker / microstructure research: synthesis (2026-11-04)
+
+Sources: `market-making.md`, `price-discovery-momentum.md`, `exchange-infra-latency.md`,
+`data-and-backtesting.md` (all cited; claims there are tagged verified / secondary / inference).
+
+## Bottom line
+
+- Makers as a class out-earn takers on Kalshi (~+1.1%/trade, widest in thin categories), but a
+  small new maker does not inherit that average. Our −1.7% maker test failed on adverse selection:
+  it bid the favourite one tick above the best bid and rested through news. Its trade-through fill
+  rule likely also overstated the loss.
+- For a binary contract, total remaining variance is fixed at p(1−p); what varies is *when* it
+  arrives. The main lever is **when to pull quotes** (game start, lineups, observations, speeches),
+  not how wide to quote.
+- Speed is not our edge (people watching the event live or on official feeds are seconds ahead). A
+  Python asyncio bot in AWS us-east-2 is fast enough. The hard requirement is streaming (WebSocket),
+  not the 60s poll.
+- Order-book history cannot be bought for our venues before 2026, and Polymarket US has nothing
+  affordable. **We must record our own L2 now**; every day not recorded is lost.
+- Liquidity-reward programs (Kalshi LIP until 2027-01-01; Polymarket US liquidity programs, no
+  application) may matter more than spread capture at $100 scale. Polymarket US maker rebates need
+  over $10M of volume and do not apply to us.
+
+## Facts that change the code
+
+| Item | Action |
+|---|---|
+| Kalshi production in AWS us-east-2, demo in us-west-2; PM-US exchange in us-east-1 (retail API behind Cloudflare) | Deploy in us-east-2 (GCP us-east4 is an acceptable fallback) |
+| Kalshi supports Ed25519 keys (about 20× faster signing than RSA) | Switch signing |
+| Kalshi rate tiers: Basic 10 orders/s or 50 cancels/s; next tier available by one API call | Request the upgrade before live |
+| Kalshi shards: NBA/MLB/tennis need funds moved to shard 3 | Account plumbing |
+| Kalshi `/markets` cached up to 15s | Price from orderbook / WebSocket only |
+| Kalshi sub-penny prices and fractional contracts (listed 2026-11-27 / 2026-12-17) | Parser update |
+| Kalshi order groups (auto-cancel when fills exceed a limit within 15s), PM-US expiring orders (good-till-date) | Use as kill switch / dead-man's switch |
+| `fees.py`: PM-US effective date is 2026-10-28, not 10-19; tiers switch to a rolling 30-day window on 11-06; `"maker_fee" in fee_type` also matches `combo_maker_fees` (possible over-charge); per-order rounding still disputed | Fix and re-verify against official pages (kalshi.com rate-limited the agents) |
+| Kalshi weather settlement source may have moved from NWS to The Weather Company (~Aug 2026); sources conflict | Read each market's rules before weather work |
+
+## Candidate strategies (merged ranking)
+
+1. **Reward-aware two-sided quoting in slow markets.** Join the best price rather than beating it,
+   in markets that pay liquidity rewards (PM-US futures, Kalshi LIP markets). PnL = spread +
+   rewards − markouts.
+2. **Defensive quote-pulling as an overlay** for any maker strategy: cancel when Polymarket intl
+   moves, a game event arrives (Kalshi `live_data`), or order flow turns one-sided. Test it as an
+   A/B against the same quotes without the overlay.
+3. **Weather brackets overnight.** Quote around the forecast (NBM) and pull before the day's
+   observations. Caveat: Kalshi weather is already more accurate than NBM, so make money on the
+   spread, not on forecasting.
+4. **Pre-game sports quotes anchored to the Polymarket intl price.** Cancel when the prices diverge
+   or lineups are near.
+5. **Taker: PM-US stale quotes after Kalshi/Polymarket intl moves** (weak prior: 16 bets, t = 1.4).
+   Polymarket holds taker orders 1s on sports, so test only with honest latency.
+
+Not to build: anything that watches the event in person, uses leaked or embargoed text, or races a
+delayed broadcast.
+
+## Pipeline
+
+1. **Pilot capture (1 hour):** Kalshi orderbook_delta + trades, plus Polymarket intl and PM-US books
+   for about 300 markets → `.jsonl.zst` hourly raw + manifest. Verify there are no sequence gaps
+   and check the data volume (estimate 15–100 MB/day).
+2. **Continuous recorder** on a us-east-2 VM: gap detection → snapshot resync, a 10-minute check
+   of the rebuilt book against a fresh snapshot, a heartbeat.
+3. **Simulator (build, borrow hftbacktest queue models):** L2 replay, price-time priority,
+   cancellations ahead of us in the queue, a latency model, per-venue fees and rounding,
+   settlement.
+4. **Research:** 4 weeks of recorded data to develop on + 4 weeks of holdout; markouts at
+   1s/10s/60s/5m; standard errors clustered by event/date.
+5. **Forward paper** against the live book.
+6. **Kalshi demo** for order plumbing only (it does not behave like the real market).
+7. **1-contract live:** use Kalshi's queue-position endpoint and our own order ID on book deltas to
+   measure the simulator's fill error. Go/no-go: event-clustered t ≥ 2 and ≥ 60% positive weeks.
+
+Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
