@@ -535,8 +535,12 @@ def record_cmd(
 
     async def main():
         loop = asyncio.get_running_loop()
+        def on_signal(name: str) -> None:
+            rec.stopped_reason = f"signal {name}"
+            rec.stop.set()
+
         for sig in (signal.SIGINT, signal.SIGTERM):
-            loop.add_signal_handler(sig, rec.stop.set)
+            loop.add_signal_handler(sig, on_signal, sig.name)
         await record(rec, minutes=minutes, kalshi_markets=[m["ticker"] for m in k_rows],
                      pm_tokens=[m["token_id"] for m in pm_rows], chunk=chunk,
                      check_every=check_every, check_sample=check_sample)
@@ -559,3 +563,21 @@ def record_cmd(
                f"{sum(st['frames'] for st in stats.values())} frames, {gaps} seq gaps, "
                f"book checks {matched}/{len(checks)} matched")
     typer.echo(f"manifest: {path}")
+
+
+@backtest_app.command("l2")
+def backtest_l2_cmd(
+    start: str = typer.Option(None, help="First hour, YYYY-MM-DDTHH (UTC)"),
+    end: str = typer.Option(None, help="End hour (exclusive), YYYY-MM-DDTHH (UTC)"),
+    strategy: str = typer.Option("join", help="Strategy name (join)"),
+    latency_ms: float = typer.Option(100.0, help="Decision-to-exchange latency for place and cancel"),
+    queue: str = typer.Option("risk_averse", help="risk_averse or optimistic cancel attribution"),
+    min_spread: float = typer.Option(0.03, help="join: quote only when the spread is at least this"),
+    max_pos: float = typer.Option(3.0, help="join: max net contracts per market"),
+) -> None:
+    """Replay recorded Kalshi order books and simulate a maker strategy with queue position."""
+    from albert.backtest.l2 import backtest_l2
+
+    s, c = _clients()
+    typer.echo(backtest_l2(s, c, start=start, end=end, strategy=strategy, latency_ms=latency_ms,
+                           queue=queue, params={"min_spread": min_spread, "max_pos": max_pos}))

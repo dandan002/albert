@@ -12,7 +12,8 @@ Layout (see .planning/research/data-and-backtesting.md section 2.2)::
 
 Kalshi: one ``orderbook_delta`` subscription per connection (a documented limit), so markets
 are split into chunks across connections. Each connection also subscribes to ``trade`` for the
-same markets. Deltas carry a per-subscription ``seq``; on a gap we ask for a fresh snapshot.
+same markets. Deltas carry a per-subscription ``seq``; on a gap, and at the start of every UTC
+hour, we ask for fresh snapshots (so each hourly file can be replayed on its own).
 Polymarket intl sends whole ``book`` messages plus ``price_change`` updates and has no sequence
 numbers, so we only record it (no gap audit).
 """
@@ -43,6 +44,7 @@ KALSHI_WS_PATH = "/trade-api/ws/v2"
 KALSHI_REST = "https://api.elections.kalshi.com/trade-api/v2"
 PM_WS = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
 FLUSH_SECONDS = 30.0
+HOUR_NS = 3600 * 10**9
 ZSTD_LEVEL = 9  # measured on pilot data: ~25% smaller than level 3, negligible CPU
 
 
@@ -302,6 +304,7 @@ class Recorder:
                     await send("subscribe", {"channels": ["trade"], "market_tickers": tickers})
                     last_seq: dict[int, int] = {}
                     book_sid: int | None = None
+                    snap_hour = time.time_ns() // HOUR_NS
                     stopper = asyncio.create_task(self.stop.wait())
                     while True:
                         recv = asyncio.create_task(ws.recv())
@@ -333,6 +336,14 @@ class Recorder:
                             last_seq[sid] = seq
                         if typ in ("orderbook_snapshot", "orderbook_delta"):
                             self.book.apply(typ, d["msg"])
+                        if book_sid is not None and recv_ns // HOUR_NS != snap_hour:
+                            # Fresh snapshots at the start of each hour make every hourly file
+                            # replayable on its own (verified live: the command re-sends one
+                            # orderbook_snapshot per market within the same seq stream).
+                            snap_hour = recv_ns // HOUR_NS
+                            await send("update_subscription", {
+                                "sids": [book_sid], "market_tickers": tickers,
+                                "action": "get_snapshot"})
             except Exception as exc:  # noqa: BLE001 - recorder must survive any disconnect
                 st.errors.append(f"{type(exc).__name__}: {exc}"[:300])
             if not self.stop.is_set():
