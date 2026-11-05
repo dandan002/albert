@@ -1,0 +1,143 @@
+{
+ "events": [
+  {
+   "id": "1089290",
+   "slug": "epl-ast-bre-2026-10-10",
+   "title": "Aston Villa FC vs. Brentford FC",
+   "startDate": "2026-09-27T04:00:15Z",
+   "endDate": "2026-10-10T14:00:00Z",
+   "closed": true,
+   "tags": [
+    {
+     "slug": "sports"
+    },
+    {
+     "slug": "games"
+    },
+    {
+     "slug": "soccer"
+    },
+    {
+     "slug": "premier-league"
+    },
+    {
+     "slug": "EPL"
+    }
+   ],
+   "markets": [
+    {
+     "conditionId": "0xb95b34500137b1fe5d1fd527519df5b9c75996f76691d13fb8296361907d021d",
+     "question": "Will Aston Villa FC win on 2026-10-10?",
+     "slug": "epl-ast-bre-2026-10-10-ast",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "outcomePrices": "[\"0\", \"1\"]",
+     "clobTokenIds": "[\"68701810657259368901741011918680416330056217664591524136972104440681840480130\", \"36699895381900752435635822258943466935745868552783833889242273990165909611653\"]",
+     "gameStartTime": "2026-10-10 14:00:00+00",
+     "closed": true,
+     "startDate": "2026-09-27T04:00:15Z",
+     "endDate": "2026-10-10T14:00:00Z",
+     "closedTime": "2026-10-10 16:47:15+00",
+     "volumeNum": 301350.602887
+    },
+    {
+     "conditionId": "0x38187130737edbbf30ae9d8a5f12042a6612df5606e13203db5f038cc7fd571b",
+     "question": "Will Aston Villa FC vs. Brentford FC end in a draw?",
+     "slug": "epl-ast-bre-2026-10-10-draw",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "outcomePrices": "[\"1\", \"0\"]",
+     "clobTokenIds": "[\"106278568033746254910582842484770280695505853823418415826416059455950490250281\", \"71854637785108831412179775608067794039354427826593585211122659546430098674593\"]",
+     "gameStartTime": "2026-10-10 14:00:00+00",
+     "closed": true,
+     "startDate": "2026-09-27T04:00:15Z",
+     "endDate": "2026-10-10T14:00:00Z",
+     "closedTime": "2026-10-10 18:22:31+00",
+     "volumeNum": 73730.5168770001
+    },
+    {
+     "conditionId": "0x5a5317d6f73d9e87093dc727d52c3f6fecc6c921519f1609f312bf8bff023e66",
+     "question": "Will Brentford FC win on 2026-10-10?",
+     "slug": "epl-ast-bre-2026-10-10-bre",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "outcomePrices": "[\"0\", \"1\"]",
+     "clobTokenIds": "[\"107805620348823633292943575443054688242574850525755630332353230452117411546470\", \"104434586390521172091223062678822341987958711729442855366849717129719624581643\"]",
+     "gameStartTime": "2026-10-10 14:00:00+00",
+     "closed": true,
+     "startDate": "2026-09-27T04:00:15Z",
+     "endDate": "2026-10-10T14:00:00Z",
+     "closedTime": "2026-10-10 16:48:00+00",
+     "volumeNum": 422654.2036540001
+    }
+   ]
+  },
+  {
+   "id": "1089371",
+   "slug": "epl-ast-bre-2026-10-10-halftime-result",
+   "title": "Aston Villa FC vs. Brentford FC - Halftime Result",
+   "startDate": "2026-09-27T04:00:39Z",
+   "endDate": "2026-10-10T14:00:00Z",
+   "closed": true,
+   "tags": [
+    {
+     "slug": "sports"
+    },
+    {
+     "slug": "games"
+    },
+    {
+     "slug": "soccer"
+    },
+    {
+     "slug": "premier-league"
+    },
+    {
+     "slug": "EPL"
+    }
+   ],
+   "markets": [
+    {
+     "conditionId": "0x376cf66954bfda23e8e085ba1ac9a44add05d1121c601074ba1aa4036503492a",
+     "question": "Aston Villa FC leading at halftime?",
+     "slug": "epl-ast-bre-2026-10-10-halftime-result-home",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "outcomePrices": "[\"0\", \"1\"]",
+     "clobTokenIds": "[\"39266895077827891331668316130424854933664549465685157135403035178850256742300\", \"1988836518597530129412014817718346832274577302046348343422125367688686097906\"]",
+     "gameStartTime": "2026-10-10 14:00:00+00",
+     "closed": true,
+     "startDate": "2026-09-27T04:00:39Z",
+     "endDate": "2026-10-10T14:00:00Z",
+     "closedTime": "2026-10-10 16:48:00+00",
+     "volumeNum": 2095.656191
+    },
+    {
+     "conditionId": "0x19d9675bfc8794649fd5e23cae865270a0f69dfbd8e529a5881f08c3e2a1cfd5",
+     "question": "Aston Villa FC vs. Brentford FC: Draw at halftime?",
+     "slug": "epl-ast-bre-2026-10-10-halftime-result-draw",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "outcomePrices": "[\"1\", \"0\"]",
+     "clobTokenIds": "[\"92470451732005472887349800098388491475746007601204027241538734443712215077290\", \"66764748364131731835306273666206255697136850406809896993480890849475610424916\"]",
+     "gameStartTime": "2026-10-10 14:00:00+00",
+     "closed": true,
+     "startDate": "2026-09-27T04:00:39Z",
+     "endDate": "2026-10-10T14:00:00Z",
+     "closedTime": "2026-10-10 18:44:15+00",
+     "volumeNum": 2840.897584
+    },
+    {
+     "conditionId": "0x6c43e0a71eeda6d8545cdf5415073561b9df4c22c210dd823563741d95af26bc",
+     "question": "Brentford FC leading at halftime?",
+     "slug": "epl-ast-bre-2026-10-10-halftime-result-away",
+     "outcomes": "[\"Yes\", \"No\"]",
+     "outcomePrices": "[\"0\", \"1\"]",
+     "clobTokenIds": "[\"111702602811766202574414390561651111097030693353043266704017468609202576021060\", \"13764488360414303615800807562793285612811517073316150955689175640634801639478\"]",
+     "gameStartTime": "2026-10-10 14:00:00+00",
+     "closed": true,
+     "startDate": "2026-09-27T04:00:39Z",
+     "endDate": "2026-10-10T14:00:00Z",
+     "closedTime": "2026-10-10 16:47:28+00",
+     "volumeNum": 3139.315066
+    }
+   ]
+  }
+ ],
+ "next_cursor": null
+}

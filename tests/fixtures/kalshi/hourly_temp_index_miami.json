@@ -1,0 +1,493 @@
+{
+ "city": "miami",
+ "config_version": "miami-temperature-v1.0-cal-20260921",
+ "timeseries": [
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790160600000,
+   "v": 75.2
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790160660000,
+   "v": 75.2
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790160720000,
+   "v": 75.2
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790160780000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790160840000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790160900000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790160960000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790161020000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790161080000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790161140000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790161200000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790161260000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790161320000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790161380000,
+   "v": 75.2
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790161440000,
+   "v": 75.2
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790161500000,
+   "v": 75.2
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790161560000,
+   "v": 75.2
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790161620000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790161680000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790161740000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790161800000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790161860000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790161920000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790161980000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790162040000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790162100000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790162160000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790162220000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790162280000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790162340000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790162400000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790162460000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790162520000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790162580000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790162640000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790162700000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790162760000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790162820000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790162880000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790162940000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790163000000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790163060000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790163120000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790163180000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790163240000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790163300000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790163360000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790163420000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790163480000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790163540000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790163600000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790163660000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790163720000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790163780000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790163840000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790163900000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790163960000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790164020000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790164080000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790164140000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790164200000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790164260000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790164320000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790164380000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790164440000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790164500000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790164560000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790164620000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790164680000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790164740000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790164800000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790164860000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790164920000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790164980000,
+   "v": 75.56
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790165040000,
+   "v": 75.92
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790165100000,
+   "v": 75.92
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790165160000,
+   "v": 75.92
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790165220000,
+   "v": 75.92
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790165280000,
+   "v": 75.92
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790165340000,
+   "v": 75.92
+  },
+  {
+   "contributors": 5,
+   "status": "normal",
+   "t": 1790165400000,
+   "v": 75.92
+  }
+ ],
+ "units": "fahrenheit"
+}

@@ -220,3 +220,29 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
   - **Net:** no edge anywhere. The three ~+1c mx improvements (behind20, Das quoting, no YES bid)
     are the only levers; next test their combination, then rerun everything on tonight's in-play
     hours (each module's docstring/report gives the call with `start='2026-11-05T23'`).
+- **Fundamental models, round 1 (2026-11-05 ~22–23 UTC).** Shared harness `research/fundamental.py`
+  (quote = last hourly candle closed by t; blend `logit P = a + b·logit(mid) + c·logit(model)` with
+  c's t by event; taker at ask/bid with fee; dev < Oct 1 ≤ holdout). Eight models of the underlying
+  events; none pays as a taker on October holdout:
+  - *Soccer* (`soccer.py`): Dixon–Coles loses to Kalshi (log loss 0.984 vs 0.952); de-vigged
+    Polymarket 1X2 equals Kalshi (≤1c on 92% of legs); ties fairly priced. football-data.co.uk is
+    blocked for AI agents by robots.txt, not used.
+  - *College football* (`ncaaf.py`): no information in FBS; **FCS spreads: model adds information
+    on both periods (c 0.67, t 3.8 dev; 1.00, t 5.0 Oct refit)** but taker +4.7c t 1.5 (5–14c
+    spreads). Kalshi implied margins ≈ DraftKings close.
+  - *MLB sabermetrics* (`mlb.py`): no information in moneyline/totals/F5/run line; inning totals
+    c 0.63 only because books are 20–30c wide. Model saved for spring.
+  - *Hourly temperature* (`hourly_temp.py`): markets open 60 min before the hour; settle on a
+    5-station Kalshi weather index; market beats the physics nowcast at every lead (taker −3.4 to
+    −4.8c).
+  - *Rain* (`rain.py`): **adds information on both periods (c 0.61 t 8.1; Oct refit 0.39 t 2.7)**
+    but taker +0.4c in October; Aug–Sep YES was overpriced, October calibrated.
+  - *Mentions* (`mentions.py`): base rates lose; transcript rates c ≈ 0.45 (t 1.4–1.7, n.s.);
+    sub-5c YES slightly overpriced but NO nets −0.65c after cent rounding.
+  - *Approval* (`approval.py`): dev profit was overpriced early-September ladders; market sees the
+    live RCP page; holdout taker −4.7c.
+  - *Culture/tech* (`culture.py`): most series lack as-of public data; Vercel share "information"
+    came from >25c spreads; Rotten Tomatoes 25 events, one film drives the holdout.
+  - **Pattern:** a real model adds information only in thin, wide-spread markets (FCS spreads,
+    rain), and that information sits inside the spread. Next: maker quoting around a model+price
+    blend with trade-print fills, and more thin-market sports (college basketball).
