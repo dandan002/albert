@@ -14,6 +14,7 @@ dependencies = [
     "pyarrow>=24.0.0",
     "pydantic>=2.13.3",
     "numpy>=1.26",
+    "scipy>=1.11",
     "zstandard>=0.23",
 ]
 

@@ -184,3 +184,39 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     short cancel timers would discard fills.
   - **Net:** no intra-minute edge at our speed in pre-game data. Remaining open question:
     in-play sports (tonight), via the lead-lag and arb reruns.
+- **Research swarm: volatile data, curve fitting, market-making equations (2026-11-05 ~19–22 UTC).**
+  Shared volatile-window definition `research/volatile.py`: 5-min buckets, mid path at spread ≤6c in
+  the top 20% or in-play; consecutive-bucket correlation 0.54, so strategies condition on
+  `volatile_prev`. Recorded hours have no in-play sports (1,445 volatile buckets: KXTRUMPSAY,
+  KXRAIN, NBA pre-game, weather). Ten studies, all `research/*.py` with tests; reports under
+  `data/reports/research-*`. Baseline Quoter mx_300 −3.8c dev / −3.3c holdout.
+  - *AS / GLFT / logit-AS* (`mm_models.py`): worse than the Quoter on dev (mx −5 to −6c), mixed on
+    holdout. Fill intensity depends on distance from the best, not the mid; the models quote too
+    far inside wide spreads, and their inventory skew worsens mx. A "model gate" result is a
+    price-band selection effect (near 0/1).
+  - *Fair value* (`fair_value.py`): ridge/Kalman predict the mid out of sample (R² 0.1–0.3) only in
+    ≥5c books (flicker snap-back); micro-price adds nothing (≤0.22c). Taker −0.8 to −5.9c; maker
+    overlays ±0.2c except Kalman-centred quotes in volatile windows (+0.4–1.1c, ~60 fills, n.s.).
+  - *Hawkes / VPIN* (`hawkes.py`): strong clustering, but no pull/widen filter improves holdout
+    mx; the toxicity signal exists only at spreads ≤2c where the Quoter does not trade. Bursts
+    predict move size, not direction.
+  - *Glosten–Milgrom / PIN / Das* (`info_mm.py`): PIN-based market selection fails holdout. **Das
+    Bayesian quoting improves mx by ~1c on dev and holdout at 50 and 100 ms** (−2.9 / −2.1c vs
+    −3.8 / −3.3c); still negative. Candidate with behind20.
+  - *In-play dynamics* (`inplay_dynamics.py`, 581 games fetched from public trades; the trades
+    table is pre-game only): σ_logit ∝ (T−t)^−0.46, total variance matches p(1−p); jumps carry
+    2–48% of variance by sport; under-reaction +0.6c at 60 s (t 5) but taker round trip ~3c; no
+    in-play favourite-longshot bias; every rule negative on October holdout.
+  - *Cross-strike curves* (`strike_curves.py`): residuals 3–10c are fit error, no convergence;
+    taker −7 to −10c; historical KXHIGH −0.4c.
+  - *YES over-buy* (`yes_bias.py`): buying YES passively is ~3c worse than selling it (holds), but
+    sell-YES alone ~0 at settlement and −2 to −3c at exit; Bartlett & O'Hara single-name surplus
+    reversed in October. Dropping the Quoter's YES bid: holdout mx −3.3 → −2.4c.
+  - *Volatile re-test of every earlier strategy* (`vol_retest.py`): no sign change; volatile
+    windows look better only through tighter spreads; the maker's mid edge is in calm windows; no
+    volatility gate.
+  - *Literature* (`.planning/research/MM-EQUATIONS.md`): equations, parameter recipes, ranked
+    specs (event-level order-group kill switch, jump-hazard gate).
+  - **Net:** no edge anywhere. The three ~+1c mx improvements (behind20, Das quoting, no YES bid)
+    are the only levers; next test their combination, then rerun everything on tonight's in-play
+    hours (each module's docstring/report gives the call with `start='2026-11-05T23'`).
