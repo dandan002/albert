@@ -109,6 +109,11 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     can test that); some fills were in live NBA games (exclude in-play sports before live).
 - **Paired recording** (`albert record --paired-days 3`, running since 11:28 UTC): Kalshi game
   moneylines + the matching Polymarket intl moneyline token, for the lead/pull-signal study.
+- **Rerun 04–12 UTC (in-play sports included, Polymarket ext events merged):** improve@5c +2.95c/contract
+  marked to mid (t 3.7, 311 fills, $6.90); settled so far 34 fills / 8 markets +1.5c (27 of them
+  sports, +$0.23).
+- **Lead-lag** (`albert research lead-lag`): first paired hour (11 UTC, pre-game morning) has 16
+  Polymarket moves ≥2c and Kalshi barely followed (+0.1c); needs evening game hours.
 - **Next:** accumulate ≥4 weeks; add a rate-limit model to the simulator; implement the ranked
   strategies (reward-aware quoting, quote-pull overlay with a PM-intl lead signal, weather
   overnight, pre-game sports). PM-intl ↔ Kalshi matching is needed for the lead signal (record PM
