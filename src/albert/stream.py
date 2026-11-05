@@ -183,7 +183,7 @@ class ConnStats:
 
 # ---- universe selection -----------------------------------------------------------------------
 def select_kalshi(series_info: dict[str, dict], n: int, *, days: float = 7.0, max_spread: float = 0.25,
-                  seed: int = 0) -> list[dict[str, Any]]:
+                  seed: int = 0, rest: str = KALSHI_REST) -> list[dict[str, Any]]:
     """Open non-financial markets closing within ``days`` that currently show a two-sided quote.
 
     Selection uses only the *current* quote (no final-volume information), then a seeded random
@@ -200,7 +200,7 @@ def select_kalshi(series_info: dict[str, dict], n: int, *, days: float = 7.0, ma
             if cursor:
                 params["cursor"] = cursor
             for attempt in range(5):
-                r = http.get(f"{KALSHI_REST}/markets", params=params)
+                r = http.get(f"{rest}/markets", params=params)
                 if r.status_code != 429:
                     break
                 time.sleep(1 + attempt)
@@ -304,10 +304,13 @@ def select_pm(n: int, *, events: int = 200) -> list[dict[str, Any]]:
 # ---- recorders ------------------------------------------------------------------------------
 class Recorder:
     def __init__(self, root: Path, signer: KalshiSigner | None,
-                 on_frame: Callable[[str, int, str], None] | None = None) -> None:
+                 on_frame: Callable[[str, int, str], None] | None = None,
+                 kalshi_ws: str = KALSHI_WS) -> None:
         """``on_frame(venue, recv_ns, frame)`` is called after each frame is written (used by
-        the live paper trader, which records exactly the input it trades on)."""
+        the live paper and live traders, which record exactly the input they trade on).
+        ``kalshi_ws`` selects the environment (the demo exchange has its own URL and keys)."""
         self.root = root
+        self.kalshi_ws = kalshi_ws
         self.on_frame = on_frame
         self.signer = signer
         self.stop = asyncio.Event()
@@ -348,7 +351,7 @@ class Recorder:
         while not self.stop.is_set():
             try:
                 headers = self.signer.headers("GET", KALSHI_WS_PATH)
-                async with connect(KALSHI_WS, additional_headers=headers, max_size=2**26,
+                async with connect(self.kalshi_ws, additional_headers=headers, max_size=2**26,
                                    open_timeout=20, ping_interval=20) as ws:
                     st.connects += 1
                     backoff = 1.0
@@ -404,6 +407,53 @@ class Recorder:
                                 "sids": [book_sid], "market_tickers": tickers,
                                 "action": "get_snapshot"})
             except Exception as exc:  # noqa: BLE001 - recorder must survive any disconnect
+                st.errors.append(f"{type(exc).__name__}: {exc}"[:300])
+            if not self.stop.is_set():
+                await self._sleep_or_stop(backoff)
+                backoff = min(backoff * 2, 60.0)
+
+    async def kalshi_private_conn(self, conn: str,
+                                  channels: tuple[str, ...] = ("user_orders", "fill",
+                                                               "order_group_updates")) -> None:
+        """The account's own order, fill and order-group updates (authenticated channels; no
+        market filter, so every order on the account is seen, including manual ones)."""
+        self._writer("kalshi", conn)
+        st = self.stats[conn]
+        backoff = 1.0
+        while not self.stop.is_set():
+            try:
+                headers = self.signer.headers("GET", KALSHI_WS_PATH)
+                async with connect(self.kalshi_ws, additional_headers=headers, max_size=2**26,
+                                   open_timeout=20, ping_interval=20) as ws:
+                    st.connects += 1
+                    backoff = 1.0
+                    await ws.send(json.dumps({"id": 1, "cmd": "subscribe",
+                                              "params": {"channels": list(channels)}}))
+                    last_seq: dict[int, int] = {}
+                    stopper = asyncio.create_task(self.stop.wait())
+                    while True:
+                        recv = asyncio.create_task(ws.recv())
+                        done, _ = await asyncio.wait({recv, stopper}, return_when=asyncio.FIRST_COMPLETED)
+                        if stopper in done:
+                            recv.cancel()
+                            return
+                        frame = recv.result()
+                        if isinstance(frame, bytes):
+                            frame = frame.decode()
+                        recv_ns = self._record("kalshi", conn, frame)
+                        d = json.loads(frame)
+                        typ = d.get("type", "?")
+                        st.by_type[typ] += 1
+                        if typ == "error":
+                            st.errors.append(json.dumps(d.get("msg")))
+                        sid, seq = d.get("sid"), d.get("seq")
+                        if sid is not None and seq is not None:
+                            prev = last_seq.get(sid)
+                            if prev is not None and seq != prev + 1:
+                                st.gaps.append({"recv_ns": recv_ns, "sid": sid, "expected": prev + 1,
+                                                "got": seq, "type": typ})
+                            last_seq[sid] = seq
+            except Exception as exc:  # noqa: BLE001 - must survive any disconnect
                 st.errors.append(f"{type(exc).__name__}: {exc}"[:300])
             if not self.stop.is_set():
                 await self._sleep_or_stop(backoff)

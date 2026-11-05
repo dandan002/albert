@@ -572,6 +572,161 @@ def paper_status() -> None:
     typer.echo(status(settings()))
 
 
+live_app = typer.Typer(help="Real Kalshi orders (demo or prod). Prod needs KALSHI_LIVE_ENABLED=1 "
+                       "in .env and --live on every run.", no_args_is_help=True)
+app.add_typer(live_app, name="live")
+ENV_OPT = typer.Option("demo", "--env", help="demo | prod")
+
+
+@live_app.command("check")
+def live_check(env: str = ENV_OPT) -> None:
+    """Read-only account check: key environment, balance, limits, bot vs manual orders, positions."""
+    import asyncio
+
+    from albert.live_l2 import BOT_PREFIX
+    from albert.venues.kalshi_trade import KalshiTrader, signer_for
+
+    async def main():
+        t = KalshiTrader(env, signer_for(env))
+        try:
+            limits = await t.get("/account/limits")
+            bal = await t.balance()
+            resting = await t.orders("resting")
+            pos = await t.positions()
+        finally:
+            await t.aclose()
+        bot = [o for o in resting if o.client_order_id.startswith(BOT_PREFIX)]
+        typer.echo(f"{env}: balance ${bal:.2f}  tier {limits.get('usage_tier')}  "
+                   f"write {limits.get('write')}  writable={t.writable}")
+        typer.echo(f"resting orders: {len(resting)} ({len(bot)} bot)")
+        for o in resting:
+            who = "BOT" if o in bot else "manual"
+            typer.echo(f"  {who:6} {o.ticker} {o.side} @{o.price:.4f} x{o.remaining:g}")
+        typer.echo(f"positions: {pos or 'none'}")
+
+    asyncio.run(main())
+
+
+@live_app.command("cancel-own")
+def live_cancel_own(env: str = ENV_OPT, live: bool = typer.Option(False, "--live")) -> None:
+    """Cancel every resting bot order (client_order_id prefix) and nothing else."""
+    import asyncio
+
+    from albert.live_l2 import BOT_PREFIX
+    from albert.venues.kalshi_trade import KalshiTrader, signer_for
+
+    async def main():
+        t = KalshiTrader(env, signer_for(env), allow_prod=live)
+        try:
+            return await t.cancel_own(BOT_PREFIX)
+        finally:
+            await t.aclose()
+
+    typer.echo(f"cancelled {asyncio.run(main())}")
+
+
+@live_app.command("plumbing")
+def live_plumbing(market: str = typer.Option(None, help="Demo market (default: pick one)")) -> None:
+    """Demo plumbing test: resting order, queue position, cancel, post-only reject, expiry, one
+    taker fill, order-group trigger, cancel-own sweep. Saves every response for fixtures."""
+    import asyncio
+
+    from albert.live_l2 import plumbing
+    from albert.venues.kalshi_trade import KalshiTrader, signer_for
+
+    s = settings()
+    out = s.data_dir / "live" / "plumbing" / datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+
+    async def main():
+        signer = signer_for("demo")
+        t = KalshiTrader("demo", signer)
+        try:
+            return await plumbing(t, signer, out, market=market)
+        finally:
+            await t.aclose()
+
+    steps = asyncio.run(main())
+    for st in steps:
+        typer.echo(f"{'PASS' if st.ok else 'FAIL'}  {st.name}  {json.dumps(st.detail, default=str)[:200]}")
+    typer.echo(f"{sum(st.ok for st in steps)}/{len(steps)} passed  ({out})")
+    if not all(st.ok for st in steps):
+        raise typer.Exit(1)
+
+
+@live_app.command("l2")
+def live_l2(
+    env: str = ENV_OPT,
+    live: bool = typer.Option(False, "--live", help="Required for prod (with KALSHI_LIVE_ENABLED=1)"),
+    minutes: float = typer.Option(60.0),
+    kalshi: int = typer.Option(20, help="Markets to quote (sampled like `albert record`)"),
+    markets: str = typer.Option(None, help="Comma-separated tickers instead of sampling"),
+    days: float = typer.Option(7.0),
+    seed: int = typer.Option(1),
+    min_spread: float = typer.Option(0.05),
+    improve: bool = typer.Option(True),
+    cooldown_s: float = typer.Option(300.0),
+    max_pos: float = typer.Option(1.0, help="Max net contracts per market"),
+    max_gross: float = typer.Option(10.0),
+    max_loss: float = typer.Option(10.0, help="Halt when run PnL (marked to mid) < -$X"),
+    group_limit: int = typer.Option(5, help="Exchange-side: contracts matched per rolling 15 s"),
+    expiry_s: float = typer.Option(900.0, help="expiration_time on every order"),
+) -> None:
+    """Live maker with real orders: the paper maker's Quoter, own orders netted from the book,
+    guards and exchange-side backstops. Stop with `touch data/live/STOP` or SIGTERM."""
+    import asyncio
+    import signal
+
+    from albert.backtest.l2 import Quoter, SimConfig
+    from albert.ingest import kalshi_series
+    from albert.live_l2 import LiveGuards, LiveMaker
+    from albert.stream import select_kalshi
+    from albert.venues.kalshi_trade import ENVS, KalshiTrader, signer_for
+
+    s, c = _clients()
+    series = kalshi_series(s, c)
+    signer = signer_for(env)
+    trader = KalshiTrader(env, signer, allow_prod=live)
+    if not trader.writable:
+        raise typer.BadParameter(f"{env} is not enabled for orders (prod needs KALSHI_LIVE_ENABLED=1 and --live)")
+    tickers = ([t.strip() for t in markets.split(",") if t.strip()] if markets else
+               [m["ticker"] for m in select_kalshi(series, kalshi, days=days, seed=seed,
+                                                   rest=ENVS[env]["rest"])])
+    run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    root = s.data_dir / "live"
+    run_dir = root / env / run_id
+    run_dir.mkdir(parents=True)
+    params = {"min_spread": min_spread, "improve": improve, "cooldown_s": cooldown_s, "max_pos": max_pos}
+    strat = Quoter(category_of={k: v.get("category") for k, v in series.items()}, **params)
+    guards = LiveGuards(max_gross=max_gross, max_loss=max_loss, group_contracts_limit=group_limit,
+                        order_expiry_s=expiry_s)
+    lm = LiveMaker(run_dir, env, signer, trader, run_id=run_id, strategy=strat,
+                   cfg=SimConfig(fee_info=series, writes_per_s=10.0), guards=guards, pairs=[],
+                   stop_file=root / "STOP")
+
+    async def main():
+        loop = asyncio.get_running_loop()
+
+        def on_signal(name: str) -> None:
+            lm.rec.stopped_reason = f"signal {name}"
+            lm.rec.stop.set()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, on_signal, sig.name)
+        try:
+            ok = await lm.prepare(tickers)
+            lm.write("start", {"run_id": run_id, "env": env, "minutes": minutes, "params": params,
+                               "guards": vars(guards), "markets": ok, "seed": seed})
+            typer.echo(f"live l2 {env} {run_id}: {len(ok)} markets ({len(tickers) - len(ok)} blocked)")
+            await lm.run(minutes=minutes, kalshi=ok, pm_tokens=[])
+        finally:
+            end = await lm.shutdown()
+            await trader.aclose()
+        return end
+
+    end = asyncio.run(main())
+    typer.echo(f"{end['stopped_reason']}: {end['fills']} fills, {end['orders']} orders, "
+               f"equity {end['equity']:+.2f}, halted={end['halted']}  ({run_dir})")
+
+
 @app.command("compact-raw")
 def compact_raw_cmd(min_age: float = typer.Option(60.0, help="Skip files younger than N seconds")) -> None:
     """Compress legacy plain-JSON raw files to .json.zst (lossless, verified, in place)."""
