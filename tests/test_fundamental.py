@@ -56,3 +56,36 @@ def test_blend_recovers_informative_model_and_split():
     assert abs(beta[1] - 1) < 0.2
     mu, tt, k = clustered_mean(np.array([1.0, 1.0, -1.0, 3.0]), np.array([1, 1, 2, 3]))
     assert k == 3 and abs(mu - 1.0) < 1e-12
+
+
+def _trades() -> pl.DataFrame:
+    from albert.venues.kalshi import trade_rows
+    d = json.loads((FIX / "trades_inplay_mlb.json").read_text())
+    return pl.DataFrame(trade_rows(d))
+
+
+def test_maker_fills_only_on_trades_strictly_through_our_bid():
+    from albert.research.fundamental import evaluate_maker, maker_fee, maker_fills
+    tr = _trades()
+    assert tr.height > 100
+    t0, t1 = tr["created_time"].min(), tr["created_time"].max()
+    ticker = tr["ticker"][0]
+    # Fair value 0.60: YES bid at 0.59 (cap: ask 0.70 − 0.01), NO bid at 0.39.
+    pred = pl.DataFrame({"ticker": [ticker], "event": ["g"], "t": [t0 - timedelta(seconds=1)], "end": [t1],
+                         "p": [0.60], "bid": [0.50], "ask": [0.70], "y": [1],
+                         "fee_type": ["quadratic"], "fee_multiplier": [1.0]})
+    f = maker_fills(pred, tr, 0.01).sort("side")
+    no, yes = f.row(0, named=True), f.row(1, named=True)
+    assert yes["price"] == 0.59 and no["price"] == 0.39
+    sold_below = tr.filter((pl.col("taker_side") == "no") & (pl.col("yes_price") < 0.59))
+    bought_above = tr.filter((pl.col("taker_side") == "yes") & (pl.col("yes_price") > 0.61))
+    assert yes["filled"] == (sold_below.height > 0) and no["filled"] == (bought_above.height > 0)
+    if yes["filled"]:
+        assert yes["fill_ts"] == sold_below["created_time"].min()
+        assert abs(yes["pnl"] - (1 - 0.59)) < 1e-12          # no maker fee on this series
+    # Orders resting after the last trade never fill.
+    late = pred.with_columns(pl.lit(t1).alias("t"))
+    assert not maker_fills(late, tr, 0.01)["filled"].any()
+    assert maker_fee(0.5, "quadratic_with_maker_fees") > 0 and maker_fee(0.5, "quadratic") == 0
+    res = evaluate_maker(pred, tr, holdout_from=t1 + timedelta(days=1), min_fills=1)
+    assert res["maker"] and res["maker"][0]["split"] == "dev"

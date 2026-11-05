@@ -39,8 +39,16 @@ import polars as pl
 THETAS = (0.0, 0.01, 0.02, 0.03, 0.05, 0.08, 0.12)
 
 
-def taker_fee(p: float) -> float:
-    return math.ceil(0.07 * p * (1 - p) * 1e4 - 1e-9) / 1e4
+def taker_fee(p: float, mult: float = 1.0) -> float:
+    """Kalshi taker fee for one contract (0.07 × series multiplier × P(1−P)), to $0.0001."""
+    return math.ceil(0.07 * mult * p * (1 - p) * 1e4 - 1e-9) / 1e4
+
+
+def maker_fee(p: float, fee_type: str | None, mult: float = 1.0) -> float:
+    """Kalshi maker fee for one contract: 0.0175 × multiplier × P(1−P) on maker-fee series only."""
+    if not fee_type or "maker_fee" not in fee_type:
+        return 0.0
+    return math.ceil(0.0175 * mult * p * (1 - p) * 1e4 - 1e-9) / 1e4
 
 
 # ---- data ------------------------------------------------------------------------------------
@@ -159,18 +167,20 @@ def _scores(p: np.ndarray, y: np.ndarray) -> tuple[float, float]:
 
 
 def taker_pnl(df: pl.DataFrame, theta: float) -> pl.DataFrame:
-    """One contract per row where the model's edge after the taker fee is at least ``theta``."""
+    """One contract per row where the model's edge after the taker fee is at least ``theta``. A
+    ``fee_multiplier`` column (from :func:`settled_markets`) applies the series' own fee."""
     rows = []
     for r in df.iter_rows(named=True):
         p, bid, ask, y = r["p"], r["bid"], r["ask"], r["y"]
-        ey = p - ask - taker_fee(ask)
-        en = (1 - p) - (1 - bid) - taker_fee(1 - bid)
+        mult = r.get("fee_multiplier") or 1.0
+        ey = p - ask - taker_fee(ask, mult)
+        en = (1 - p) - (1 - bid) - taker_fee(1 - bid, mult)
         if max(ey, en) < theta:
             continue
         if ey >= en:
-            rows.append({**r, "side": "yes", "edge": ey, "pnl": y - ask - taker_fee(ask)})
+            rows.append({**r, "side": "yes", "edge": ey, "pnl": y - ask - taker_fee(ask, mult)})
         else:
-            rows.append({**r, "side": "no", "edge": en, "pnl": (1 - y) - (1 - bid) - taker_fee(1 - bid)})
+            rows.append({**r, "side": "no", "edge": en, "pnl": (1 - y) - (1 - bid) - taker_fee(1 - bid, mult)})
     return pl.DataFrame(rows, infer_schema_length=None) if rows else pl.DataFrame()
 
 
@@ -229,6 +239,117 @@ def evaluate(pred: pl.DataFrame, holdout_from: datetime, *, min_trades: int = 30
     return out
 
 
+# ---- passive (maker) test with trade-print fills ---------------------------------------------
+MARGINS = (0.0, 0.01, 0.02, 0.03, 0.05, 0.08)
+
+
+def fetch_trades(s, windows: pl.DataFrame, name: str, *, workers: int = 2) -> pl.DataFrame:
+    """Every public trade of each market inside its window (columns ticker, t_from, t_to), cached
+    per study under ``data/cache/fundamental_<name>_trades.parquet`` (one entry per ticker+window)."""
+    from albert.http import CachedClient
+    from albert.venues import kalshi as k
+
+    path = s.data_dir / "cache" / f"fundamental_{name}_trades.parquet"
+    done_path = path.with_name(path.stem + "_windows.parquet")
+    have = pl.read_parquet(path) if path.exists() else None
+    done = pl.read_parquet(done_path) if done_path.exists() else pl.DataFrame(
+        schema={"ticker": pl.String, "t_from": pl.Datetime("us", "UTC"), "t_to": pl.Datetime("us", "UTC")})
+    w = windows.select("ticker", "t_from", "t_to").unique()
+    todo = w.join(done, on=["ticker", "t_from", "t_to"], how="anti")
+    if todo.height:
+        api = k.Kalshi(CachedClient("kalshi", s.kalshi_base, s.raw_dir, min_interval=0.1))
+        cutoff = api.cutoff().get("trades_created_ts") or api.cutoff().get("market_settled_ts")
+
+        def one(r: dict[str, Any]) -> list[dict[str, Any]]:
+            historical = bool(cutoff and r["t_to"] < cutoff)
+            out: list[dict[str, Any]] = []
+            try:
+                for page in api.trades(r["ticker"], historical, min_ts=r["t_from"], max_ts=r["t_to"]):
+                    out.extend(k.trade_rows(page.payload))
+            except RuntimeError as error:
+                print(f"skip trades {r['ticker']}: {str(error)[:120]}")
+            return out
+
+        rows: list[dict[str, Any]] = []
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            for i, got in enumerate(pool.map(one, todo.iter_rows(named=True)), 1):
+                rows.extend(got)
+                if i % 200 == 0:
+                    print(f"  trades {i}/{todo.height}", flush=True)
+        new = pl.DataFrame(rows, infer_schema_length=None) if rows else None
+        frames = [f for f in (have, new) if f is not None and f.height]
+        have = pl.concat(frames, how="diagonal_relaxed").unique("trade_id") if frames else pl.DataFrame()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        for f, target in ((have, path), (pl.concat([done, todo]), done_path)):
+            tmp = target.with_suffix(".tmp")
+            f.write_parquet(tmp)
+            tmp.replace(target)
+    return have if have is not None else pl.DataFrame()
+
+
+def maker_fills(pred: pl.DataFrame, trades: pl.DataFrame, margin: float) -> pl.DataFrame:
+    """Rest one YES bid and one NO bid per row from ``t`` until ``end`` around the fair value ``p``:
+    YES bid ``floor(p − margin)`` and NO bid ``floor(1 − p − margin)`` (whole cents), each capped one
+    tick inside the opposite quote so it is post-only. A bid fills only if a later trade prints
+    strictly THROUGH it (a YES-seller at a lower YES price, or a YES-buyer at a higher one): the
+    queue at our own price is never assumed to clear. Held to settlement; maker fee by series.
+
+    ``pred`` needs ticker, event, t, end, p, bid, ask, y (and optionally fee_type,
+    fee_multiplier); ``trades`` needs ticker, created_time, yes_price, taker_side."""
+    tr = trades.select("ticker", pl.col("created_time").alias("ts"), "yes_price", "taker_side")
+    by = {k[0]: v for k, v in tr.partition_by("ticker", as_dict=True).items()}
+    rows = []
+    for r in pred.iter_rows(named=True):
+        p, bid, ask = r["p"], r["bid"], r["ask"]
+        yb = min(math.floor((p - margin) * 100 + 1e-9) / 100, round(ask - 0.01, 2))
+        nb = min(math.floor((1 - p - margin) * 100 + 1e-9) / 100, round(1 - bid - 0.01, 2))
+        t_tr = by.get(r["ticker"])
+        window = (t_tr.filter((pl.col("ts") > r["t"]) & (pl.col("ts") <= r["end"]))
+                  if t_tr is not None else None)
+        ft, mult = r.get("fee_type"), r.get("fee_multiplier") or 1.0
+        for side, price in (("yes", yb), ("no", nb)):
+            if price < 0.01:
+                continue
+            hit = None
+            if window is not None and window.height:
+                if side == "yes":
+                    w = window.filter((pl.col("taker_side") == "no") & (pl.col("yes_price") < price - 1e-9))
+                else:
+                    w = window.filter((pl.col("taker_side") == "yes") & (pl.col("yes_price") > 1 - price + 1e-9))
+                if w.height:
+                    hit = w["ts"].min()
+            won = r["y"] if side == "yes" else 1 - r["y"]
+            rows.append({"ticker": r["ticker"], "event": r["event"], "t": r["t"], "side": side, "price": price,
+                         "filled": hit is not None, "fill_ts": hit,
+                         "pnl": (won - price - maker_fee(price, ft, mult)) if hit is not None else 0.0})
+    return pl.DataFrame(rows, infer_schema_length=None) if rows else pl.DataFrame()
+
+
+def evaluate_maker(pred: pl.DataFrame, trades: pl.DataFrame, holdout_from: datetime,
+                   *, margins: tuple[float, ...] = MARGINS, min_fills: int = 30) -> dict[str, Any]:
+    """Maker test per margin and split: orders, fills, PnL per filled contract and per order
+    posted (t by event). The margin is chosen on dev (best PnL per fill with ≥ ``min_fills``)."""
+    table, best = [], None
+    for m in margins:
+        f = maker_fills(pred, trades, m)
+        if not f.height:
+            continue
+        f = f.with_columns((pl.col("t") >= holdout_from).alias("holdout"))
+        for split, part in (("dev", f.filter(~pl.col("holdout"))), ("holdout", f.filter(pl.col("holdout")))):
+            filled = part.filter("filled")
+            row = {"margin": m, "split": split, "orders": part.height, "fills": filled.height,
+                   "fill_rate": round(filled.height / part.height, 3) if part.height else None}
+            if filled.height:
+                mu, tt, k = clustered_mean(filled["pnl"].to_numpy(), filled["event"].to_numpy())
+                row.update({"events": k, "pnl_per_fill_c": round(mu * 100, 3), "t": None if tt is None else round(tt, 2),
+                            "pnl_per_order_c": round(float(part["pnl"].sum()) / part.height * 100, 3),
+                            "yes_share": round(float((filled["side"] == "yes").mean()), 3)})
+                if split == "dev" and filled.height >= min_fills and (best is None or mu > best[1]):
+                    best = (m, mu)
+            table.append(row)
+    return {"maker": table, "margin_chosen_on_dev": None if best is None else best[0]}
+
+
 def report(s, name: str, results: dict[str, Any], extra: dict[str, Any] | None = None) -> Path:
     from albert.reports import Report
 
@@ -242,6 +363,10 @@ def report(s, name: str, results: dict[str, Any], extra: dict[str, Any] | None =
     if results.get("taker"):
         rep.table("Taker at the ask/bid with fees, held to settlement (cents per contract)",
                   pl.DataFrame(results["taker"], infer_schema_length=None))
+    if results.get("maker"):
+        rep.json("Maker margin chosen on dev", {"margin": results.get("margin_chosen_on_dev")})
+        rep.table("Maker: bids around the fair value, trade-through fills, held to settlement",
+                  pl.DataFrame(results["maker"], infer_schema_length=None))
     return rep.save()
 
 
