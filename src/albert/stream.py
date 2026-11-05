@@ -22,6 +22,7 @@ import hashlib
 import json
 import os
 import random
+import shutil
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -41,7 +42,8 @@ KALSHI_WS = "wss://api.elections.kalshi.com/trade-api/ws/v2"
 KALSHI_WS_PATH = "/trade-api/ws/v2"
 KALSHI_REST = "https://api.elections.kalshi.com/trade-api/v2"
 PM_WS = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
-FLUSH_SECONDS = 5.0
+FLUSH_SECONDS = 30.0
+ZSTD_LEVEL = 9  # measured on pilot data: ~25% smaller than level 3, negligible CPU
 
 
 # ---- append-only hourly writer ----------------------------------------------------------------
@@ -78,7 +80,7 @@ class HourlyWriter:
             n += 1
         self._path, self._hour, self._lines = path, hour, 0
         self._f = open(path.with_name(path.name + ".part"), "wb")
-        self._zw = zstandard.ZstdCompressor(level=3).stream_writer(self._f, closefd=False)
+        self._zw = zstandard.ZstdCompressor(level=ZSTD_LEVEL).stream_writer(self._f, closefd=False)
 
     def write(self, recv_ns: int, frame: str) -> None:
         hour = datetime.fromtimestamp(recv_ns / 1e9, UTC).replace(minute=0, second=0, microsecond=0)
@@ -254,6 +256,7 @@ class Recorder:
         self.stats: dict[str, ConnStats] = {}
         self.book = KalshiBook()
         self.checks: list[dict[str, Any]] = []
+        self.stopped_reason = "duration"
 
     def _writer(self, venue: str, conn: str) -> HourlyWriter:
         if conn not in self.writers:
@@ -427,10 +430,22 @@ class Recorder:
         return out
 
 
+async def disk_guard(rec: Recorder, min_free_gb: float, every: float = 60.0) -> None:
+    """Stop recording before the disk fills up."""
+    while not rec.stop.is_set():
+        free = shutil.disk_usage(rec.root.parent if not rec.root.exists() else rec.root).free / 1e9
+        if free < min_free_gb:
+            rec.stopped_reason = f"disk free {free:.1f} GB < {min_free_gb} GB"
+            rec.stop.set()
+            return
+        await rec._sleep_or_stop(every)
+
+
 async def record(rec: Recorder, *, minutes: float, kalshi_markets: list[str],
-                 pm_tokens: list[str], chunk: int, check_every: float, check_sample: int) -> None:
+                 pm_tokens: list[str], chunk: int, check_every: float, check_sample: int,
+                 min_free_gb: float = 10.0) -> None:
     """Run every connection until ``minutes`` pass or ``rec.stop`` is set (e.g. by SIGTERM)."""
-    tasks = []
+    tasks = [disk_guard(rec, min_free_gb)]
     for i in range(0, len(kalshi_markets), chunk):
         tasks.append(rec.kalshi_conn(f"k{i // chunk}", kalshi_markets[i:i + chunk]))
     for i in range(0, len(pm_tokens), chunk):
