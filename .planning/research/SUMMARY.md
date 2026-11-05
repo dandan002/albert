@@ -72,3 +72,29 @@ delayed broadcast.
    measure the simulator's fill error. Go/no-go: event-clustered t ≥ 2 and ≥ 60% positive weeks.
 
 Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
+
+## Progress (2026-11-05)
+
+- **Recorder built** (`albert record`, `src/albert/stream.py`; continuous via `deploy/record-loop.sh`,
+  stop with `touch data/record.stop` or SIGTERM to the python process).
+  - 1-hour pilot (300 Kalshi markets / 150 PM tokens): 0 seq gaps, 25/25 REST book checks matched.
+  - Real volume, much higher than estimated because thin books churn: ~1,000 Kalshi deltas per
+    market-hour. At zstd level 9: about 5–6 MB/h Kalshi (300 markets) and about 10 MB/h PM
+    (60 tokens).
+  - Hourly `get_snapshot`, so each hourly file replays on its own.
+  - Running locally since 2026-11-05 04:20 UTC (Mac, `caffeinate`); move to a VM for durability.
+- **Feed facts (verified on recorded data):** each resting order that trades emits its own
+  negative delta with the trade's `ts_ms` and size. All 1,080 pilot trades match one delta;
+  about 10% of trades arrive before their delta. So executions are separable from cancels, and
+  order sizes at a level are visible after the snapshot (near-L3).
+- **Simulator built** (`albert backtest l2`, `src/albert/backtest/l2.py`): FIFO chunk queue,
+  latency, post-only, trade-through and crossing fills, risk-averse/optimistic cancel
+  attribution, series maker fees, markouts, settlement PnL.
+  - Pilot-hour join-best baseline: −2 to −3c per contract at 5 min; worse at 500 ms latency.
+    One hour, not significant.
+  - Its churn (about 28k orders/h) would exceed Kalshi Basic write limits, so real strategies
+    must re-peg sparingly.
+- **Next:** accumulate ≥4 weeks; add a rate-limit model to the simulator; implement the ranked
+  strategies (reward-aware quoting, quote-pull overlay with a PM-intl lead signal, weather
+  overnight, pre-game sports). PM-intl ↔ Kalshi matching is needed for the lead signal (record PM
+  tokens matched to recorded Kalshi markets).
