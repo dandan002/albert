@@ -51,6 +51,19 @@ class Event:
     is_exec: bool = False
 
 
+def trade_key(m: dict[str, Any]) -> tuple[str, float, float, int]:
+    """(maker side, maker-side price, size, ts_ms) of a trade print."""
+    side = "yes" if m["taker_side"] == "no" else "no"
+    price = float(m["yes_price_dollars"] if side == "yes" else m["no_price_dollars"])
+    return side, price, float(m["count_fp"]), m.get("ts_ms") or 0
+
+
+def delta_matches(dm: dict[str, Any], k: tuple[str, float, float, int]) -> bool:
+    return (dm.get("ts_ms") == k[3] and dm["side"] == k[0]
+            and abs(float(dm["price_dollars"]) - k[1]) < EPS
+            and abs(-float(dm["delta_fp"]) - k[2]) < 1e-6)
+
+
 def _mark_executions(events: list[Event]) -> tuple[int, int]:
     """Label negative deltas that a trade print explains (same ts_ms, maker side, price, size).
 
@@ -60,22 +73,10 @@ def _mark_executions(events: list[Event]) -> tuple[int, int]:
     deltas: dict[str, list[Event]] = defaultdict(list)
     trades_waiting: dict[str, list[tuple[str, float, float, int]]] = defaultdict(list)
     trades = matched = 0
-
-    def key_of_trade(m: dict[str, Any]) -> tuple[str, float, float, int]:
-        side = "yes" if m["taker_side"] == "no" else "no"
-        price = float(m["yes_price_dollars"] if side == "yes" else m["no_price_dollars"])
-        return side, price, float(m["count_fp"]), m.get("ts_ms") or 0
-
-    def same(d: Event, k: tuple[str, float, float, int]) -> bool:
-        dm = d.msg
-        return (dm.get("ts_ms") == k[3] and dm["side"] == k[0]
-                and abs(float(dm["price_dollars"]) - k[1]) < EPS
-                and abs(-float(dm["delta_fp"]) - k[2]) < 1e-6)
-
     for ev in events:
         if ev.kind == "delta" and float(ev.msg["delta_fp"]) < 0:
             waiting = trades_waiting[ev.market]
-            hit = next((i for i, k in enumerate(waiting) if same(ev, k)), None)
+            hit = next((i for i, k in enumerate(waiting) if delta_matches(ev.msg, k)), None)
             if hit is not None:
                 ev.is_exec = True
                 matched += 1
@@ -84,9 +85,9 @@ def _mark_executions(events: list[Event]) -> tuple[int, int]:
                 deltas[ev.market].append(ev)
         elif ev.kind == "trade":
             trades += 1
-            k = key_of_trade(ev.msg)
+            k = trade_key(ev.msg)
             cands = deltas[ev.market]
-            hit = next((i for i, d in enumerate(cands) if same(d, k)), None)
+            hit = next((i for i, d in enumerate(cands) if delta_matches(d.msg, k)), None)
             if hit is not None:
                 cands[hit].is_exec = True
                 matched += 1
@@ -97,6 +98,53 @@ def _mark_executions(events: list[Event]) -> tuple[int, int]:
             deltas[ev.market] = [d for d in cands if (d.msg.get("ts_ms") or ts) >= ts - 2000]
             trades_waiting[ev.market] = [w for w in trades_waiting[ev.market] if w[3] >= ts - 2000]
     return trades, matched
+
+
+class OnlineClassifier:
+    """Streaming version of ``_mark_executions`` for live paper trading: events are held back
+    ``holdback_ms`` of receive time so a trade arriving just after its delta can still label it.
+    Released events keep their receive times, so the simulator runs in event time exactly as
+    in replay (the holdback delays our bookkeeping, not the modeled decisions)."""
+
+    def __init__(self, holdback_ms: float = 500.0) -> None:
+        self.hold = int(holdback_ms * 1e6)
+        self.buf: list[Event] = []
+        self.waiting: dict[str, list[tuple[tuple[str, float, float, int], int]]] = defaultdict(list)
+        self.stats: dict[str, int] = defaultdict(int)
+
+    def push(self, ev: Event) -> None:
+        if ev.kind == "delta" and float(ev.msg["delta_fp"]) < 0:
+            w = self.waiting[ev.market]
+            hit = next((i for i, (k, _) in enumerate(w) if delta_matches(ev.msg, k)), None)
+            if hit is not None:
+                ev.is_exec = True
+                self.stats["trades_matched"] += 1
+                del w[hit]
+        elif ev.kind == "trade":
+            self.stats["trades"] += 1
+            k = trade_key(ev.msg)
+            hit = next((d for d in self.buf if d.kind == "delta" and not d.is_exec
+                        and d.market == ev.market and float(d.msg["delta_fp"]) < 0
+                        and delta_matches(d.msg, k)), None)
+            if hit is not None:
+                hit.is_exec = True
+                self.stats["trades_matched"] += 1
+            else:
+                self.waiting[ev.market].append((k, ev.recv_ns))
+        self.buf.append(ev)
+
+    def release(self, now_ns: int) -> list[Event]:
+        cut = now_ns - self.hold
+        i = 0
+        while i < len(self.buf) and self.buf[i].recv_ns <= cut:
+            i += 1
+        out, self.buf = self.buf[:i], self.buf[i:]
+        old = now_ns - 2 * 10**9
+        for m, w in self.waiting.items():
+            if w and w[0][1] < old:
+                self.stats["trades_unmatched"] += sum(1 for _, t in w if t < old)
+                self.waiting[m] = [x for x in w if x[1] >= old]
+        return out
 
 
 def _file_events(path: Path) -> list[Event]:
@@ -753,13 +801,15 @@ def _cluster_t(frame, col: str, cluster: str = "market") -> tuple[float | None, 
 
 
 def backtest_l2(s, c, *, start: str | None, end: str | None, strategy: str, latency_ms: float,
-                queue: str, params: dict[str, Any], writes_per_s: float | None = 10.0) -> Path:
+                queue: str, params: dict[str, Any], writes_per_s: float | None = 10.0,
+                root: Path | None = None) -> Path:
     import polars as pl
 
     from albert.ingest import kalshi_series
     from albert.reports import Report
 
-    files = stream_files(s.raw_dir / "stream", start, end)
+    root = root or s.raw_dir / "stream"
+    files = stream_files(root, start, end)
     if not files:
         raise RuntimeError("no recorded Kalshi stream files in range; run `albert record` first")
     series = kalshi_series(s, c)
@@ -767,7 +817,6 @@ def backtest_l2(s, c, *, start: str | None, end: str | None, strategy: str, late
     if strategy == "quote":
         params = params | {"category_of": {k: v.get("category") for k, v in series.items()}}
     strat = STRATEGIES[strategy](**params)
-    root = s.raw_dir / "stream"
     pairs = load_pairs(root)
     ext = pm_events(pm_files(root, start, end), pairs) if pairs and strategy == "quote" else None
     sim, stats = run(files, strat, cfg, ext)

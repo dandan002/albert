@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from datetime import UTC, date, datetime, time
 
 import typer
@@ -432,6 +433,86 @@ paper_app = typer.Typer(help="Paper trading on live quotes (no real orders).", n
 app.add_typer(paper_app, name="paper")
 
 
+@paper_app.command("l2")
+def paper_l2(
+    minutes: float = typer.Option(1440.0, help="How long to run"),
+    kalshi: int = typer.Option(150, help="Kalshi markets (sampled like `albert record`)"),
+    days: float = typer.Option(7.0, help="Kalshi: markets closing within N days"),
+    paired_days: float = typer.Option(3.0, help="Also game moneylines played within N days, with "
+                                      "their Polymarket intl price as a signal (0 = off)"),
+    seed: int = typer.Option(1, help="Seed for the Kalshi market sample"),
+    latency_ms: float = typer.Option(100.0),
+    writes_per_s: float = typer.Option(10.0),
+    holdback_ms: float = typer.Option(500.0, help="Bookkeeping delay to pair trades with deltas"),
+    min_spread: float = typer.Option(0.05),
+    improve: bool = typer.Option(True),
+    cooldown_s: float = typer.Option(300.0),
+    max_pos: float = typer.Option(3.0, help="Max net contracts per market"),
+    max_gross: float = typer.Option(30.0, help="Stop adding exposure above this many contracts"),
+    max_loss: float = typer.Option(5.0, help="Halt when run PnL (marked to mid) < -$X"),
+    pm_band: float = typer.Option(None, help="Keep bids this far inside the Polymarket fair value"),
+    pm_pull: float = typer.Option(0.0, help="Pull quotes when Polymarket moved this much"),
+) -> None:
+    """Live paper maker: the backtest's Quoter and queue model on live WebSocket books.
+    No orders are sent. Stop with `touch data/paper_l2/STOP` or SIGTERM."""
+    import asyncio
+    import signal
+
+    from albert.backtest.l2 import Quoter, SimConfig
+    from albert.ingest import kalshi_series
+    from albert.paper_l2 import Guards, PaperMaker
+    from albert.stream import select_kalshi, select_paired
+    from albert.venues.kalshi_auth import KalshiSigner
+
+    s, c = _clients()
+    series = kalshi_series(s, c)
+    k_rows = select_kalshi(series, kalshi, days=days, seed=seed) if kalshi else []
+    pairs = select_paired(paired_days) if paired_days else []
+    tickers = [m["ticker"] for m in k_rows]
+    tickers += [p["kalshi_ticker"] for p in pairs if p["kalshi_ticker"] not in set(tickers)]
+    tokens = sorted({p["token_id"] for p in pairs})
+    run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    root = s.data_dir / "paper_l2"
+    run_dir = root / run_id
+    (run_dir / "stream" / "pairs").mkdir(parents=True)
+    (run_dir / "stream" / "pairs" / f"{run_id}.json").write_text(json.dumps(pairs, indent=1))
+    params = {"min_spread": min_spread, "improve": improve, "cooldown_s": cooldown_s,
+              "max_pos": max_pos, "pm_band": pm_band, "pm_pull": pm_pull}
+    strat = Quoter(category_of={k: v.get("category") for k, v in series.items()}, **params)
+    cfg = SimConfig(latency_ms=latency_ms, fee_info=series, writes_per_s=writes_per_s or None)
+    guards = Guards(max_gross=max_gross, max_loss=max_loss)
+    pm = PaperMaker(run_dir, KalshiSigner.from_env(), strategy=strat, cfg=cfg, pairs=pairs,
+                    guards=guards, holdback_ms=holdback_ms, stop_file=root / "STOP")
+    pm.write("start", {"run_id": run_id, "minutes": minutes, "params": params,
+                       "latency_ms": latency_ms, "writes_per_s": writes_per_s,
+                       "holdback_ms": holdback_ms, "guards": vars(guards), "seed": seed,
+                       "kalshi_markets": tickers, "pm_tokens": tokens, "pairs": len(pairs)})
+    typer.echo(f"paper l2 {run_id}: {len(tickers)} Kalshi markets, {len(tokens)} Polymarket tokens")
+
+    async def main():
+        loop = asyncio.get_running_loop()
+        def on_signal(name: str) -> None:
+            pm.rec.stopped_reason = f"signal {name}"
+            pm.rec.stop.set()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, on_signal, sig.name)
+        await pm.run(minutes=minutes, kalshi=tickers, pm_tokens=tokens)
+
+    asyncio.run(main())
+    end = pm.close()
+    typer.echo(f"{end['stopped_reason']}: {end['fills']} fills, {end['orders']} orders, "
+               f"equity {end['equity']:+.2f}, halted={end['halted']}  ({run_dir})")
+
+
+@paper_app.command("l2-report")
+def paper_l2_report(run: str = typer.Option(None, help="Run id under data/paper_l2 (default: all)")) -> None:
+    """Score live paper maker runs: markouts, mark-to-mid and settlement PnL."""
+    from albert.paper_l2 import report
+
+    s, c = _clients()
+    typer.echo(report(s, c, run))
+
+
 @paper_app.command("reset")
 def paper_reset(kalshi_cash: float = typer.Option(50.0), pmus_cash: float = typer.Option(50.0),
                 yes: bool = typer.Option(False, "--yes", help="Confirm wiping the paper account")) -> None:
@@ -614,6 +695,8 @@ def backtest_l2_cmd(
     pm_pull: float = typer.Option(0.0, help="quote: pull when Polymarket moved this much"),
     pm_window_s: float = typer.Option(10.0, help="quote: ...within this many seconds"),
     pm_only: bool = typer.Option(False, help="quote: trade only markets with a Polymarket price"),
+    root: str = typer.Option(None, help="Stream root to replay (default data/raw/stream; a paper "
+                             "run's data/paper_l2/<run>/stream reconciles that run)"),
 ) -> None:
     """Replay recorded Kalshi order books and simulate a maker strategy with queue position."""
     from albert.backtest.l2 import backtest_l2
@@ -626,4 +709,5 @@ def backtest_l2_cmd(
                    "pm_only": pm_only}
     s, c = _clients()
     typer.echo(backtest_l2(s, c, start=start, end=end, strategy=strategy, latency_ms=latency_ms,
-                           queue=queue, writes_per_s=writes_per_s or None, params=params))
+                           queue=queue, writes_per_s=writes_per_s or None, params=params,
+                           root=Path(root) if root else None))

@@ -114,6 +114,13 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
   sports, +$0.23).
 - **Lead-lag** (`albert research lead-lag`): first paired hour (11 UTC, pre-game morning) has 16
   Polymarket moves ≥2c and Kalshi barely followed (+0.1c); needs evening game hours.
+- **Live paper maker** (`albert paper l2`, `src/albert/paper_l2.py`, loop `deploy/paper-loop.sh`,
+  running since 2026-11-05 13:06 UTC): the same Quoter and Simulator on live WebSocket books (no
+  orders). A 500 ms holdback lets trades label their deltas online (`OnlineClassifier`, same
+  labels as the batch matcher in tests). Each run records its own input, so
+  `albert backtest l2 --root data/paper_l2/<run>/stream` replays it (smoke run reconciled: 67/67
+  orders). Guards: per-market cap 3, gross cap 30 contracts, $5 loss halt, kill switch
+  `touch data/paper_l2/STOP`. Score with `albert paper l2-report`.
 - **Next:** accumulate ≥4 weeks; add a rate-limit model to the simulator; implement the ranked
   strategies (reward-aware quoting, quote-pull overlay with a PM-intl lead signal, weather
   overnight, pre-game sports). PM-intl ↔ Kalshi matching is needed for the lead signal (record PM

@@ -26,6 +26,7 @@ import random
 import shutil
 import time
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -302,8 +303,12 @@ def select_pm(n: int, *, events: int = 200) -> list[dict[str, Any]]:
 
 # ---- recorders ------------------------------------------------------------------------------
 class Recorder:
-    def __init__(self, root: Path, signer: KalshiSigner | None) -> None:
+    def __init__(self, root: Path, signer: KalshiSigner | None,
+                 on_frame: Callable[[str, int, str], None] | None = None) -> None:
+        """``on_frame(venue, recv_ns, frame)`` is called after each frame is written (used by
+        the live paper trader, which records exactly the input it trades on)."""
         self.root = root
+        self.on_frame = on_frame
         self.signer = signer
         self.stop = asyncio.Event()
         self.writers: dict[str, HourlyWriter] = {}
@@ -326,6 +331,8 @@ class Recorder:
         st.bytes += len(frame)
         st.first_ns = st.first_ns or recv_ns
         st.last_ns = recv_ns
+        if self.on_frame is not None and conn != "rest":
+            self.on_frame(venue, recv_ns, frame)
         return recv_ns
 
     async def _sleep_or_stop(self, seconds: float) -> None:
