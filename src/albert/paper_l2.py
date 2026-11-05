@@ -9,7 +9,8 @@ A run lives in ``data/paper_l2/<run_id>/``:
 
 * ``stream/``: the raw frames the run traded on (same format as ``albert record``), so the run can
   be replayed with ``albert backtest l2 --root`` and the fills reconciled.
-* ``ledger.jsonl``: start (config and universe), every fill, markouts at 10s/60s/300s, a status
+* ``ledger.jsonl``: start (config and universe), every fill, markouts at 10s/60s/300s (to the mid,
+  ``mo``, and to the exit price, ``mx``: the best bid on our side), a status
   line every minute (equity marked to mid, positions, open orders, diagnostics), halts, and end.
 
 Risk guards (the same ones a live run will need): per-market position cap (``max_pos``), a cap on
@@ -147,7 +148,9 @@ class PaperMaker:
                 f = fills[i]
                 mid = self.sim.mid_at(f.market, t)
                 mo = None if mid is None else (mid if f.side == "yes" else 1 - mid) - f.price
-                self.write("markout", {"fill": i, "oid": f.oid, "market": f.market, "h": h, "mo": mo})
+                ex = self.sim.exit_at(f.market, f.side, t)
+                self.write("markout", {"fill": i, "oid": f.oid, "market": f.market, "h": h, "mo": mo,
+                                       "mx": None if ex is None else ex - f.price})
 
     def write(self, kind: str, data: dict[str, Any]) -> None:
         self.ledger.write(json.dumps({"kind": kind, "wall": datetime.now(UTC).isoformat(),
@@ -236,7 +239,7 @@ def report(s, c, run: str | None = None) -> Path:
                               "last_mid": final_mids.get(r["market"])})
                 n += 1
             elif r["kind"] == "markout":
-                marks[(rd.name, r["fill"], r["h"])] = r["mo"]
+                marks[(rd.name, r["fill"], r["h"])] = (r["mo"], r.get("mx"))
     rep = Report(s.reports_dir, "paper-l2")
     rep.table("Runs", pl.DataFrame(info, infer_schema_length=None).with_columns(
         pl.col("classifier").cast(pl.String)))
@@ -245,7 +248,8 @@ def report(s, c, run: str | None = None) -> Path:
         return rep.save()
     for f in fills:
         for h in MARKOUT_S:
-            f[f"mo_{h}s"] = marks.get((f["run"], f["idx"], h))
+            mo, mx = marks.get((f["run"], f["idx"], h), (None, None))
+            f[f"mo_{h}s"], f[f"mx_{h}s"] = mo, mx
     results = {}
     for t in {f["market"] for f in fills}:
         m = c.kalshi.client.get(f"/markets/{t}", cache=False).payload.get("market", {})
@@ -259,7 +263,7 @@ def report(s, c, run: str | None = None) -> Path:
     frame = pl.DataFrame(fills, infer_schema_length=None).with_columns(
         pl.col("market").str.replace(r"-[^-]+$", "").alias("event"))
     summary = []
-    for col in [f"mo_{h}s" for h in MARKOUT_S] + ["pnl_per_contract"]:
+    for col in [f"mo_{h}s" for h in MARKOUT_S] + [f"mx_{h}s" for h in MARKOUT_S] + ["pnl_per_contract"]:
         for sub, name in ((frame, "all"), (frame.filter(pl.col("settled")), "settled")):
             g = sub.filter(pl.col(col).is_not_null()).group_by("event").agg(
                 (pl.col(col) * pl.col("qty")).sum().alias("s"), pl.col("qty").sum().alias("n"))

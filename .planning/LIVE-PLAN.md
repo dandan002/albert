@@ -1,7 +1,25 @@
 # Live (cash) maker pilot: plan
 
-Status (2026-11-05): **on hold until Kalshi demo keys are in `.env`.** Nothing in the repo places
-orders yet. The live paper maker (`albert paper l2`) and the recorder keep running meanwhile.
+Status (2026-11-05, updated): **order layer built and tested offline; waiting for Kalshi demo
+keys in `.env`** to run the demo plumbing test. Nothing has placed an order yet. Prod is gated
+(`KALSHI_LIVE_ENABLED` is not set). The live paper maker and the recorder keep running.
+
+Built (commit 8437d8a), see "Software to build" for the design:
+
+- `venues/kalshi_trade.py`: demo/prod scoped client. Write allowlist: single create/cancel and
+  order groups only (Cancel All and batch cancel unreachable); `cancel_own(prefix)`; client-side
+  Write bucket (100 tokens/s, create 10, cancel 2, verified with `GET /account/endpoint_costs`).
+- `live_l2.py`: `LiveBroker` (Simulator interface, own orders netted from the book),
+  `run_actions` worker, `reconcile`, `LiveMaker` (feeds, guards, ledger, queue-position
+  sampling), `plumbing` (demo-only end-to-end test that saves real responses for fixtures).
+- CLI: `albert live check` (read-only; works on prod now), `albert live cancel-own`,
+  `albert live plumbing` (demo), `albert live l2 --env demo|prod [--live]`.
+- Tests: parsers on recorded read-only portfolio payloads; fake exchange for the broker. The
+  private WebSocket shapes (`user_order`, `fill`) are built from the recorded REST objects and
+  must be checked against the demo recordings.
+
+Next, once demo keys exist: `albert live check --env demo`, `albert live plumbing`, trim its
+recordings into fixtures and fix any parser drift, then a short `albert live l2 --env demo`.
 
 Decisions taken (user, 2026-11-05): build the order layer now, test it on Kalshi demo, then run a
 supervised 1-contract live pilot (about 20 markets, $10 daily loss cap) after about a week of
@@ -75,7 +93,10 @@ stay in for paper; decide separately for live. Polymarket US on hold.
    own resting orders from the book the strategy sees**. Otherwise improve logic treats our quote
    as the external best and bids against itself.
 3. **Shadow simulation**: the paper Simulator runs on the same feed. Log predicted versus actual
-   fills, plus queue positions, to measure the fill model's error.
+   fills, plus queue positions, to measure the fill model's error. Built so far: exchange queue
+   position of every resting order vs the size the net book shows at its price (ledger `queue`
+   records, every 30 s). Per-order shadow fills are still to do; until then compare live fills
+   with the concurrent paper run.
 4. **Guards**:
    - per-order, per-market and gross-contract caps, plus a daily loss cap;
    - kill switch file;

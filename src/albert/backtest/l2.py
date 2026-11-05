@@ -580,12 +580,22 @@ class Simulator:
         return max(window) - min(window) if window else 0.0
 
     def mid_at(self, market: str, t_ns: int) -> float | None:
+        b, a = self.quote_at(market, t_ns)
+        return (b + a) / 2 if b is not None and a is not None else None
+
+    def quote_at(self, market: str, t_ns: int) -> tuple[float | None, float | None]:
+        """(yes_bid, yes_ask) live at ``t_ns``."""
         times, vals = self.quotes.get(market, ([], []))
         i = bisect.bisect_right(times, t_ns) - 1
-        if i < 0:
-            return None
-        b, a = vals[i]
-        return (b + a) / 2 if b is not None and a is not None else None
+        return vals[i] if i >= 0 else (None, None)
+
+    def exit_at(self, market: str, side: str, t_ns: int) -> float | None:
+        """What a contract bought on ``side`` could be sold for at ``t_ns`` (the best bid on
+        that side, ignoring size): the conservative mark, where the mid is the generous one."""
+        b, a = self.quote_at(market, t_ns)
+        if side == "yes":
+            return b
+        return None if a is None else 1 - a
 
 
 # ---- strategies -----------------------------------------------------------------------------
@@ -758,11 +768,14 @@ def run(files: list[Path], strategy, cfg: SimConfig,
 
 # ---- evaluation ------------------------------------------------------------------------------
 HORIZONS_S = (1, 10, 60, 300)
+EXIT_HORIZONS_S = (60, 300)   # markouts to the exit price (best bid on our side)
 
 
 def markouts(sim: Simulator) -> list[dict[str, Any]]:
-    """Per fill: value change of the bought contract at each horizon, per contract, vs the mid.
-    ``None`` where the horizon runs past the recorded data."""
+    """Per fill: value change of the bought contract at each horizon, per contract, vs the mid
+    (``mo_*``) and vs the price it could be sold at (``mx_*``, the best bid on our side). In a
+    wide market the mid mark credits half the spread at once; the truth is in between, and
+    settlement decides. ``None`` where the horizon runs past the recorded data."""
     end = max((t[-1] for t, _ in sim.quotes.values() if t), default=0)
     rows = []
     for f in sim.fills:
@@ -776,6 +789,10 @@ def markouts(sim: Simulator) -> list[dict[str, Any]]:
             else:
                 value = mid if f.side == "yes" else 1 - mid
                 row[f"mo_{h}s"] = value - f.price
+        for h in EXIT_HORIZONS_S:
+            t = f.t_ns + h * 10**9
+            ex = sim.exit_at(f.market, f.side, t) if t <= end else None
+            row[f"mx_{h}s"] = None if ex is None else ex - f.price
         rows.append(row)
     return rows
 
@@ -852,7 +869,8 @@ def backtest_l2(s, c, *, start: str | None, end: str | None, strategy: str, late
     )
     fills = fills.with_columns(pl.col("market").str.replace(r"-[^-]+$", "").alias("event"))
     summary = []
-    for col in [f"mo_{h}s" for h in HORIZONS_S] + ["pnl_per_contract"]:
+    for col in ([f"mo_{h}s" for h in HORIZONS_S] + [f"mx_{h}s" for h in EXIT_HORIZONS_S]
+                + ["pnl_per_contract"]):
         mean, t, k = _cluster_t(fills, col)
         _, te, ke = _cluster_t(fills, col, "event")
         summary.append({"metric": col, "mean_per_contract": mean, "t_by_market": t, "markets": k,

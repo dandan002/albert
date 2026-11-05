@@ -130,6 +130,12 @@ class LiveBroker:
     def mid_at(self, market: str, t_ns: int) -> float | None:
         return Simulator.mid_at(self, market, t_ns)   # over our net quotes
 
+    def quote_at(self, market: str, t_ns: int) -> tuple[float | None, float | None]:
+        return Simulator.quote_at(self, market, t_ns)
+
+    def exit_at(self, market: str, side: str, t_ns: int) -> float | None:
+        return Simulator.exit_at(self, market, side, t_ns)
+
     def _spend(self, cost: float) -> bool:
         return Simulator._spend(self, cost)
 
@@ -583,7 +589,9 @@ class LiveMaker:
                 f = b.fills[i]
                 mid = b.mid_at(f.market, t)
                 mo = None if mid is None else (mid if f.side == "yes" else 1 - mid) - f.price
-                self.write("markout", {"fill": i, "market": f.market, "h": h, "mo": mo})
+                ex = b.exit_at(f.market, f.side, t)
+                self.write("markout", {"fill": i, "market": f.market, "h": h, "mo": mo,
+                                       "mx": None if ex is None else ex - f.price})
 
     # -- loops --
     async def worker(self) -> None:
