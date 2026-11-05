@@ -143,3 +143,25 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
   1c, which is pessimistic (a 0.01-contract partial fill pays 1c in the sim).
 - **Order layer built** (commits 8437d8a, 0a6a5f7; see `.planning/LIVE-PLAN.md`); waiting for
   demo keys.
+- **Strategy sweep, four parallel studies (2026-11-05 ~16–17 UTC).** Code: `src/albert/research/
+  {momentum_l2,momentum_hist,maker_variants,weather_nowcast}.py` (no CLI hooks yet).
+  - *Short-horizon momentum / order flow (L2, dev 03–10, holdout 10–16 UTC):* mid jumps ≥2c in
+    30 s revert ~2c (t −6 both windows) but only in wide markets (zero at spread ≤3c): quote
+    flicker, not tradable. Same-side trade runs continue +0.5–0.9c; book/OFI imbalance ~0. Every
+    taker version loses (−4 to −23c after spread and fees). As Quoter overlays: all within ±0.4c.
+  - *Long-horizon momentum (38.8k settled markets, Aug 15–Nov 1, volume-blind, holdout from
+    Oct 1):* 6h time-series momentum is real gross (+1.2/+1.4c, t ~2.8 dev/holdout) but −1.9c net
+    as a taker (−0.8c at spread ≤2c). 1h/24h/72h, reversal, cross-sectional within event, drift
+    into close (favourite-longshot, +1.5c gross), PM→Kalshi: all negative net. Caught artefacts:
+    PM-vs-Kalshi gap +25c from resolved/placeholder PM prices vs stale Kalshi quotes; candles at or
+    after actual close.
+  - *Weather nowcast:* the earlier model loses to the market (Brier); settlement matches NWS CLI on
+    21,255/21,259 legs; observation-decided brackets (5,783, 99.96% correct) are repriced within
+    0–3 min by faster bots: no window on public hourly data. The Quoter already avoids them.
+  - *Maker variants (dev 04–10, holdout 10–15):* nothing gets the exit markout to ≥0 out of sample.
+    Only holdout-confirmed lever: require ≥20 contracts behind our quote ("behind20"), mx −3.7 →
+    −2.7c, about half the fills, lower event concentration. Inventory skew, two-tick improve,
+    toxicity filters, per-market history, price band, excluding KXTRUMPSAY: no gain. 6h momentum
+    tilt +0.2–0.5c on mx (noise). micro-price 3c + behind20 overfit (dev mx −0.5, holdout −3.4).
+  - **Net:** no taker edge anywhere; the maker's spread capture remains the only candidate and is
+    decided by settlement PnL. Candidate change for paper: behind20 (+ optional mom3).

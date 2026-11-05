@@ -1,6 +1,8 @@
 """Typed Parquet tables plus JSON run manifests."""
 
 import json
+import os
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -32,7 +34,8 @@ def write_table(
         frame = pl.concat([existing, frame], how="diagonal_relaxed").unique(
             subset=key, keep="last", maintain_order=True
         )
-    tmp = path.with_suffix(".tmp")
+    # Unique temp name per writer: two processes refreshing one table must not share a temp file.
+    tmp = path.with_suffix(f".{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp")
     frame.write_parquet(tmp)
     tmp.replace(path)
     return path
