@@ -495,3 +495,65 @@ def capture(out: str = typer.Option("tests/fixtures", help="Fixture root directo
     s, c = _clients()
     for path in run(s, c, Path(out)):
         typer.echo(path)
+
+
+@app.command("record")
+def record_cmd(
+    minutes: float = typer.Option(60.0, help="How long to record"),
+    kalshi: int = typer.Option(300, help="Kalshi markets to record (0 = none)"),
+    pm: int = typer.Option(150, help="Polymarket intl YES tokens to record (0 = none)"),
+    days: float = typer.Option(7.0, help="Kalshi: only markets closing within N days"),
+    chunk: int = typer.Option(100, help="Markets per WebSocket connection"),
+    check_every: float = typer.Option(600.0, help="Seconds between REST book cross-checks"),
+    check_sample: int = typer.Option(5, help="Markets per REST cross-check (0 = off)"),
+    seed: int = typer.Option(0, help="Seed for the Kalshi market sample"),
+) -> None:
+    """Record live order books and trades over WebSocket into data/raw/stream (append-only)."""
+    import asyncio
+    import signal
+    from dataclasses import asdict
+
+    from albert.ingest import kalshi_series
+    from albert.store import write_manifest
+    from pathlib import Path
+
+    from albert.stream import Recorder, record, select_kalshi, select_pm
+    from albert.venues.kalshi_auth import KalshiSigner
+
+    s, c = _clients()
+    k_rows = select_kalshi(kalshi_series(s, c), kalshi, days=days, seed=seed) if kalshi else []
+    pm_rows = select_pm(pm) if pm else []
+    typer.echo(f"recording {len(k_rows)} Kalshi markets and {len(pm_rows)} Polymarket tokens "
+               f"for {minutes:g} min")
+    if kalshi and not k_rows:
+        raise typer.Exit("no eligible Kalshi markets")
+
+    started = datetime.now(UTC)
+
+    rec = Recorder(s.raw_dir / "stream", KalshiSigner.from_env() if k_rows else None)
+
+    async def main():
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, rec.stop.set)
+        await record(rec, minutes=minutes, kalshi_markets=[m["ticker"] for m in k_rows],
+                     pm_tokens=[m["token_id"] for m in pm_rows], chunk=chunk,
+                     check_every=check_every, check_sample=check_sample)
+
+    asyncio.run(main())
+    files = rec.close()
+    stats = {conn: st.as_dict() for conn, st in rec.stats.items()}
+    checks = rec.checks
+    path = write_manifest(s.data_dir, "record", {
+        "minutes": minutes, "days": days, "chunk": chunk, "seed": seed, "started_at": started,
+        "kalshi_markets": [{k: m[k] for k in ("ticker", "event_ticker", "category")} for m in k_rows],
+        "pm_tokens": pm_rows,
+    }, {"files": [asdict(f) for f in files], "stats": stats, "book_checks": checks},
+        [Path(f.path) for f in files])
+    total = sum(f.bytes for f in files)
+    gaps = sum(len(st["gaps"]) for st in stats.values())
+    matched = sum(ch["match"] for ch in checks)
+    typer.echo(f"{len(files)} files, {total / 1e6:.1f} MB compressed, "
+               f"{sum(st['frames'] for st in stats.values())} frames, {gaps} seq gaps, "
+               f"book checks {matched}/{len(checks)} matched")
+    typer.echo(f"manifest: {path}")
