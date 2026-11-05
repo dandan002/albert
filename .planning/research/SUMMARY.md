@@ -125,3 +125,21 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
   strategies (reward-aware quoting, quote-pull overlay with a PM-intl lead signal, weather
   overnight, pre-game sports). PM-intl ↔ Kalshi matching is needed for the lead signal (record PM
   tokens matched to recorded Kalshi markets).
+- **Exit-price markouts (2026-11-05 15:40 UTC).** `mx_*` marks each fill to the best bid on its
+  side (what it could be sold for at once); `mo_*` marks to the mid. Improve@5c, cooldown 300 s:
+  - Recorded 04–15 UTC: 359 fills / 326 contracts / 70 events. mo_300s +1.7c (t 4.1 by event),
+    mx_300s −4.0c (t −7.7), marked to last mid / settlement +2.4c (t 4.5), $7.44.
+  - Live paper run 13:06–15 (its own recording replayed): 40 fills, mo_300s +3.2c, mx_300s −2.9c.
+  - Paper ledger itself (2.5 h): 35 fills / 21 events, markouts +3.2 to +3.7c (t 3.2 to 3.7).
+  - Settled so far: 25.6 contracts / 11 events, −1.8c per contract (−$0.45), where the same fills
+    marked +1.1c at 5 min. At ±50c of settlement noise per contract this is uninformative.
+  - Reading: the edge is real against the mid, but smaller than half the spread. It pays only if
+    the mid is a fair price (earlier calibration work: roughly yes) and positions are held to
+    settlement or exited passively. Crossing the spread to exit loses about 4c. **Settlement PnL
+    over hundreds of contracts decides;** daily weather (KXHIGH/KXLOWT) settles fastest.
+    Concentration: KXTRUMPSAY is 28% of contracts.
+- **Fees:** the account's balance precision is $0.0001 (direct member), so real fees are about
+  exact (maker 0.0175·P·(1−P) on maker-fee series only). The simulator rounds every fill up to
+  1c, which is pessimistic (a 0.01-contract partial fill pays 1c in the sim).
+- **Order layer built** (commits 8437d8a, 0a6a5f7; see `.planning/LIVE-PLAN.md`); waiting for
+  demo keys.
