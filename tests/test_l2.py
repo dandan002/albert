@@ -126,3 +126,40 @@ def test_write_budget_throttles_places():
     assert ids[2] is None and sim.diag["throttled_places"] == 1
     sim.now = T0 + 10**9                                       # one second refills the bucket
     assert sim.place("M", "yes", 0.40) is not None
+
+
+def test_pm_frames_become_ext_events_in_kalshi_yes_terms():
+    from albert.backtest.l2 import _pm_tops
+
+    lines = (FIX.parent / "polymarket" / "ws_market.jsonl").read_text().splitlines()
+    tops = [t for line in lines if line.strip() for t in _pm_tops({"frame": line})]
+    assert tops and all(b is None or a is None or b <= a for _, b, a in tops)
+
+
+def test_lead_lag_detects_kalshi_following_pm():
+    from albert.research.leadlag import lead_lag_frame
+
+    sim = Simulator(SimConfig(latency_ms=0, writes_per_s=None))
+    sim.apply(_snap(T0, [(0.40, 10)], [(0.50, 5)]))                     # kalshi mid 0.45
+    for i, mid in enumerate([0.45, 0.45, 0.50]):                        # pm jumps 5c at +2s
+        sim.apply(Event(T0 + i * 10**9, "ext", "M", {"mid": mid}))
+    sim.apply(_delta(T0 + 4 * 10**9, "no", 0.50, -5))                   # kalshi ask lifts...
+    sim.apply(_delta(T0 + 4 * 10**9 + 1, "no", 0.45, 5))                # ...to 0.55: mid 0.475
+    f = lead_lag_frame(sim, {"M": {"pm_slug": "g"}}, move=0.02, window_s=5, gap_s=30,
+                       end_ns=T0 + 10 * 10**9)
+    pm = f.filter(f["leader"] == "pm")
+    assert pm.height == 1 and pm["dir"][0] == 1.0
+    assert abs(pm["other_5s"][0] - 0.025) < 1e-9 and pm["other_1s"][0] == 0.0
+
+
+def test_quoter_pm_band_and_pull():
+    sim = Simulator(SimConfig(latency_ms=0, writes_per_s=None))
+    q = Quoter(min_spread=0.05, improve=True, pm_band=0.02, pm_pull=0.03, pm_window_s=10,
+               min_requote_s=0)
+    sim.apply(_snap(T0, [(0.40, 10)], [(0.50, 5)]))              # yes 0.40 / 0.50
+    sim.apply(Event(T0 + 1, "ext", "M", {"mid": 0.42}))           # fair 0.42: yes bid 0.41 too rich
+    q.on_event(sim, "M")
+    assert {o.side for o in sim.live_orders("M")} == {"no"}      # no bid 0.51 <= 0.58 - 0.02
+    sim.apply(Event(T0 + 2 * 10**9, "ext", "M", {"mid": 0.47}))   # +5c in 2 s: pull everything
+    q.on_event(sim, "M")
+    assert not sim.live_orders("M")

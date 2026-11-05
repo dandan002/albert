@@ -144,6 +144,72 @@ def iter_events(files: list[Path], stats: dict[str, int]) -> Iterator[Event]:
         yield from heapq.merge(*streams, key=lambda e: e.recv_ns)
 
 
+# ---- Polymarket intl (data only) as an external signal ---------------------------------------
+def load_pairs(root: Path) -> dict[str, dict[str, Any]]:
+    """Kalshi ticker -> {token_id, complement, pm_slug} from ``<root>/pairs/*.json`` (written by
+    ``albert record --paired-days``); later recordings override earlier ones."""
+    out: dict[str, dict[str, Any]] = {}
+    for p in sorted((root / "pairs").glob("*.json")):
+        for row in json.loads(p.read_text()):
+            out[row["kalshi_ticker"]] = row
+    return out
+
+
+def pm_files(root: Path, start: str | None = None, end: str | None = None) -> list[Path]:
+    files = []
+    for p in sorted((root / "pm").glob("*/*.jsonl.zst")):
+        key = f"{p.parent.name}T{p.name[:2]}"
+        if (start is None or key >= start) and (end is None or key < end):
+            files.append(p)
+    return files
+
+
+def _pm_tops(row: dict[str, Any]) -> Iterator[tuple[str, float | None, float | None]]:
+    """(asset_id, best_bid, best_ask) updates carried by one recorded Polymarket frame."""
+    try:
+        d = json.loads(row["frame"])
+    except ValueError:
+        return
+    for it in d if isinstance(d, list) else [d]:
+        if not isinstance(it, dict):
+            continue
+        if it.get("event_type", "book") == "book" and "bids" in it:
+            bids = [float(x["price"]) for x in it.get("bids") or []]
+            asks = [float(x["price"]) for x in it.get("asks") or []]
+            yield it["asset_id"], max(bids, default=None), min(asks, default=None)
+        elif it.get("event_type") == "price_change":
+            for ch in it.get("price_changes") or []:
+                bb, ba = ch.get("best_bid"), ch.get("best_ask")
+                yield (ch["asset_id"], float(bb) if bb not in (None, "") else None,
+                       float(ba) if ba not in (None, "") else None)
+
+
+def pm_events(files: list[Path], pairs: dict[str, dict[str, Any]]) -> Iterator[Event]:
+    """Top-of-book changes of paired Polymarket tokens as ``ext`` events keyed by the Kalshi
+    ticker, in the Kalshi market's YES terms (complement applied), at our receive time."""
+    by_token: dict[str, list[tuple[str, bool]]] = defaultdict(list)
+    for t, row in pairs.items():
+        by_token[row["token_id"]].append((t, bool(row.get("complement"))))
+    last: dict[str, tuple] = {}
+    by_hour: dict[str, list[Path]] = defaultdict(list)
+    for p in files:
+        by_hour[f"{p.parent.name}T{p.name[:2]}"].append(p)
+    for hour in sorted(by_hour):
+        evs: list[Event] = []
+        for p in by_hour[hour]:
+            for row in read_stream(p):
+                for asset, bid, ask in _pm_tops(row):
+                    if asset not in by_token or last.get(asset) == (bid, ask):
+                        continue
+                    last[asset] = (bid, ask)
+                    for ticker, comp in by_token[asset]:
+                        b, a = (None if ask is None else 1 - ask, None if bid is None else 1 - bid) if comp else (bid, ask)
+                        mid = (a + b) / 2 if a is not None and b is not None else None
+                        evs.append(Event(row["recv_ns"], "ext", ticker, {"bid": b, "ask": a, "mid": mid}))
+        evs.sort(key=lambda e: e.recv_ns)
+        yield from evs
+
+
 # ---- book with modeled queues -----------------------------------------------------------------
 @dataclass
 class Order:
@@ -223,6 +289,7 @@ class Simulator:
         self.quotes: dict[str, tuple[list[int], list[tuple]]] = defaultdict(lambda: ([], []))
         self.diag: dict[str, int] = defaultdict(int)
         self.synced: set[str] = set()   # markets whose snapshot we have seen
+        self.ext: dict[str, tuple[list[int], list[float]]] = defaultdict(lambda: ([], []))
         self._tokens = cfg.writes_per_s or 0.0
         self._tokens_ns = 0
 
@@ -324,6 +391,12 @@ class Simulator:
     def apply(self, ev: Event) -> None:
         self._run_schedule(ev.recv_ns)
         self.now = ev.recv_ns
+        if ev.kind == "ext":            # external fair-value signal (Polymarket intl mid)
+            if ev.msg.get("mid") is not None:
+                times, mids = self.ext[ev.market]
+                times.append(ev.recv_ns)
+                mids.append(ev.msg["mid"])
+            return
         if ev.kind == "snapshot":
             self.synced.add(ev.market)
         elif ev.market not in self.synced:
@@ -445,6 +518,19 @@ class Simulator:
             if o.price + price >= 1 - EPS:
                 self._fill(o, d, "cross")
 
+    def ext_at(self, market: str, t_ns: int) -> float | None:
+        times, mids = self.ext.get(market, ([], []))
+        i = bisect.bisect_right(times, t_ns) - 1
+        return mids[i] if i >= 0 else None
+
+    def ext_range(self, market: str, t0: int, t1: int) -> float:
+        """High minus low of the external mid over [t0, t1] (including the value live at t0)."""
+        times, mids = self.ext.get(market, ([], []))
+        i = max(bisect.bisect_right(times, t0) - 1, 0)
+        j = bisect.bisect_right(times, t1)
+        window = mids[i:j]
+        return max(window) - min(window) if window else 0.0
+
     def mid_at(self, market: str, t_ns: int) -> float | None:
         times, vals = self.quotes.get(market, ([], []))
         i = bisect.bisect_right(times, t_ns) - 1
@@ -502,13 +588,18 @@ class Quoter:
     * ``cooldown_s``: after any fill in a market, pull both sides and wait.
     * ``min_requote_s``: at most one new order per market side in this interval (rate limits).
     * ``categories``: series categories to trade (None = all).
+    * Paired markets (Polymarket intl mid replayed as ``ext`` events): ``pm_band`` keeps each bid
+      at least this far below the Polymarket fair value (``None`` = ignore it); ``pm_pull`` pulls
+      both sides for ``pm_window_s`` when Polymarket moved this much in the last ``pm_window_s``;
+      ``pm_only`` trades only markets with a Polymarket price.
     """
 
     def __init__(self, min_spread: float = 0.03, max_spread: float = 1.0, lo: float = 0.05,
                  hi: float = 0.95, max_pos: float = 3.0, size: float = 1.0, improve: bool = False,
                  pull_frac: float = 0.0, cooldown_s: float = 0.0, min_requote_s: float = 1.0,
                  categories: set[str] | None = None, category_of: dict[str, str] | None = None,
-                 markets: set[str] | None = None) -> None:
+                 markets: set[str] | None = None, pm_band: float | None = None,
+                 pm_pull: float = 0.0, pm_window_s: float = 10.0, pm_only: bool = False) -> None:
         self.min_spread, self.max_spread, self.lo, self.hi = min_spread, max_spread, lo, hi
         self.max_pos, self.size, self.improve = max_pos, size, improve
         self.pull_frac, self.cooldown_ns = pull_frac, int(cooldown_s * 1e9)
@@ -518,6 +609,8 @@ class Quoter:
         self._ahead0: dict[int, float] = {}
         self._cool_until: dict[str, int] = {}
         self._seen_fills = 0
+        self.pm_band, self.pm_pull, self.pm_only = pm_band, pm_pull, pm_only
+        self.pm_window_ns = int(pm_window_s * 1e9)
 
     def _eligible(self, market: str) -> bool:
         if self.markets is not None and market not in self.markets:
@@ -537,12 +630,24 @@ class Quoter:
         mid = (q["yes_ask"] + q["yes_bid"]) / 2
         if not (self.min_spread - EPS <= spread <= self.max_spread + EPS and self.lo <= mid <= self.hi):
             return want
+        fair = sim.ext_at(market, sim.now)
+        if fair is None and self.pm_only:
+            return want
+        if fair is not None and self.pm_pull:
+            if sim.ext_range(market, sim.now - self.pm_window_ns, sim.now) >= self.pm_pull - EPS:
+                self._cool_until[market] = max(self._cool_until.get(market, 0),
+                                               sim.now + self.pm_window_ns)
+                return want
         tick = 0.01 if self.improve and spread >= 0.03 - EPS else 0.0
         pos = sim.position[market]
+        yes, no = round(q["yes_bid"] + tick, 6), round(1 - q["yes_ask"] + tick, 6)
+        if fair is not None and self.pm_band is not None:
+            yes = yes if yes <= fair - self.pm_band + EPS else None
+            no = no if no <= 1 - fair - self.pm_band + EPS else None
         if pos < self.max_pos:
-            want["yes"] = round(q["yes_bid"] + tick, 6)
+            want["yes"] = yes
         if pos > -self.max_pos:
-            want["no"] = round(1 - q["yes_ask"] + tick, 6)
+            want["no"] = no
         return want
 
     def on_event(self, sim: Simulator, market: str) -> None:
@@ -589,10 +694,14 @@ class Quoter:
 STRATEGIES = {"join": JoinBest, "quote": Quoter}
 
 
-def run(files: list[Path], strategy, cfg: SimConfig) -> tuple[Simulator, dict[str, int]]:
+def run(files: list[Path], strategy, cfg: SimConfig,
+        ext: Iterator[Event] | None = None) -> tuple[Simulator, dict[str, int]]:
     sim = Simulator(cfg)
     stats: dict[str, int] = defaultdict(int)
-    for ev in iter_events(files, stats):
+    events = iter_events(files, stats)
+    if ext is not None:
+        events = heapq.merge(events, ext, key=lambda e: e.recv_ns)
+    for ev in events:
         sim.apply(ev)
         stats["events"] += 1
         strategy.on_event(sim, ev.market)
@@ -658,7 +767,10 @@ def backtest_l2(s, c, *, start: str | None, end: str | None, strategy: str, late
     if strategy == "quote":
         params = params | {"category_of": {k: v.get("category") for k, v in series.items()}}
     strat = STRATEGIES[strategy](**params)
-    sim, stats = run(files, strat, cfg)
+    root = s.raw_dir / "stream"
+    pairs = load_pairs(root)
+    ext = pm_events(pm_files(root, start, end), pairs) if pairs and strategy == "quote" else None
+    sim, stats = run(files, strat, cfg, ext)
     rows = markouts(sim)
     rep = Report(s.reports_dir, f"backtest-l2-{strategy}")
     rep.json("Run", {"files": len(files), "first": str(files[0]), "last": str(files[-1]),

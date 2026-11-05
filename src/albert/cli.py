@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, date, datetime, time
 
 import typer
@@ -338,6 +339,20 @@ def research_literature() -> None:
     typer.echo(run(settings()))
 
 
+@research_app.command("lead-lag")
+def research_lead_lag(
+    start: str = typer.Option(None, help="First hour, YYYY-MM-DDTHH (UTC)"),
+    end: str = typer.Option(None, help="End hour (exclusive), YYYY-MM-DDTHH (UTC)"),
+    move: float = typer.Option(0.02, help="Mid change that counts as a move"),
+    window_s: float = typer.Option(5.0, help="...within this many seconds"),
+    gap_s: float = typer.Option(30.0, help="At most one move per market per this many seconds"),
+) -> None:
+    """Paired game moneylines: does Kalshi follow Polymarket intl moves, or the reverse?"""
+    from albert.research.leadlag import lead_lag
+
+    typer.echo(lead_lag(settings(), start=start, end=end, move=move, window_s=window_s, gap_s=gap_s))
+
+
 @backtest_app.command("weather")
 def backtest_weather(
     split: str = typer.Option("2026-10-01", help="YYYY-MM-DD: fit before, trade from this day"),
@@ -540,6 +555,10 @@ def record_cmd(
         raise typer.Exit("no eligible Kalshi markets")
 
     started = datetime.now(UTC)
+    if pairs:   # written up front: replays of a still-running recording need the pairing
+        pairs_dir = s.raw_dir / "stream" / "pairs"
+        pairs_dir.mkdir(parents=True, exist_ok=True)
+        (pairs_dir / f"{started:%Y%m%dT%H%M%SZ}.json").write_text(json.dumps(pairs, indent=1))
 
     rec = Recorder(s.raw_dir / "stream", KalshiSigner.from_env() if k_rows else None)
 
@@ -590,6 +609,11 @@ def backtest_l2_cmd(
     cooldown_s: float = typer.Option(0.0, help="quote: pause a market this long after a fill"),
     pull_frac: float = typer.Option(0.0, help="quote: cancel when the queue ahead shrinks by this"),
     category: list[str] = typer.Option(None, help="quote: series categories to trade (repeatable)"),
+    pm_band: float = typer.Option(None, help="quote: keep bids this far inside the Polymarket "
+                                  "intl fair value on paired markets"),
+    pm_pull: float = typer.Option(0.0, help="quote: pull when Polymarket moved this much"),
+    pm_window_s: float = typer.Option(10.0, help="quote: ...within this many seconds"),
+    pm_only: bool = typer.Option(False, help="quote: trade only markets with a Polymarket price"),
 ) -> None:
     """Replay recorded Kalshi order books and simulate a maker strategy with queue position."""
     from albert.backtest.l2 import backtest_l2
@@ -597,7 +621,9 @@ def backtest_l2_cmd(
     params: dict = {"min_spread": min_spread, "max_pos": max_pos}
     if strategy == "quote":
         params |= {"max_spread": max_spread, "improve": improve, "cooldown_s": cooldown_s,
-                   "pull_frac": pull_frac, "categories": set(category) if category else None}
+                   "pull_frac": pull_frac, "categories": set(category) if category else None,
+                   "pm_band": pm_band, "pm_pull": pm_pull, "pm_window_s": pm_window_s,
+                   "pm_only": pm_only}
     s, c = _clients()
     typer.echo(backtest_l2(s, c, start=start, end=end, strategy=strategy, latency_ms=latency_ms,
                            queue=queue, writes_per_s=writes_per_s or None, params=params))
