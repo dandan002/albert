@@ -165,3 +165,22 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     tilt +0.2–0.5c on mx (noise). micro-price 3c + behind20 overfit (dev mx −0.5, holdout −3.4).
   - **Net:** no taker edge anywhere; the maker's spread capture remains the only candidate and is
     decided by settlement PnL. Candidate change for paper: behind20 (+ optional mom3).
+- **Intra-minute sweep (2026-11-05 ~17–18 UTC; 04–16 UTC data, all pre-game for sports).**
+  Measured latency from the Mac: Kalshi event→send ~6 ms, send→our receive ~20 ms (Mac clock
+  44 ± 18 ms behind; raw recv_ns precede ts_ms), REST RTT ~25 ms keep-alive → ~50 ms event to
+  order at the exchange (the simulator's 100 ms default is conservative).
+  - *Structural arbitrage* (`research/arb_l2.py`): 95 complete mutually-exclusive sets, 929
+    threshold-ladder pairs. Zero set arbs after fees (best gross gap +2c vs ~3.5c of fees on a
+    50/50 pair). One ladder dislocation (KXTOKENUSE, +5.9c/lot, 88 lots) lasted 7 ms and was
+    taken; at 25–500 ms only one leg fills (−3.9c legging loss).
+  - *Fast lead-lag* (`research/leadlag_fast.py`): PM intl ↔ Kalshi cross-correlation ≤0.013 at
+    any lag ±30 s; 50 PM moves ≥1c, Kalshi follows +0.18c; stale-quote taker −4.6c; team A/B
+    sibling books requote together (median 55 ms), taker −4.4c. **In-play untested** — rerun:
+    `fast_lead_lag(settings(), start='2026-11-05T23', end='2026-11-06T06')`.
+  - *Intra-minute maker* (`research/intraminute_maker.py`): flicker provision, refill, scalps
+    and leaning all negative on holdout (−1.3 to −3c at 10–60 s); fills are adversely selected
+    (we fill exactly when the snap-back fails). Flat across 25–250 ms latency. Quote lifetime:
+    improved quotes are alone at the front for a median 3.2 s; 40% of fills come after 5 min;
+    short cancel timers would discard fills.
+  - **Net:** no intra-minute edge at our speed in pre-game data. Remaining open question:
+    in-play sports (tonight), via the lead-lag and arb reruns.
