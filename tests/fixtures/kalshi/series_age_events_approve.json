@@ -1,0 +1,55 @@
+{
+ "source": {
+  "url": "https://api.elections.kalshi.com/trade-api/v2/events",
+  "params": {
+   "series_ticker": "KXTRUMPAPPROVE",
+   "limit": 200
+  },
+  "fetched_at": "2026-11-05T23:25:36.728592+00:00",
+  "note": "trimmed: first 2 events"
+ },
+ "response": {
+  "cursor": "",
+  "events": [
+   {
+    "category": "Politics",
+    "collateral_return_type": "MECNET",
+    "event_ticker": "KXTRUMPAPPROVE-26NOV06",
+    "exchange_index": 0,
+    "last_updated_ts": "2026-11-05T15:02:05.318979Z",
+    "mutually_exclusive": true,
+    "series_ticker": "KXTRUMPAPPROVE",
+    "settlement_sources": [
+     {
+      "name": "RealClearPolitics",
+      "url": "https://www.realclearpolling.com/polls/approval/donald-trump/approval-rating"
+     }
+    ],
+    "strike_date": "2026-11-06T18:00:00Z",
+    "strike_period": "",
+    "sub_title": "On Nov 6, 2026",
+    "title": "Trump's RCP approval average on Nov 6, 2026?"
+   },
+   {
+    "category": "Politics",
+    "collateral_return_type": "MECNET",
+    "event_ticker": "KXTRUMPAPPROVE-26NOV05",
+    "exchange_index": 0,
+    "last_updated_ts": "2026-11-04T15:03:53.358286Z",
+    "mutually_exclusive": true,
+    "series_ticker": "KXTRUMPAPPROVE",
+    "settlement_sources": [
+     {
+      "name": "RealClearPolitics",
+      "url": "https://www.realclearpolling.com/polls/approval/donald-trump/approval-rating"
+     }
+    ],
+    "strike_date": "2026-11-05T18:00:00Z",
+    "strike_period": "",
+    "sub_title": "On Nov 5, 2026",
+    "title": "Trump's RCP approval average on Nov 5, 2026?"
+   }
+  ],
+  "milestones": []
+ }
+}

@@ -246,3 +246,35 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
   - **Pattern:** a real model adds information only in thin, wide-spread markets (FCS spreads,
     rain), and that information sits inside the spread. Next: maker quoting around a model+price
     blend with trade-print fills, and more thin-market sports (college basketball).
+- **Fundamental models, round 2: maker quoting around model+price blends (2026-11-06 ~00–02 UTC).**
+  Harness gained series fee multipliers and a trade-through maker test (bids at fair ± margin,
+  filled only when a later print trades through; held to settlement). The shared public rate
+  limit saturated (~10 req/min), so most studies used hourly-candle trade ranges as the fill proxy,
+  validated against real prints (97–99.6% agreement).
+  - *Spread-width check (decisive):* model "information" mostly lives in books > 15c wide, where
+    the mid is not a price — thin sports (volleyball, USL, college hockey, Argentina B, English NL:
+    c ≈ 0 in ≤ 15c books), college basketball (same; wide books vanish by February), hourly temps.
+    **Survives in priced books: FCS spreads (6–15c books: c ≈ 1.0, t 3–4 both periods) and rain
+    (≤ 3c books: c 0.59 t 5.9 dev, 0.36 t 2.1 Oct; morning decision only).**
+  - *FCS maker* (`ncaaf_maker.py`): −2.3c/fill Oct (1,585 fills), model-favoured bids are the ones
+    traded through (adverse selection eats the information); books drying up (median spread 4c →
+    17c → 23–26c). Forward snapshot of this weekend: `python -m albert.research.ncaaf_maker
+    snapshot` (re-run Fri/Sat mornings), `... score` after settlement.
+  - *Weather maker* (`weather_maker.py`): rain +1.2c/fill Oct (t 1.1, 489 fills, ~$1.3/week);
+    ≤ 3c books +1.5c vs +0.4c around the plain mid; Aug–Sep profit was YES overpricing (rolling
+    recalibration removes it). Hourly temps −1.3c.
+  - *College basketball* (`cbb.py`, 2025-26 season): no information in priced books; holdout taker
+    −8.2c, maker +2.3c t 0.6.
+  - *Reference-price maker* (`refprice_maker.py`): quotes anchored to Polymarket lose in October
+    (−8 to −11c/fill); Polymarket moves first (85–95% of fills come after a 1c adverse move);
+    pull rule helps 0.3–0.4c.
+  - *Mentions maker* (`mentions_maker.py`): **wide NO bids before Trump/Vance speeches earned in
+    October** (pre-specified 8c margin: +4.8c/fill t 2.8 at 6 h; 12c: +8.4c t 3.4), but quoting
+    around the YES-bias-corrected mid alone earns the same: a price pattern (selling YES into
+    pre-speech spikes), not transcript skill. Best forward-paper candidate. Note: Factba.se pages
+    live on rollcall.com, whose robots.txt blocks the `anthropic-ai` crawler — review before reuse.
+  - *Series age* (`series_age.py`): no age effect; "young series overprice YES" is an empty-book
+    artefact (spreads > 30c).
+  - **Net:** information from fundamentals exists in a few thin markets (FCS spreads, rain) but
+    passive fills are adversely selected enough to consume it; no strategy is significant on
+    holdout except the mentions NO-bid price pattern.
