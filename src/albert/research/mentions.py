@@ -18,12 +18,14 @@ Timing (all as-of guarantees are enforced in code, see :func:`decision_frame`,
   before <date>": window open + 1 h / + 24 h). Legs listed after ``t`` are dropped. Quotes: the
   last hourly candle that ended at or before ``t`` (shared harness).
 * **Base-rate model**: a leg at ``t`` learns only from legs whose ``settlement_ts < t``.
-* **Transcript model**: only Factba.se transcripts dated ≤ event day − 1 (1-hour decision) or
-  − 2 (24-hour decision), US Eastern.
+* **Transcript model**: only transcripts dated ≤ event day − 1 (1-hour decision) or − 2 (24-hour
+  decision), US Eastern. Round 1 used Roll Call Factba.se; that source and all data from it were
+  removed on 2026-11-06 (rollcall.com's robots.txt blocks AI crawlers), so the transcript model
+  needs a permitted source before it can run again.
 
 Entry point: :func:`run` (``holdout=False`` for the inner dev split used to pick variants),
-then :func:`write_report`. Data caches: ``data/cache/mentions/`` (milestones, Factba.se index,
-pages, segments, word counts) and ``data/cache/fundamental_mentions_*.parquet`` (candles,
+then :func:`write_report`. Data caches: ``data/cache/mentions/`` (milestones, base-rate counts)
+and ``data/cache/fundamental_mentions_*.parquet`` (candles,
 predictions).
 """
 
@@ -155,86 +157,11 @@ def fetch_starts(s, events: list[str]) -> pl.DataFrame:
     return df.sort("start").unique("event", keep="first") if df.height else df
 
 
-# ---- transcripts: Roll Call Factba.se (public JSON search + public transcript pages) ---------
-FACTBASE = "https://rollcall.com"
-_SEG_HEAD = re.compile(r'<h2 class="text-md inline">(.*?)</h2>\s*(?:<span[^>]*>(\d\d:\d\d:\d\d)-(\d\d:\d\d:\d\d)[^<]*</span>)?', re.S)
-_SEG_TEXT = re.compile(r'<div class=" flex-auto text-md text-gray-600 leading-loose">(.*?)</div>', re.S)
-
-
-def factbase_index(s, since: str, max_pages: int = 200) -> pl.DataFrame:
-    """Factbase records newest-first until ``date < since`` (``YYYY-MM-DD``). Cached per page:
-    page contents shift as new records arrive, so the cache key carries today's date."""
-    c = _client(s, "factbase", FACTBASE, min_interval=1.0)
-    tag = datetime.now(UTC).strftime("%Y-%m-%d")
-    rows = []
-    for page in range(1, max_pages + 1):
-        d = c.get("/wp-json/factbase/v1/search", {"q": "", "media": "", "type": "", "sort": "date",
-                                                   "location": "all", "place": "all", "page": page,
-                                                   "format": "json"}, tag=tag).payload
-        data = d.get("data") or []
-        rows.extend(index_rows(data))
-        if not data or min(r["date"] for r in data) < since:
-            break
-    df = pl.DataFrame(rows, infer_schema_length=None).unique("document_id", keep="first")
-    return df.filter(pl.col("date") >= since)
-
-
-def index_rows(data: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    out = []
-    for r in data:
-        doc = r.get("document") or {}
-        dur = doc.get("duration")
-        secs = None
-        if dur and re.fullmatch(r"\d+:\d\d:\d\d", dur):
-            h, mi, se = (int(x) for x in dur.split(":"))
-            secs = h * 3600 + mi * 60 + se
-        out.append({"document_id": r.get("document_id"), "date": r.get("date"), "type": r.get("type"),
-                    "media": r.get("media_type"), "title": r.get("record_title"),
-                    "url": r.get("factbase_url"), "duration_s": secs})
-    return out
-
-
-def parse_transcript(page_html: str) -> list[dict[str, Any]]:
-    """Speaker segments of a Factbase transcript page: speaker, start/end seconds, text."""
-    import html as _html
-
-    out = []
-    heads = list(_SEG_HEAD.finditer(page_html))
-    for i, h in enumerate(heads):
-        stop = heads[i + 1].start() if i + 1 < len(heads) else len(page_html)
-        m = _SEG_TEXT.search(page_html, h.end(), stop)
-        if not m:
-            continue
-        text = _html.unescape(re.sub(r"<[^>]+>", " ", m.group(1)))
-        text = re.sub(r"\s+", " ", text).strip()
-
-        def secs(x: str | None) -> int | None:
-            if not x:
-                return None
-            a, b, c = (int(v) for v in x.split(":"))
-            return a * 3600 + b * 60 + c
-        out.append({"speaker": _html.unescape(h.group(1)).strip(), "t0": secs(h.group(2)),
-                    "t1": secs(h.group(3)), "text": text})
-    return out
-
-
-def fetch_transcripts(s, index: pl.DataFrame) -> pl.DataFrame:
-    """One row per (document, speaker segment); pages are cached zstd-compressed."""
-    c = _client(s, "factbase", FACTBASE, min_interval=1.0)
-    rows = []
-    for i, r in enumerate(index.iter_rows(named=True), 1):
-        path = r["url"].removeprefix(FACTBASE)
-        try:
-            page = c.get(path)
-        except RuntimeError as error:
-            print(f"transcript {r['document_id']}: {str(error)[:100]}")
-            continue
-        text = page.payload if isinstance(page.payload, str) else ""
-        for j, seg in enumerate(parse_transcript(text)):
-            rows.append({"document_id": r["document_id"], "seg": j, **seg})
-        if i % 50 == 0:
-            print(f"  transcripts {i}/{index.height}", flush=True)
-    return pl.DataFrame(rows, infer_schema_length=None)
+# ---- transcripts ---------------------------------------------------------------------------
+# The round-1 transcript source (Roll Call Factba.se on rollcall.com) was removed on 2026-11-06,
+# with its cached pages, parsed transcripts and derived predictions: rollcall.com's robots.txt
+# blocks AI crawlers. ``transcript_predict`` below is source-agnostic: it needs ``docs`` (one row
+# per document: document_id, who, text, words, date) and ``doc_counts`` from a permitted source.
 
 
 # ---- candles ---------------------------------------------------------------------------------
@@ -800,8 +727,11 @@ def build_predictions(s, lg: pl.DataFrame, starts: pl.DataFrame,
     P = pl.concat(parts, how="diagonal_relaxed")
     # transcript model for Trump / Vance speech legs (documents dated ≥ 1 day before the event)
     C_ = s.data_dir / "cache" / NAME
-    docs = pl.read_parquet(C_ / "factbase_docs.parquet")
-    cnt = pl.read_parquet(C_ / "factbase_word_counts.parquet")
+    if not (C_ / "transcript_docs.parquet").exists():
+        raise RuntimeError("no transcript source: the Factba.se data was removed (robots.txt); add a "
+                           "permitted source as transcript_docs/transcript_word_counts.parquet")
+    docs = pl.read_parquet(C_ / "transcript_docs.parquet")
+    cnt = pl.read_parquet(C_ / "transcript_word_counts.parquet")
     q = P.filter(pl.col("speaker").is_in(list(FB_SPEAKER)) & ~pl.col("window"))
     q = q.with_columns(pl.col("start").dt.convert_time_zone(ET).dt.date().alias("event_date"),
                        pl.struct("title", "etype").map_elements(lambda r: kalshi_ftype(r["title"], r["etype"]),

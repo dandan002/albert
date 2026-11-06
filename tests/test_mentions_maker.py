@@ -59,9 +59,8 @@ def test_transcript_cutoff_respects_the_publication_lag():
 
 
 def test_salience_compares_last_week_with_the_45_day_rate():
-    html = (FIX / "factbase" / "transcript_dt47-26-ef2b7858_trim.html").read_text()
-    text = " ".join(s["text"] for s in M.parse_transcript(html) if s["speaker"] == "Donald Trump")
-    assert "ballroom" in text.lower()
+    # Pure counting math: a short synthetic speech with six "ballroom" mentions.
+    text = " ".join(["We are building a beautiful ballroom."] * 6 + ["Tariffs are working."])
     hi = date(2026, 10, 4)
     docs = pl.DataFrame({"document_id": ["recent", "old"], "who": ["trump", "trump"], "text": [text, text],
                          "words": [len(text.split())] * 2, "date": [hi - timedelta(days=2), hi - timedelta(days=30)]})

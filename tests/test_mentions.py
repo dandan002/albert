@@ -47,20 +47,11 @@ def test_milestone_gives_the_scheduled_start_before_any_close():
     assert (d["open_time"] <= d["t"]).all()
 
 
-def test_factbase_search_and_transcript_parsers_on_recorded_pages():
-    srch = json.loads((FIX / "factbase" / "search_page1_trim.json").read_text())
-    ix = M.index_rows(srch["data"])
-    assert len(ix) == 4 and all(r["url"].startswith(M.FACTBASE) for r in ix)
-    assert any(r["duration_s"] and r["duration_s"] > 600 for r in ix)
-    html = (FIX / "factbase" / "transcript_dt47-26-ef2b7858_trim.html").read_text()
-    segs = M.parse_transcript(html)
-    assert len(segs) == 8
-    assert segs[0]["speaker"] == "Donald Trump" and segs[0]["t0"] == 0 and segs[0]["t1"] == 7
-    assert segs[1]["speaker"] == "Unidentified"
-    trump = " ".join(s["text"] for s in segs if s["speaker"] == "Donald Trump")
+def test_word_pattern_counts_whole_words_only():
+    text = "The ballroom, a beautiful ballroom. Ballrooms everywhere; this room is not a ballroom-sized room."
     # "room" must not match inside "ballroom"; both are counted as whole words
-    assert len(M.word_pattern(("ballroom",)).findall(trump)) == trump.lower().count("ballroom") == 6
-    assert len(M.word_pattern(("room",)).findall(trump)) == trump.lower().count(" room") > 0
+    assert len(M.word_pattern(("ballroom",)).findall(text)) == 4
+    assert len(M.word_pattern(("room",)).findall(text)) == 2
 
 
 def test_word_pattern_counts_plural_and_possessive_but_not_inflections():

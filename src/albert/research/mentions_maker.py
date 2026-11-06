@@ -1,5 +1,8 @@
 """Mentions, round 2: passive (maker) quoting around a transcript + price fair value.
 
+(The Factba.se transcript data used below was removed on 2026-11-06 because rollcall.com's
+robots.txt blocks AI crawlers; the transcript paths need a permitted source to run again.)
+
 Round 1 (:mod:`albert.research.mentions`) found that Factba.se transcript word rates for Trump
 and Vance add a little information to the Kalshi price (blend c ≈ 0.45, t 1.4–1.7) but that
 taking loses, because the legs are 2–7c wide before the event. This study asks whether a
@@ -512,8 +515,11 @@ def build(s) -> tuple[pl.DataFrame, dict[str, Any], list[dict[str, Any]]]:
     candles = M.load_candles(s)
     Q, info = decision_rows(lg, starts, candles)
     Q = add_base_rates(Q, lg).join(fees, on="ticker", how="left")
-    docs = pl.read_parquet(C_ / "factbase_docs.parquet")
-    counts = pl.read_parquet(C_ / "factbase_word_counts.parquet")
+    if not (C_ / "transcript_docs.parquet").exists():
+        raise RuntimeError("no transcript source: the Factba.se data was removed (robots.txt); add a "
+                           "permitted source as transcript_docs/transcript_word_counts.parquet")
+    docs = pl.read_parquet(C_ / "transcript_docs.parquet")
+    counts = pl.read_parquet(C_ / "transcript_word_counts.parquet")
     Q = add_transcripts(Q, docs, counts)
     tv = Q.filter(pl.col("p_tx2").is_not_null() & pl.col("p_tx1").is_not_null() & (pl.col("t") < HOLDOUT_FROM))
     best, sel = select_tx(tv)

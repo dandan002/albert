@@ -271,8 +271,11 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
   - *Mentions maker* (`mentions_maker.py`): **wide NO bids before Trump/Vance speeches earned in
     October** (pre-specified 8c margin: +4.8c/fill t 2.8 at 6 h; 12c: +8.4c t 3.4), but quoting
     around the YES-bias-corrected mid alone earns the same: a price pattern (selling YES into
-    pre-speech spikes), not transcript skill. Best forward-paper candidate. Note: Factba.se pages
-    live on rollcall.com, whose robots.txt blocks the `anthropic-ai` crawler — review before reuse.
+    pre-speech spikes), not transcript skill. Best forward-paper candidate. Factba.se pages live
+    on rollcall.com, whose robots.txt blocks the `anthropic-ai` crawler: all Factba.se data
+    (cached pages, transcripts, word counts, derived predictions, test fixtures) and the fetcher
+    were deleted on 2026-11-06 at the user's request. The transcript results above stand as
+    recorded but cannot be rerun without a permitted transcript source.
   - *Series age* (`series_age.py`): no age effect; "young series overprice YES" is an empty-book
     artefact (spreads > 30c).
   - **Net:** information from fundamentals exists in a few thin markets (FCS spreads, rain) but
