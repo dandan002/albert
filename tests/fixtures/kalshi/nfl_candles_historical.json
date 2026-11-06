@@ -1,0 +1,140 @@
+{
+ "venue": "kalshi",
+ "url": "https://api.elections.kalshi.com/trade-api/v2/historical/markets/KXNFLSPREAD-25DEC21NEBAL-NE14/candlesticks",
+ "params": {
+  "start_ts": 1766269200,
+  "end_ts": 1766362800,
+  "period_interval": 60
+ },
+ "fetched_at": "2026-11-06T02:42:01.789972+00:00",
+ "response": {
+  "candlesticks": [
+   {
+    "end_period_ts": 1766271600,
+    "open_interest": "177.00",
+    "price": {
+     "close": null,
+     "high": null,
+     "low": null,
+     "mean": null,
+     "open": null,
+     "previous": "0.1000"
+    },
+    "volume": "0.00",
+    "yes_ask": {
+     "close": "0.0900",
+     "high": "0.0900",
+     "low": "0.0900",
+     "open": "0.0900"
+    },
+    "yes_bid": {
+     "close": "0.0700",
+     "high": "0.0700",
+     "low": "0.0500",
+     "open": "0.0500"
+    }
+   },
+   {
+    "end_period_ts": 1766329200,
+    "open_interest": "182.00",
+    "price": {
+     "close": "0.0900",
+     "high": "0.0900",
+     "low": "0.0900",
+     "mean": "0.0900",
+     "open": "0.0900",
+     "previous": "0.1000"
+    },
+    "volume": "5.00",
+    "yes_ask": {
+     "close": "0.0700",
+     "high": "0.0900",
+     "low": "0.0700",
+     "open": "0.0900"
+    },
+    "yes_bid": {
+     "close": "0.0600",
+     "high": "0.0600",
+     "low": "0.0400",
+     "open": "0.0400"
+    }
+   },
+   {
+    "end_period_ts": 1766340000,
+    "open_interest": "287.00",
+    "price": {
+     "close": "0.0600",
+     "high": "0.0600",
+     "low": "0.0600",
+     "mean": "0.0600",
+     "open": "0.0600",
+     "previous": "0.0900"
+    },
+    "volume": "105.00",
+    "yes_ask": {
+     "close": "0.0800",
+     "high": "0.0800",
+     "low": "0.0800",
+     "open": "0.0800"
+    },
+    "yes_bid": {
+     "close": "0.0600",
+     "high": "0.0600",
+     "low": "0.0600",
+     "open": "0.0600"
+    }
+   },
+   {
+    "end_period_ts": 1766343600,
+    "open_interest": "287.00",
+    "price": {
+     "close": "0.0800",
+     "high": "0.0800",
+     "low": "0.0800",
+     "mean": "0.0800",
+     "open": "0.0800",
+     "previous": "0.0600"
+    },
+    "volume": "5.00",
+    "yes_ask": {
+     "close": "0.0800",
+     "high": "0.0800",
+     "low": "0.0800",
+     "open": "0.0800"
+    },
+    "yes_bid": {
+     "close": "0.0600",
+     "high": "0.0600",
+     "low": "0.0600",
+     "open": "0.0600"
+    }
+   },
+   {
+    "end_period_ts": 1766361600,
+    "open_interest": "2046.00",
+    "price": {
+     "close": "0.0900",
+     "high": "0.0900",
+     "low": "0.0600",
+     "mean": "0.0844",
+     "open": "0.0800",
+     "previous": "0.0700"
+    },
+    "volume": "1209.00",
+    "yes_ask": {
+     "close": "0.0900",
+     "high": "0.0900",
+     "low": "0.0700",
+     "open": "0.0700"
+    },
+    "yes_bid": {
+     "close": "0.0600",
+     "high": "0.0600",
+     "low": "0.0500",
+     "open": "0.0500"
+    }
+   }
+  ],
+  "ticker": "KXNFLSPREAD-25DEC21NEBAL-NE14"
+ }
+}

@@ -1,0 +1,100 @@
+{
+ "_recorded": "GET /milestones {'minimum_start_date': '2026-11-06T02:48:33Z', 'category': 'Mentions', 'limit': 500} at 2026-11-06T02:48:33.566006+00:00, trimmed to 5 milestones",
+ "cursor": "",
+ "milestones": [
+  {
+   "category": "Mentions",
+   "details": {
+    "main_game_event_ticker": "KXEARNINGSMENTIONDKNG-26NOV06",
+    "quarter": "Q3 2026",
+    "ticker": "DKNG"
+   },
+   "end_date": "2026-11-06T15:00:00Z",
+   "id": "6a14832a-195c-4db6-903c-87c8774a6d91",
+   "last_updated_ts": "2026-10-23T00:29:48.465041Z",
+   "notification_message": "What will be said during DraftKings Earnings Call?",
+   "primary_event_tickers": [
+    "KXEARNINGSMENTIONDKNG-26NOV06"
+   ],
+   "related_event_tickers": [
+    "KXEARNINGSMENTIONDKNG-26NOV06"
+   ],
+   "source_ids": {},
+   "start_date": "2026-11-06T13:30:00Z",
+   "title": "DraftKings Earnings Call",
+   "type": "company_report"
+  },
+  {
+   "category": "Mentions",
+   "details": {},
+   "end_date": "2026-11-06T04:00:00Z",
+   "id": "8af7c0a4-527c-4b3b-9123-0fc0c03aee95",
+   "last_updated_ts": "2026-11-05T21:41:06.366414Z",
+   "notification_message": "What will Chuck Schumer say?",
+   "primary_event_tickers": [
+    "KXLASTWORDMENTION-26NOV05"
+   ],
+   "related_event_tickers": [
+    "KXLASTWORDMENTION-26NOV05"
+   ],
+   "source_ids": {},
+   "start_date": "2026-11-06T03:00:00Z",
+   "title": "Chuck Schumer joins The Last Word With Lawrence O\u2019Donnell",
+   "type": "one_off_milestone"
+  },
+  {
+   "category": "Mentions",
+   "details": {},
+   "end_date": "2026-11-06T23:45:00Z",
+   "id": "42ccb510-955f-430e-ad19-b35e7c20625f",
+   "last_updated_ts": "2026-11-04T15:48:05.506238Z",
+   "notification_message": "What will Trump say?",
+   "primary_event_tickers": [
+    "KXTRUMPMENTION-26NOV06"
+   ],
+   "related_event_tickers": [
+    "KXTRUMPMENTION-26NOV06"
+   ],
+   "source_ids": {},
+   "start_date": "2026-11-06T22:30:00Z",
+   "title": "Trump delivers remarks at the UP Summit",
+   "type": "one_off_milestone"
+  },
+  {
+   "category": "Mentions",
+   "details": {},
+   "end_date": "2026-11-09T05:00:00Z",
+   "id": "eb2187d1-773e-49d1-8cfd-71672aa2e15e",
+   "last_updated_ts": "2026-11-02T00:39:25.770287Z",
+   "notification_message": "What will Trump say this week?",
+   "primary_event_tickers": [
+    "KXTRUMPSAY-26NOV09"
+   ],
+   "related_event_tickers": [
+    "KXTRUMPSAY-26NOV09"
+   ],
+   "source_ids": {},
+   "start_date": "2026-11-08T05:00:00Z",
+   "title": "Trump weekly",
+   "type": "one_off_milestone"
+  },
+  {
+   "category": "Mentions",
+   "details": {},
+   "end_date": "2026-11-19T01:00:00Z",
+   "id": "721e2924-891c-431a-b1c5-198eda018c71",
+   "last_updated_ts": "2026-10-13T18:32:52.01796Z",
+   "notification_message": "What will JD Vance say at the NYT DealBook Summit?",
+   "primary_event_tickers": [
+    "KXVANCEMENTION-26NOV18"
+   ],
+   "related_event_tickers": [
+    "KXVANCEMENTION-26NOV18"
+   ],
+   "source_ids": {},
+   "start_date": "2026-11-18T13:00:00Z",
+   "title": "JD Vance at NYT DealBook Summit",
+   "type": "one_off_milestone"
+  }
+ ]
+}

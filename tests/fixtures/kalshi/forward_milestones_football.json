@@ -1,0 +1,240 @@
+{
+ "_recorded": "GET /milestones {'minimum_start_date': '2026-11-06T02:48:33Z', 'category': 'Sports', 'type': 'football_game', 'limit': 500} at 2026-11-06T02:48:34.101849+00:00, trimmed to 5 milestones",
+ "cursor": "",
+ "milestones": [
+  {
+   "category": "Sports",
+   "details": {
+    "away_team_id": "c6ca462b-2db4-46dd-8752-84f85e6fe9bc",
+    "broadcasts": [
+     {
+      "name": "ESPN+",
+      "scope": "national"
+     }
+    ],
+    "conference": "IVY",
+    "division": "FCS",
+    "home_team_id": "6aad0f54-ebeb-4a32-93fd-d4e1ca76c92e",
+    "league": "NCAAFB",
+    "main_game_event_ticker": "KXNCAAFGAME-26NOV07BRWNYALE",
+    "season": {
+     "type": "REG",
+     "week": 10,
+     "year": 2026
+    },
+    "status": "scheduled",
+    "tier": "D"
+   },
+   "id": "101f3902-4690-5e21-9c56-072d43632d84",
+   "last_updated_ts": "2026-11-06T02:11:02.344022Z",
+   "notification_message": "The game is about to begin!",
+   "primary_event_tickers": [
+    "KXNCAAFGAME-26NOV07BRWNYALE",
+    "KXNCAAFSPREAD-26NOV07BRWNYALE",
+    "KXNCAAFTOTAL-26NOV07BRWNYALE"
+   ],
+   "related_event_tickers": [
+    "KXNCAAFGAME-26NOV07BRWNYALE",
+    "KXNCAAF1H-26NOV07BRWNYALE",
+    "KXNCAAFSPREAD-26NOV07BRWNYALE",
+    "KXNCAAFTOTAL-26NOV07BRWNYALE"
+   ],
+   "source_ids": {
+    "source_1_id": "2973702",
+    "source_2_id": "20261107EFC8DC8D",
+    "source_6_id": "18244509"
+   },
+   "start_date": "2026-11-07T17:00:00Z",
+   "title": "Brown at Yale",
+   "type": "football_game"
+  },
+  {
+   "category": "Sports",
+   "details": {
+    "away_team_id": "aea0eb78-0883-4f89-b99e-03fb556bf5e8",
+    "broadcasts": [
+     {
+      "name": "FloSports",
+      "scope": "national"
+     }
+    ],
+    "conference": "CAA",
+    "division": "FCS",
+    "home_team_id": "bcc3fa99-bf6b-481f-87e5-d24fe2bbef87",
+    "league": "NCAAFB",
+    "main_game_event_ticker": "KXNCAAFGAME-26NOV07NCATMONM",
+    "season": {
+     "type": "REG",
+     "week": 10,
+     "year": 2026
+    },
+    "status": "scheduled",
+    "tier": "D"
+   },
+   "id": "1600af1f-345a-55b0-8c3e-57b447a47357",
+   "last_updated_ts": "2026-11-06T02:11:04.453019Z",
+   "notification_message": "The game is about to begin!",
+   "primary_event_tickers": [
+    "KXNCAAFGAME-26NOV07NCATMONM",
+    "KXNCAAFSPREAD-26NOV07NCATMONM",
+    "KXNCAAFTOTAL-26NOV07NCATMONM"
+   ],
+   "related_event_tickers": [
+    "KXNCAAFGAME-26NOV07NCATMONM",
+    "KXNCAAF1H-26NOV07NCATMONM",
+    "KXNCAAFSPREAD-26NOV07NCATMONM",
+    "KXNCAAFTOTAL-26NOV07NCATMONM"
+   ],
+   "source_ids": {
+    "source_1_id": "2973672",
+    "source_2_id": "20261107B6D12E14",
+    "source_6_id": "18244559"
+   },
+   "start_date": "2026-11-07T17:00:00Z",
+   "title": "North Carolina A&T at Monmouth",
+   "type": "football_game"
+  },
+  {
+   "category": "Sports",
+   "details": {
+    "away_team_id": "58435bc1-489d-4661-b211-5037c934b192",
+    "broadcasts": [
+     {
+      "name": "ESPN",
+      "scope": "national"
+     }
+    ],
+    "conference": "ACC",
+    "division": "FBS",
+    "home_team_id": "9f275cb0-9c53-4483-8856-1dc07e9d7c8f",
+    "league": "NCAAFB",
+    "main_game_event_ticker": "KXNCAAFGAME-26NOV06VTSMU",
+    "season": {
+     "type": "REG",
+     "week": 10,
+     "year": 2026
+    },
+    "status": "scheduled",
+    "tier": "A_MINUS"
+   },
+   "id": "0cc7d42c-0a3b-5061-9115-95e3a769ff1a",
+   "last_updated_ts": "2026-11-06T02:10:59.760341Z",
+   "notification_message": "The game is about to begin!",
+   "primary_event_tickers": [
+    "KXNCAAFGAME-26NOV06VTSMU",
+    "KXNCAAFSPREAD-26NOV06VTSMU",
+    "KXNCAAFTOTAL-26NOV06VTSMU"
+   ],
+   "related_event_tickers": [
+    "KXNCAAFGAME-26NOV06VTSMU",
+    "KXNCAAF1H-26NOV06VTSMU",
+    "KXNCAAFOT-26NOV06VTSMU",
+    "KXNCAAFSPREAD-26NOV06VTSMU",
+    "KXNCAAFTOTAL-26NOV06VTSMU",
+    "KXNCAAFTEAMTOTAL-26NOV06VTSMU",
+    "KXNCAAFFIRSTTDTEAM-26NOV06VTSMU",
+    "KXNCAAF1HSPREAD-26NOV06VTSMU",
+    "KXNCAAF1HTOTAL-26NOV06VTSMU",
+    "KXNCAAF1HFT-26NOV06VTSMU",
+    "KXNCAAF1HTEAMTOTAL-26NOV06VTSMU",
+    "KXNCAAF2H-26NOV06VTSMU",
+    "KXNCAAF2HSPREAD-26NOV06VTSMU",
+    "KXNCAAF2HTOTAL-26NOV06VTSMU",
+    "KXNCAAF1Q-26NOV06VTSMU",
+    "KXNCAAF1QSPREAD-26NOV06VTSMU",
+    "KXNCAAF1QTOTAL-26NOV06VTSMU",
+    "KXNCAAF2Q-26NOV06VTSMU",
+    "KXNCAAF2QSPREAD-26NOV06VTSMU",
+    "KXNCAAF2QTOTAL-26NOV06VTSMU",
+    "KXNCAAF3Q-26NOV06VTSMU",
+    "KXNCAAF3QSPREAD-26NOV06VTSMU",
+    "KXNCAAF3QTOTAL-26NOV06VTSMU",
+    "KXNCAAF4Q-26NOV06VTSMU",
+    "KXNCAAF4QSPREAD-26NOV06VTSMU",
+    "KXNCAAF4QTOTAL-26NOV06VTSMU",
+    "KXNCAAFTEAMRECYDS-26NOV06VTSMU",
+    "KXNCAAFTEAMRECTD-26NOV06VTSMU",
+    "KXNCAAFDSTTD-26NOV06VTSMU",
+    "KXNCAAFWINMARGIN-26NOV06VTSMU"
+   ],
+   "source_ids": {
+    "source_1_id": "2969401",
+    "source_2_id": "2026110625D612E6",
+    "source_6_id": "17736915"
+   },
+   "start_date": "2026-11-07T00:00:00Z",
+   "title": "Virginia Tech at SMU",
+   "type": "football_game"
+  },
+  {
+   "category": "Sports",
+   "details": {
+    "away_team_id": "6fc4b5a5-37e8-40ef-b28a-56de02a0bda5",
+    "home_team_id": "88a77134-6a2d-4cac-ba59-0047ca48a168",
+    "league": "CFL",
+    "main_game_event_ticker": "KXCFLGAME-26NOV07WPGMTL",
+    "season": {
+     "type": "PST",
+     "week": 23,
+     "year": 2026
+    },
+    "status": "not_started"
+   },
+   "id": "effe07f3-10fb-5b2f-8523-4ae6de3071a5",
+   "last_updated_ts": "2026-10-31T22:00:49.686117Z",
+   "notification_message": "The game is about to begin!",
+   "primary_event_tickers": [
+    "KXCFLGAME-26NOV07WPGMTL",
+    "KXCFLSPREAD-26NOV07WPGMTL",
+    "KXCFLTOTAL-26NOV07WPGMTL"
+   ],
+   "related_event_tickers": [
+    "KXCFLGAME-26NOV07WPGMTL",
+    "KXCFLSPREAD-26NOV07WPGMTL",
+    "KXCFLTOTAL-26NOV07WPGMTL"
+   ],
+   "source_ids": {
+    "source_1_id": "2938298",
+    "source_2_id": "2026110785681A5B"
+   },
+   "start_date": "2026-11-07T20:00:00Z",
+   "title": "Winnipeg Blue Bombers at Montreal Alouettes",
+   "type": "football_game"
+  },
+  {
+   "category": "Sports",
+   "details": {
+    "away_team_id": "c3b789ef-bed8-42ab-855b-e69ec1e9f2d5",
+    "home_team_id": "4e0d57c8-e0c9-4341-a47f-ce736037b797",
+    "league": "CFL",
+    "main_game_event_ticker": "KXCFLGAME-26NOV07BCEDM",
+    "season": {
+     "type": "PST",
+     "week": 23,
+     "year": 2026
+    },
+    "status": "not_started"
+   },
+   "id": "9bb5294f-d9f2-5a88-bc3e-8e7c651c32e2",
+   "last_updated_ts": "2026-11-01T01:00:53.837653Z",
+   "notification_message": "The game is about to begin!",
+   "primary_event_tickers": [
+    "KXCFLGAME-26NOV07BCEDM",
+    "KXCFLSPREAD-26NOV07BCEDM",
+    "KXCFLTOTAL-26NOV07BCEDM"
+   ],
+   "related_event_tickers": [
+    "KXCFLGAME-26NOV07BCEDM",
+    "KXCFLSPREAD-26NOV07BCEDM",
+    "KXCFLTOTAL-26NOV07BCEDM"
+   ],
+   "source_ids": {
+    "source_1_id": "2938299",
+    "source_2_id": "2026110774B581CD"
+   },
+   "start_date": "2026-11-07T23:30:00Z",
+   "title": "British Columbia Lions at Edmonton Elks",
+   "type": "football_game"
+  }
+ ]
+}

@@ -1,0 +1,155 @@
+{
+ "candlesticks": [
+  {
+   "end_period_ts": 1774422000,
+   "open_interest": "0.00",
+   "price": {
+    "close": null,
+    "high": null,
+    "low": null,
+    "mean": null,
+    "open": null,
+    "previous": null
+   },
+   "volume": "0.00",
+   "yes_ask": {
+    "close": "0.3700",
+    "high": "0.9900",
+    "low": "0.3700",
+    "open": "0.9900"
+   },
+   "yes_bid": {
+    "close": "0.2800",
+    "high": "0.2900",
+    "low": "0.0000",
+    "open": "0.0000"
+   }
+  },
+  {
+   "end_period_ts": 1774425600,
+   "open_interest": "0.00",
+   "price": {
+    "close": null,
+    "high": null,
+    "low": null,
+    "mean": null,
+    "open": null,
+    "previous": null
+   },
+   "volume": "0.00",
+   "yes_ask": {
+    "close": "0.3900",
+    "high": "0.4000",
+    "low": "0.3700",
+    "open": "0.3700"
+   },
+   "yes_bid": {
+    "close": "0.3000",
+    "high": "0.3000",
+    "low": "0.2800",
+    "open": "0.2800"
+   }
+  },
+  {
+   "end_period_ts": 1774479600,
+   "open_interest": "291.00",
+   "price": {
+    "close": null,
+    "high": null,
+    "low": null,
+    "mean": null,
+    "open": null,
+    "previous": "0.3600"
+   },
+   "volume": "0.00",
+   "yes_ask": {
+    "close": "0.3200",
+    "high": "0.3200",
+    "low": "0.3200",
+    "open": "0.3200"
+   },
+   "yes_bid": {
+    "close": "0.3000",
+    "high": "0.3000",
+    "low": "0.2900",
+    "open": "0.3000"
+   }
+  },
+  {
+   "end_period_ts": 1774483200,
+   "open_interest": "291.00",
+   "price": {
+    "close": null,
+    "high": null,
+    "low": null,
+    "mean": null,
+    "open": null,
+    "previous": "0.3600"
+   },
+   "volume": "0.00",
+   "yes_ask": {
+    "close": "0.3200",
+    "high": "0.3200",
+    "low": "0.3200",
+    "open": "0.3200"
+   },
+   "yes_bid": {
+    "close": "0.3000",
+    "high": "0.3000",
+    "low": "0.2800",
+    "open": "0.3000"
+   }
+  },
+  {
+   "end_period_ts": 1774486800,
+   "open_interest": "291.00",
+   "price": {
+    "close": null,
+    "high": null,
+    "low": null,
+    "mean": null,
+    "open": null,
+    "previous": "0.3600"
+   },
+   "volume": "0.00",
+   "yes_ask": {
+    "close": "0.3100",
+    "high": "0.3200",
+    "low": "0.3000",
+    "open": "0.3200"
+   },
+   "yes_bid": {
+    "close": "0.2700",
+    "high": "0.3100",
+    "low": "0.0300",
+    "open": "0.3000"
+   }
+  },
+  {
+   "end_period_ts": 1774490400,
+   "open_interest": "363.00",
+   "price": {
+    "close": "0.3200",
+    "high": "0.3200",
+    "low": "0.3100",
+    "mean": "0.3131",
+    "open": "0.3100",
+    "previous": "0.3600"
+   },
+   "volume": "72.00",
+   "yes_ask": {
+    "close": "0.3200",
+    "high": "0.3200",
+    "low": "0.3100",
+    "open": "0.3100"
+   },
+   "yes_bid": {
+    "close": "0.2800",
+    "high": "0.3100",
+    "low": "0.0100",
+    "open": "0.2700"
+   }
+  }
+ ],
+ "ticker": "KXNBAPTS-26MAR25DALDEN-DALKTHOMPSON31-15"
+}

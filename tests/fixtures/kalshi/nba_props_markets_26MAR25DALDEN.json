@@ -1,0 +1,274 @@
+{
+ "markets": [
+  {
+   "ticker": "KXNBA3PT-26MAR25DALDEN-DALCFLAGG32-1",
+   "event_ticker": "KXNBA3PT-26MAR25DALDEN",
+   "title": "Cooper Flagg: 1+ threes",
+   "yes_sub_title": "Cooper Flagg: 1+",
+   "floor_strike": 0.5,
+   "custom_strike": {
+    "basketball_player": "3b4ac2be-e186-4c72-a906-b7276d76422d",
+    "basketball_team": "36547ae6-f0fa-4d06-a6e5-5bfa64a217ed"
+   },
+   "open_time": "2026-03-25T06:11:00Z",
+   "close_time": "2026-03-26T05:00:33Z",
+   "result": "yes",
+   "settlement_value_dollars": "1.0000",
+   "volume_fp": "926.00",
+   "status": "finalized",
+   "rules_primary": "If Cooper Flagg records 1+ Three Pointers in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026, then the market resolves to Yes.",
+   "rules_secondary": "The following market refers to a player in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026. If a player is active but never takes the court, the market settles to the last fair market price before game start. Once a player enters the game the market settles based on the player's threes recorded."
+  },
+  {
+   "ticker": "KXNBA3PT-26MAR25DALDEN-DALCFLAGG32-2",
+   "event_ticker": "KXNBA3PT-26MAR25DALDEN",
+   "title": "Cooper Flagg: 2+ threes",
+   "yes_sub_title": "Cooper Flagg: 2+",
+   "floor_strike": 1.5,
+   "custom_strike": {
+    "basketball_player": "3b4ac2be-e186-4c72-a906-b7276d76422d",
+    "basketball_team": "36547ae6-f0fa-4d06-a6e5-5bfa64a217ed"
+   },
+   "open_time": "2026-03-25T06:11:00Z",
+   "close_time": "2026-03-26T05:00:33Z",
+   "result": "no",
+   "settlement_value_dollars": "0.0000",
+   "volume_fp": "3803.00",
+   "status": "finalized",
+   "rules_primary": "If Cooper Flagg records 2+ Three Pointers in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026, then the market resolves to Yes.",
+   "rules_secondary": "The following market refers to a player in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026. If a player is active but never takes the court, the market settles to the last fair market price before game start. Once a player enters the game the market settles based on the player's threes recorded."
+  },
+  {
+   "ticker": "KXNBA3PT-26MAR25DALDEN-DALCFLAGG32-3",
+   "event_ticker": "KXNBA3PT-26MAR25DALDEN",
+   "title": "Cooper Flagg: 3+ threes",
+   "yes_sub_title": "Cooper Flagg: 3+",
+   "floor_strike": 2.5,
+   "custom_strike": {
+    "basketball_player": "3b4ac2be-e186-4c72-a906-b7276d76422d",
+    "basketball_team": "36547ae6-f0fa-4d06-a6e5-5bfa64a217ed"
+   },
+   "open_time": "2026-03-25T06:11:00Z",
+   "close_time": "2026-03-26T05:00:33Z",
+   "result": "no",
+   "settlement_value_dollars": "0.0000",
+   "volume_fp": "1611.00",
+   "status": "finalized",
+   "rules_primary": "If Cooper Flagg records 3+ Three Pointers in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026, then the market resolves to Yes.",
+   "rules_secondary": "The following market refers to a player in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026. If a player is active but never takes the court, the market settles to the last fair market price before game start. Once a player enters the game the market settles based on the player's threes recorded."
+  },
+  {
+   "ticker": "KXNBAPTS-26MAR25DALDEN-DALCFLAGG32-15",
+   "event_ticker": "KXNBAPTS-26MAR25DALDEN",
+   "title": "Cooper Flagg: 15+ points",
+   "yes_sub_title": "Cooper Flagg: 15+",
+   "floor_strike": 14.5,
+   "custom_strike": {
+    "basketball_player": "3b4ac2be-e186-4c72-a906-b7276d76422d",
+    "basketball_team": "36547ae6-f0fa-4d06-a6e5-5bfa64a217ed"
+   },
+   "open_time": "2026-03-25T06:11:00Z",
+   "close_time": "2026-03-26T04:05:09Z",
+   "result": "yes",
+   "settlement_value_dollars": "1.0000",
+   "volume_fp": "2677.00",
+   "status": "finalized",
+   "rules_primary": "If Cooper Flagg records 15+ Points in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026, then the market resolves to Yes.",
+   "rules_secondary": "The following market refers to a player in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026. If a player is active but never takes the court, the market settles to the last fair market price before game start. Once a player enters the game the market settles based on the player's points recorded."
+  },
+  {
+   "ticker": "KXNBAPTS-26MAR25DALDEN-DALCFLAGG32-20",
+   "event_ticker": "KXNBAPTS-26MAR25DALDEN",
+   "title": "Cooper Flagg: 20+ points",
+   "yes_sub_title": "Cooper Flagg: 20+",
+   "floor_strike": 19.5,
+   "custom_strike": {
+    "basketball_player": "3b4ac2be-e186-4c72-a906-b7276d76422d",
+    "basketball_team": "36547ae6-f0fa-4d06-a6e5-5bfa64a217ed"
+   },
+   "open_time": "2026-03-25T06:11:00Z",
+   "close_time": "2026-03-26T04:30:34Z",
+   "result": "yes",
+   "settlement_value_dollars": "1.0000",
+   "volume_fp": "5612.00",
+   "status": "finalized",
+   "rules_primary": "If Cooper Flagg records 20+ Points in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026, then the market resolves to Yes.",
+   "rules_secondary": "The following market refers to a player in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026. If a player is active but never takes the court, the market settles to the last fair market price before game start. Once a player enters the game the market settles based on the player's points recorded."
+  },
+  {
+   "ticker": "KXNBAPTS-26MAR25DALDEN-DALCFLAGG32-25",
+   "event_ticker": "KXNBAPTS-26MAR25DALDEN",
+   "title": "Cooper Flagg: 25+ points",
+   "yes_sub_title": "Cooper Flagg: 25+",
+   "floor_strike": 24.5,
+   "custom_strike": {
+    "basketball_player": "3b4ac2be-e186-4c72-a906-b7276d76422d",
+    "basketball_team": "36547ae6-f0fa-4d06-a6e5-5bfa64a217ed"
+   },
+   "open_time": "2026-03-25T06:11:00Z",
+   "close_time": "2026-03-26T05:00:36Z",
+   "result": "yes",
+   "settlement_value_dollars": "1.0000",
+   "volume_fp": "6153.00",
+   "status": "finalized",
+   "rules_primary": "If Cooper Flagg records 25+ Points in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026, then the market resolves to Yes.",
+   "rules_secondary": "The following market refers to a player in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026. If a player is active but never takes the court, the market settles to the last fair market price before game start. Once a player enters the game the market settles based on the player's points recorded."
+  },
+  {
+   "ticker": "KXNBAREB-26MAR25DALDEN-DALCFLAGG32-10",
+   "event_ticker": "KXNBAREB-26MAR25DALDEN",
+   "title": "Cooper Flagg: 10+ rebounds",
+   "yes_sub_title": "Cooper Flagg: 10+",
+   "floor_strike": 9.5,
+   "custom_strike": {
+    "basketball_player": "3b4ac2be-e186-4c72-a906-b7276d76422d",
+    "basketball_team": "36547ae6-f0fa-4d06-a6e5-5bfa64a217ed"
+   },
+   "open_time": "2026-03-25T06:11:00Z",
+   "close_time": "2026-03-26T05:00:43Z",
+   "result": "no",
+   "settlement_value_dollars": "0.0000",
+   "volume_fp": "746.00",
+   "status": "finalized",
+   "rules_primary": "If Cooper Flagg records 10+ Rebounds in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026, then the market resolves to Yes.",
+   "rules_secondary": "The following market refers to a player in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026. If a player is active but never takes the court, the market settles to the last fair market price before game start. Once a player enters the game the market settles based on the player's rebounds recorded."
+  },
+  {
+   "ticker": "KXNBAREB-26MAR25DALDEN-DALCFLAGG32-12",
+   "event_ticker": "KXNBAREB-26MAR25DALDEN",
+   "title": "Cooper Flagg: 12+ rebounds",
+   "yes_sub_title": "Cooper Flagg: 12+",
+   "floor_strike": 11.5,
+   "custom_strike": {
+    "basketball_player": "3b4ac2be-e186-4c72-a906-b7276d76422d",
+    "basketball_team": "36547ae6-f0fa-4d06-a6e5-5bfa64a217ed"
+   },
+   "open_time": "2026-03-25T06:11:00Z",
+   "close_time": "2026-03-26T05:00:43Z",
+   "result": "no",
+   "settlement_value_dollars": "0.0000",
+   "volume_fp": "580.00",
+   "status": "finalized",
+   "rules_primary": "If Cooper Flagg records 12+ Rebounds in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026, then the market resolves to Yes.",
+   "rules_secondary": "The following market refers to a player in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026. If a player is active but never takes the court, the market settles to the last fair market price before game start. Once a player enters the game the market settles based on the player's rebounds recorded."
+  },
+  {
+   "ticker": "KXNBAREB-26MAR25DALDEN-DALCFLAGG32-6",
+   "event_ticker": "KXNBAREB-26MAR25DALDEN",
+   "title": "Cooper Flagg: 6+ rebounds",
+   "yes_sub_title": "Cooper Flagg: 6+",
+   "floor_strike": 5.5,
+   "custom_strike": {
+    "basketball_player": "3b4ac2be-e186-4c72-a906-b7276d76422d",
+    "basketball_team": "36547ae6-f0fa-4d06-a6e5-5bfa64a217ed"
+   },
+   "open_time": "2026-03-25T06:11:00Z",
+   "close_time": "2026-03-26T04:25:02Z",
+   "result": "yes",
+   "settlement_value_dollars": "1.0000",
+   "volume_fp": "1473.00",
+   "status": "finalized",
+   "rules_primary": "If Cooper Flagg records 6+ Rebounds in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026, then the market resolves to Yes.",
+   "rules_secondary": "The following market refers to a player in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026. If a player is active but never takes the court, the market settles to the last fair market price before game start. Once a player enters the game the market settles based on the player's rebounds recorded."
+  },
+  {
+   "ticker": "KXNBATEAMTOTAL-26MAR25DALDEN-DAL103",
+   "event_ticker": "KXNBATEAMTOTAL-26MAR25DALDEN",
+   "title": "Will Dallas score over 103.5 points?",
+   "yes_sub_title": "Dallas over 103.5 points scored",
+   "floor_strike": 103.5,
+   "custom_strike": {
+    "basketball_team": "36547ae6-f0fa-4d06-a6e5-5bfa64a217ed"
+   },
+   "open_time": "2026-03-25T04:06:00Z",
+   "close_time": "2026-03-26T04:00:24Z",
+   "result": "yes",
+   "settlement_value_dollars": "1.0000",
+   "volume_fp": "205.00",
+   "status": "finalized",
+   "rules_primary": "If the number of points scored by Dallas in the Dallas vs Denver professional basketball game originally scheduled for Mar 25, 2026 is Above 103.5, then the market resolves to Yes.",
+   "rules_secondary": ""
+  },
+  {
+   "ticker": "KXNBATEAMTOTAL-26MAR25DALDEN-DAL106",
+   "event_ticker": "KXNBATEAMTOTAL-26MAR25DALDEN",
+   "title": "Will Dallas score over 106.5 points?",
+   "yes_sub_title": "Dallas over 106.5 points scored",
+   "floor_strike": 106.5,
+   "custom_strike": {
+    "basketball_team": "36547ae6-f0fa-4d06-a6e5-5bfa64a217ed"
+   },
+   "open_time": "2026-03-25T04:06:00Z",
+   "close_time": "2026-03-26T04:00:25Z",
+   "result": "yes",
+   "settlement_value_dollars": "1.0000",
+   "volume_fp": "0.00",
+   "status": "finalized",
+   "rules_primary": "If the number of points scored by Dallas in the Dallas vs Denver professional basketball game originally scheduled for Mar 25, 2026 is Above 106.5, then the market resolves to Yes.",
+   "rules_secondary": ""
+  },
+  {
+   "ticker": "KXNBATEAMTOTAL-26MAR25DALDEN-DAL109",
+   "event_ticker": "KXNBATEAMTOTAL-26MAR25DALDEN",
+   "title": "Will Dallas score over 109.5 points?",
+   "yes_sub_title": "Dallas over 109.5 points scored",
+   "floor_strike": 109.5,
+   "custom_strike": {
+    "basketball_team": "36547ae6-f0fa-4d06-a6e5-5bfa64a217ed"
+   },
+   "open_time": "2026-03-25T04:06:00Z",
+   "close_time": "2026-03-26T04:03:35Z",
+   "result": "yes",
+   "settlement_value_dollars": "1.0000",
+   "volume_fp": "0.00",
+   "status": "finalized",
+   "rules_primary": "If the number of points scored by Dallas in the Dallas vs Denver professional basketball game originally scheduled for Mar 25, 2026 is Above 109.5, then the market resolves to Yes.",
+   "rules_secondary": ""
+  },
+  {
+   "ticker": "KXNBATOTAL-26MAR25DALDEN-230",
+   "event_ticker": "KXNBATOTAL-26MAR25DALDEN",
+   "title": "Dallas at Denver: Total Points",
+   "yes_sub_title": "Over 230.5 points scored",
+   "floor_strike": 230.5,
+   "open_time": "2026-03-24T22:06:00Z",
+   "close_time": "2026-03-26T04:01:38Z",
+   "result": "yes",
+   "settlement_value_dollars": "1.0000",
+   "volume_fp": "21519.00",
+   "status": "finalized",
+   "rules_primary": "If the teams in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026 collectively score more than 230.5 points, then the market resolves to Yes.",
+   "rules_secondary": ""
+  },
+  {
+   "ticker": "KXNBATOTAL-26MAR25DALDEN-233",
+   "event_ticker": "KXNBATOTAL-26MAR25DALDEN",
+   "title": "Dallas at Denver: Total Points",
+   "yes_sub_title": "Over 233.5 points scored",
+   "floor_strike": 233.5,
+   "open_time": "2026-03-24T22:06:00Z",
+   "close_time": "2026-03-26T04:06:37Z",
+   "result": "yes",
+   "settlement_value_dollars": "1.0000",
+   "volume_fp": "19156.00",
+   "status": "finalized",
+   "rules_primary": "If the teams in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026 collectively score more than 233.5 points, then the market resolves to Yes.",
+   "rules_secondary": ""
+  },
+  {
+   "ticker": "KXNBATOTAL-26MAR25DALDEN-236",
+   "event_ticker": "KXNBATOTAL-26MAR25DALDEN",
+   "title": "Dallas at Denver: Total Points",
+   "yes_sub_title": "Over 236.5 points scored",
+   "floor_strike": 236.5,
+   "open_time": "2026-03-24T22:06:00Z",
+   "close_time": "2026-03-26T04:06:38Z",
+   "result": "yes",
+   "settlement_value_dollars": "1.0000",
+   "volume_fp": "19200.00",
+   "status": "finalized",
+   "rules_primary": "If the teams in the Dallas at Denver professional basketball game originally scheduled for Mar 25, 2026 collectively score more than 236.5 points, then the market resolves to Yes.",
+   "rules_secondary": ""
+  }
+ ]
+}

@@ -1,0 +1,87 @@
+{
+ "_recorded": "GET /series/KXTRUMPMENTION at 2026-11-06T02:44:35.201817+00:00",
+ "series": {
+  "additional_prohibitions": [
+   "Persons who are employed by any of the Source Agencies are not permitted to trade on the Contract.",
+   "Persons who hold any material, non-public information on the Underlying are not permitted to trade on the Contract."
+  ],
+  "categories": [
+   "Mentions"
+  ],
+  "category": "Mentions",
+  "contract_terms_url": "https://assets.kalshi.com/contract_terms/MENTION.pdf",
+  "contract_url": "https://assets.kalshi.com/regulatory/product-certifications/MENTION.pdf",
+  "exchange_index": 0,
+  "fee_multiplier": 1,
+  "fee_type": "quadratic",
+  "frequency": "one_off",
+  "last_updated_ts": "2026-11-03T19:39:47.779249Z",
+  "product_metadata": {
+   "scope": "Mention"
+  },
+  "settlement_sources": [
+   {
+    "name": "ABC",
+    "url": "https://abcnews.go.com/"
+   },
+   {
+    "name": "Fox News",
+    "url": "https://www.foxnews.com/"
+   },
+   {
+    "name": "MSNBC",
+    "url": "https://www.msnbc.com/"
+   },
+   {
+    "name": "The Wall Street Journal",
+    "url": "https://www.wsj.com/"
+   },
+   {
+    "name": "Semafor",
+    "url": "https://www.semafor.com/"
+   },
+   {
+    "name": "The Information",
+    "url": "https://www.theinformation.com/"
+   },
+   {
+    "name": "CBS",
+    "url": "https://www.cbsnews.com/"
+   },
+   {
+    "name": "The Washington Post",
+    "url": "https://www.washingtonpost.com/"
+   },
+   {
+    "name": "Axios",
+    "url": "https://www.axios.com/"
+   },
+   {
+    "name": "CNN",
+    "url": "https://www.cnn.com/"
+   },
+   {
+    "name": "Reuters",
+    "url": "https://www.reuters.com/"
+   },
+   {
+    "name": "The New York Times",
+    "url": "https://www.nytimes.com/"
+   },
+   {
+    "name": "the Associated Press",
+    "url": "https://apnews.com/"
+   },
+   {
+    "name": "Politico",
+    "url": "https://www.politico.com/"
+   }
+  ],
+  "tags": [
+   "Trump",
+   "Politicians"
+  ],
+  "ticker": "KXTRUMPMENTION",
+  "title": "What will Trump say?"
+ }
+}
