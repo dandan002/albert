@@ -80,3 +80,19 @@ def test_signer_accepts_bare_base64_key_and_signs_pss():
         base64.b64decode(h["KALSHI-ACCESS-SIGNATURE"]), b"1700000000000GET/trade-api/ws/v2",
         padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.DIGEST_LENGTH),
         hashes.SHA256())
+
+
+def test_signer_accepts_ed25519_pkcs8_base64_and_pem():
+    from cryptography.hazmat.primitives.asymmetric import ed25519
+    key = ed25519.Ed25519PrivateKey.generate()
+    der = key.private_bytes(serialization.Encoding.DER, serialization.PrivateFormat.PKCS8,
+                            serialization.NoEncryption())
+    pem = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                            serialization.NoEncryption()).decode()
+    b64 = base64.b64encode(der).decode()
+    assert len(der) == 48 and len(b64) == 64          # the shape Kalshi's key download has
+    for text in (b64, pem, pem.replace("\n", "\\n")):
+        h = KalshiSigner("kid", load_private_key(text)).headers("POST", "/trade-api/v2/portfolio/events/orders?a=1",
+                                                                  now_ms=1700000000001)
+        key.public_key().verify(base64.b64decode(h["KALSHI-ACCESS-SIGNATURE"]),
+                                b"1700000000001POST/trade-api/v2/portfolio/events/orders")

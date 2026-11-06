@@ -802,8 +802,10 @@ async def plumbing(trader, signer, out_dir: Path, *, market: str | None = None,
             await trader.cancel(rej["order_id"], ticker)
         except TradeError as e:
             log("post_only_cross", {"status": e.status, "body": e.body})
-            steps.append(PlumbingStep("post_only_reject", e.status in (400, 409), {"status": e.status,
-                                                                                  "body": e.body}))
+            code = (e.body.get("error") or {}).get("code") if isinstance(e.body, dict) else None
+            # Only a crossing rejection counts; e.g. insufficient_balance would mask the check.
+            steps.append(PlumbingStep("post_only_reject", e.status in (400, 409) and code != "insufficient_balance",
+                                      {"status": e.status, "body": e.body}))
 
         # expiry
         coid = f"{prefix}-3"
@@ -834,8 +836,7 @@ async def plumbing(trader, signer, out_dir: Path, *, market: str | None = None,
                     ticker, "yes", deep, 1, client_order_id=f"{prefix}-{i}", order_group_id=group,
                     expiration_ts=int(time.time() + 600))))
                 ids.append(r and r["order_id"])
-            await step("trigger_group", trader._send("PUT", f"/portfolio/order_groups/{group}/trigger",
-                                                     what="trigger"))
+            await step("trigger_group", trader.trigger_order_group(group))
             await asyncio.sleep(wait_s)
             left = [o for o in await trader.orders("resting", ticker) if o.order_id in ids]
             steps.append(PlumbingStep("group_trigger", all(ids) and not left,

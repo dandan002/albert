@@ -380,3 +380,20 @@ def test_live_maker_trades_recorded_frames_end_to_end(tmp_path):
     assert resting_ids == local_live
     end = asyncio.run(lm.shutdown())
     assert not fake.resting and end["halted"] == "shutdown"
+
+
+def test_order_group_trigger_sends_a_json_body():
+    """Kalshi demo answered a body-less trigger PUT with 400 invalid_content_type (plumbing run
+    2026-11-06): the PUT must carry an empty JSON object."""
+    seen = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append((req.method, req.url.path, req.headers.get("content-type"), req.content))
+        return httpx.Response(200, json={})
+
+    t = KalshiTrader("demo", _Signer(), transport=httpx.MockTransport(handler))
+    gid = "9ba666a5-9453-42c6-8a9b-0419dc456723"
+    asyncio.run(t.trigger_order_group(gid))
+    asyncio.run(t.reset_order_group(gid))
+    assert [s[1].rsplit("/", 1)[-1] for s in seen] == ["trigger", "reset"]
+    assert all(s[0] == "PUT" and s[2] == "application/json" and s[3] == b"{}" for s in seen)

@@ -1,8 +1,13 @@
 # Live (cash) maker pilot: plan
 
-Status (2026-11-05, updated): **order layer built and tested offline; waiting for Kalshi demo
-keys in `.env`** to run the demo plumbing test. Nothing has placed an order yet. Prod is gated
-(`KALSHI_LIVE_ENABLED` is not set). The live paper maker and the recorder keep running.
+Status (2026-11-06 02:30 UTC): **demo keys added; demo auth works.** The demo key is Ed25519 (Kalshi's
+default for new keys; 48-byte PKCS#8 in base64), so the signer now accepts Ed25519 as well as RSA.
+`albert live check --env demo`: balance $0.00, Basic tier. First `albert live plumbing` run: order
+group create/delete and the private `order_group_updates` channel work; every order create failed
+with `insufficient_balance`, and the order-group trigger failed with `invalid_content_type` (a
+body-less PUT; fixed: trigger/reset now send `{}`, verified on demo). **Next: fund the demo account
+(play money on demo.kalshi.co), then re-run `albert live plumbing`.** Prod is gated
+(`KALSHI_LIVE_ENABLED` is not set); the prod key is unchanged.
 
 Built (commit 8437d8a), see "Software to build" for the design:
 

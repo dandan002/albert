@@ -363,6 +363,16 @@ class KalshiTrader:
     async def delete_order_group(self, group_id: str) -> None:
         await self._send("DELETE", f"/portfolio/order_groups/{group_id}", what="delete order group")
 
+    async def trigger_order_group(self, group_id: str) -> Any:
+        """Cancel every order in the group and block new ones until reset. Kalshi rejects a body-less
+        PUT with ``invalid_content_type``, so an empty JSON object is sent."""
+        return await self._send("PUT", f"/portfolio/order_groups/{group_id}/trigger", body={},
+                                what="trigger order group")
+
+    async def reset_order_group(self, group_id: str) -> Any:
+        return await self._send("PUT", f"/portfolio/order_groups/{group_id}/reset", body={},
+                                what="reset order group")
+
     # -- read-only sync access (fixtures, status commands) --
     @staticmethod
     @contextmanager
