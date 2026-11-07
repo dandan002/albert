@@ -1,13 +1,18 @@
 # Live (cash) maker pilot: plan
 
-Status (2026-11-06 02:30 UTC): **demo keys added; demo auth works.** The demo key is Ed25519 (Kalshi's
-default for new keys; 48-byte PKCS#8 in base64), so the signer now accepts Ed25519 as well as RSA.
-`albert live check --env demo`: balance $0.00, Basic tier. First `albert live plumbing` run: order
-group create/delete and the private `order_group_updates` channel work; every order create failed
-with `insufficient_balance`, and the order-group trigger failed with `invalid_content_type` (a
-body-less PUT; fixed: trigger/reset now send `{}`, verified on demo). **Next: fund the demo account
-(play money on demo.kalshi.co), then re-run `albert live plumbing`.** Prod is gated
-(`KALSHI_LIVE_ENABLED` is not set); the prod key is unchanged.
+Status (2026-11-07 01:00 UTC): **demo plumbing passes 11/11** (resting order, queue position,
+cancel, post-only reject, expiry, 1-contract fill, positions, order-group trigger, cancel-own sweep;
+private WS frames parse, fixture `ws_private_demo.json`). The demo key is Ed25519 (supported).
+
+**First live candidate changed to the pre-speech mentions NO-bid rule** (`live_mentions.py`,
+`albert live mentions`; evidence: `research/mentions_history`, +5.8c/fill t 5.4 on 548 unseen
+events at 8c, +7.9c t 6.4 at 12c). Demo: a forced event posted 3 NO bids in an order group with
+expiration and cancelled them at shutdown; a 24 h scheduled demo run started 2026-11-07 00:57 UTC
+(`data/live/mentions/demo-run.log`, stop with `touch data/live/mentions/STOP`). The forward paper
+test (`research/forward`, mentions + FCS) runs hourly. Prod remains gated
+(`KALSHI_LIVE_ENABLED` not set). Proposed prod pilot: 1 contract per leg, margin 12c, collateral cap
+$15, daily fill-cost cap $10, max 2 events at once, Trump/Vance/other speech series (no earnings
+calls), supervised, after the user enables it.
 
 Built (commit 8437d8a), see "Software to build" for the design:
 
