@@ -653,6 +653,57 @@ def live_plumbing(market: str = typer.Option(None, help="Demo market (default: p
         raise typer.Exit(1)
 
 
+@live_app.command("mentions")
+def live_mentions(
+    env: str = ENV_OPT,
+    live: bool = typer.Option(False, "--live", help="Required for prod (with KALSHI_LIVE_ENABLED=1)"),
+    minutes: float = typer.Option(1440.0),
+    margin: float = typer.Option(0.12, help="NO bid at floor(1 - fair - margin)"),
+    max_collateral: float = typer.Option(20.0, help="$ cap: resting NO bids + today's fill cost"),
+    max_daily_loss: float = typer.Option(10.0, help="$: no new events once today's fill cost reaches this"),
+    max_events: int = typer.Option(3),
+    group_limit: int = typer.Option(5, help="Exchange-side: contracts matched per rolling 15 s per event"),
+    poll_s: float = typer.Option(60.0),
+    force_event: str = typer.Option(None, help="Demo only: post this event now (orders expire in 15 min)"),
+) -> None:
+    """Pre-speech NO bids on Kalshi mention markets (research/mentions_history). Stop with
+    `touch data/live/mentions/STOP` or SIGTERM; every bot order carries an expiration_time."""
+    import asyncio
+    import signal
+
+    from albert.live_mentions import MentionLimits, MentionsBot
+    from albert.venues.kalshi_trade import ENVS, KalshiTrader, signer_for
+
+    if force_event and env != "demo":
+        raise typer.BadParameter("--force-event is demo-only")
+    s = settings()
+    trader = KalshiTrader(env, signer_for(env), allow_prod=live)
+    if not trader.writable:
+        raise typer.BadParameter(f"{env} is not enabled for orders (prod needs KALSHI_LIVE_ENABLED=1 and --live)")
+    root = s.data_dir / "live" / "mentions"
+    run_dir = root / env / datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    limits = MentionLimits(margin=margin, max_collateral=max_collateral, max_daily_loss=max_daily_loss,
+                           max_events=max_events, group_limit=group_limit)
+    bot = MentionsBot(s, env, trader, run_dir, limits=limits, base=ENVS[env]["rest"], stop_file=root / "STOP",
+                      log=typer.echo)
+
+    async def main():
+        task = asyncio.current_task()
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, task.cancel)
+        bot.write("start", {"env": env, "limits": vars(limits), "minutes": minutes, "force_event": force_event})
+        typer.echo(f"live mentions {env}: margin {margin:.2f}, collateral cap ${max_collateral:.2f} ({run_dir})")
+        try:
+            await bot.run(minutes, poll_s, force_events=[force_event] if force_event else None)
+        except asyncio.CancelledError:
+            pass
+        finally:
+            await trader.aclose()
+
+    asyncio.run(main())
+
+
 @live_app.command("l2")
 def live_l2(
     env: str = ENV_OPT,

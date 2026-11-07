@@ -397,3 +397,21 @@ def test_order_group_trigger_sends_a_json_body():
     asyncio.run(t.reset_order_group(gid))
     assert [s[1].rsplit("/", 1)[-1] for s in seen] == ["trigger", "reset"]
     assert all(s[0] == "PUT" and s[2] == "application/json" and s[3] == b"{}" for s in seen)
+
+
+def test_private_frames_recorded_on_demo_parse():
+    """Real demo plumbing frames (2026-11-07): user_order lifecycle, a taker fill and an
+    order-group trigger parse into the broker's types."""
+    import json
+    from pathlib import Path
+
+    from albert.venues.kalshi_trade import parse_fill, parse_order
+    frames = json.loads((Path(__file__).parent / "fixtures" / "kalshi" / "ws_private_demo.json").read_text())
+    orders = [parse_order(f["msg"]) for f in frames if f["type"] == "user_order"]
+    fills = [parse_fill(f["msg"]) for f in frames if f["type"] == "fill"]
+    groups = [f["msg"]["event_type"] for f in frames if f["type"] == "order_group_updates"]
+    assert {o.status for o in orders} >= {"resting", "canceled", "executed"}
+    assert all(o.client_order_id.startswith("albplumb") for o in orders)
+    assert len(fills) == 1 and fills[0].qty == 1.0 and fills[0].is_taker and 0 < fills[0].fee < 0.02
+    assert groups == ["created", "triggered"]
+    assert not any("user_id" in f["msg"] for f in frames)
