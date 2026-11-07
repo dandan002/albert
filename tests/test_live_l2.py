@@ -423,3 +423,50 @@ def test_private_frames_recorded_on_demo_parse():
     assert len(fills) == 1 and fills[0].qty == 1.0 and fills[0].is_taker and 0 < fills[0].fee < 0.02
     assert groups == ["created", "triggered"]
     assert not any("user_id" in f["msg"] for f in frames)
+
+
+# ---- latency instrumentation ---------------------------------------------------------------------
+def test_order_timing_legs_from_a_recorded_prod_ack():
+    """Clock values and ts_ms from the 2026-11-07 prod create (data/live/manual ledger)."""
+    from albert.timing import OrderTiming
+
+    t = {"now": 0}
+    tm = OrderTiming(clock=lambda: t["now"])
+    send = 1794044031970345000
+    t["now"] = send - 2_000_000
+    tm.queued("create", 1, "KXLOLGAME-26NOV071700GENIG-GEN", event_ns=send - 9_000_000)
+    t["now"] = send
+    tm.sent("create", 1)
+    t["now"] = send + 6_395_029
+    tm.acked("create", 1, {"order_id": "x", "ts_ms": 1794044031975})
+    assert tm.flush(t["now"]) == []                     # waiting for the WS update
+    tm.ws("create", 1, 1794044031976134000)
+    (rec,) = tm.flush(t["now"])
+    assert rec["decide_to_send"] == 2.0 and rec["event_to_decide"] == 7.0
+    assert rec["rest"] == pytest.approx(6.395) and rec["send_to_engine"] == pytest.approx(4.655)
+    assert rec["send_to_ws"] == pytest.approx(5.789) and rec["event_to_ws"] == pytest.approx(14.789)
+    s = tm.summary()
+    assert s["create.rest"]["n"] == 1 and tm.summary() == {}     # the window resets
+    assert tm.summary(whole_run=True)["create.rest"]["p50"] == pytest.approx(6.395)
+
+
+def test_live_maker_logs_timing_and_the_holdback_shows_in_event_to_decide(tmp_path):
+    """On recorded frames, every order is decided at least the classifier holdback after the
+    frame that triggered it (the strategy sees events only once released)."""
+    fake = FakeTrader()
+    lm = LiveMaker(tmp_path, "demo", None, fake, run_id="R",
+                   strategy=Quoter(min_spread=0.0, lo=0.0, improve=True, min_requote_s=0),
+                   cfg=SimConfig(writes_per_s=10.0), guards=LiveGuards(), pairs=[], holdback_ms=500)
+    asyncio.run(lm.prepare([_events()[0].market]))
+    clock = {"now": 0}
+    lm.broker.timing.clock = lambda: clock["now"]
+    for r in _rows()[:200]:
+        clock["now"] = r["recv_ns"]
+        lm.on_frame("kalshi", r["recv_ns"], r["frame"])
+        asyncio.run(run_actions(lm.broker, fake, expiry_s=900))
+    recs = lm.broker.timing.flush(clock["now"] + 10**12)
+    recs += [json.loads(x) for x in (tmp_path / "ledger.jsonl").read_text().splitlines()
+             if json.loads(x)["kind"] == "timing"]
+    driven = [x for x in recs if "event_to_decide" in x]
+    assert driven and all(x["event_to_decide"] >= 500 for x in driven)
+    assert all(x["action"] in ("create", "cancel") and "rest" in x for x in recs)

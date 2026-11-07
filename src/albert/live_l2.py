@@ -55,6 +55,7 @@ from albert.backtest.l2 import (
     Simulator,
     _pm_tops,
 )
+from albert.timing import LoopLag, OrderTiming
 from albert.venues.kalshi_trade import (
     ENVS,
     NotAllowed,
@@ -123,6 +124,8 @@ class LiveBroker:
         self._next = 1
         self._tokens = cfg.writes_per_s or 0.0
         self._tokens_ns = 0
+        self.timing = OrderTiming()
+        self.trigger_ns: int | None = None   # recv_ns of the market-data event being processed
 
     # -- strategy API (same as Simulator) --
     @property
@@ -182,7 +185,7 @@ class LiveBroker:
         self.by_market[market].append(oid)
         self.by_coid[self.client_id(oid)] = oid
         self.touched_ns[oid] = self.now
-        self.actions.append(("create", oid))
+        self._queue("create", oid)
         return oid
 
     def cancel(self, oid: int) -> bool:
@@ -197,12 +200,16 @@ class LiveBroker:
             o.status = "cancel_pending"            # cancelled as soon as the create is acked
         else:
             o.status = "cancelling"
-            self.actions.append(("cancel", oid))
+            self._queue("cancel", oid)
         return True
 
     def live_orders(self, market: str) -> list[Order]:
         return [self.orders[i] for i in self.by_market[market]
                 if self.orders[i].status in ("pending", "active")]
+
+    def _queue(self, kind: str, oid: int) -> None:
+        self.actions.append((kind, oid))
+        self.timing.queued(kind, oid, self.orders[oid].market, self.trigger_ns)
 
     def client_id(self, oid: int) -> str:
         return f"{self.prefix}-{oid}"
@@ -248,7 +255,7 @@ class LiveBroker:
         self.by_exch[resp["order_id"]] = oid
         if o.status == "cancel_pending":
             o.status = "cancelling"
-            self.actions.append(("cancel", oid))
+            self._queue("cancel", oid)
         elif o.status == "pending":
             o.status = "active"
 
@@ -286,11 +293,15 @@ class LiveBroker:
             if oid not in self.exch_id:
                 self.exch_id[oid] = st.order_id
                 self.by_exch[st.order_id] = oid
+            if st.status == "resting":
+                self.timing.ws("create", oid, now_ns)
+            elif st.status == "canceled":
+                self.timing.ws("cancel", oid, now_ns)
             if st.status == "resting" and o.status == "pending":
                 o.status = "active"
             elif st.status == "resting" and o.status == "cancel_pending":
                 o.status = "cancelling"
-                self.actions.append(("cancel", oid))
+                self._queue("cancel", oid)
             elif st.status == "canceled":
                 self.on_cancelled(oid)
             elif st.status == "executed" and o.rem <= EPS:
@@ -336,7 +347,7 @@ class LiveBroker:
                     o.status = "cancel_pending"
                 else:
                     o.status = "cancelling"
-                    self.actions.append(("cancel", o.oid))
+                    self._queue("cancel", o.oid)
                 n += 1
         self.diag[f"cancel_all_{reason}"] += 1
         return n
@@ -385,22 +396,31 @@ async def run_actions(broker: LiveBroker, trader, *, expiry_s: float,
     while broker.actions:
         kind, oid = broker.actions.pop(0)
         o = broker.orders[oid]
+        tm = broker.timing
         try:
             if kind == "create":
                 if o.status not in ("pending", "cancel_pending"):
+                    tm.drop(kind, oid)
                     continue
                 body = order_body(o.market, o.side, o.price, o.qty,
                                   client_order_id=broker.client_id(oid),
                                   order_group_id=broker.group,
                                   expiration_ts=int(wall_s() + expiry_s))
-                broker.on_created(oid, await trader.create(body))
+                tm.sent(kind, oid)
+                resp = await trader.create(body)
+                tm.acked(kind, oid, resp)
+                broker.on_created(oid, resp)
             elif kind == "cancel":
                 if oid not in broker.exch_id or o.status in ("cancelled", "filled", "rejected"):
+                    tm.drop(kind, oid)
                     continue
-                await trader.cancel(broker.exch_id[oid], o.market)
+                tm.sent(kind, oid)
+                resp = await trader.cancel(broker.exch_id[oid], o.market)
+                tm.acked(kind, oid, resp)
                 broker.on_cancelled(oid)
             sent += 1
         except httpx.HTTPError as e:
+            tm.failed(kind, oid, "transport")
             # The request may or may not have reached the exchange. A create is treated as live
             # and to be cancelled: if it exists, the user_orders channel or reconciliation finds
             # it by client_order_id and cancels it. A cancel is retried by the strategy.
@@ -414,6 +434,7 @@ async def run_actions(broker: LiveBroker, trader, *, expiry_s: float,
             if errors >= max_errors:
                 broker.halt(f"{errors} order errors")
         except TradeError as e:
+            tm.failed(kind, oid, f"http {e.status}")
             if kind == "create":
                 broker.on_rejected(oid, e)
                 if e.status >= 500 or e.status == 429:
@@ -501,6 +522,7 @@ class LiveMaker:
         self.fills_logged = 0
         self.pending_markouts: list[tuple[int, int, int]] = []
         self.wake = asyncio.Event()
+        self.lag = LoopLag()
 
     def write(self, kind: str, data: dict[str, Any]) -> None:
         self.ledger.write(json.dumps({"kind": kind, "wall": datetime.now(UTC).isoformat(),
@@ -535,12 +557,16 @@ class LiveMaker:
                 self.write("error", {"what": "delete order group", "status": e.status})
         positions = await self.trader.positions()
         balance = await self.trader.balance()
+        for rec in b.timing.flush(time.time_ns() + 10**12):     # whatever is left, WS ack or not
+            self.write("timing", rec)
         end = {"halted": b.halted, "stopped_reason": self.rec.stopped_reason,
                "equity": b.equity(), "cash": b.cash, "fills": len(b.fills), "orders": len(b.orders),
                "positions_local": {m: q for m, q in b.position.items() if abs(q) > 1e-9},
                "positions_exchange": positions, "balance": balance,
                "cancelled_at_close": leftover, "diag": dict(b.diag),
                "classifier": dict(self.clf.stats),
+               "latency_ms": b.timing.summary(whole_run=True),
+               "loop_lag_ms": self.lag.summary(whole_run=True),
                "conn_stats": {c: st.as_dict() for c, st in self.rec.stats.items()}}
         files = self.rec.close()
         end["files"] = [asdict(f) for f in files]
@@ -574,14 +600,20 @@ class LiveMaker:
     def step(self, now_ns: int) -> None:
         b = self.broker
         for ev in self.clf.release(now_ns):
-            b.apply(ev)
-            if b.halted or ev.market in b.blocked:
-                continue
-            if b.gross() >= self.guards.max_gross - EPS:
-                for o in b.live_orders(ev.market):
-                    b.cancel(o.oid)
-                continue
-            self.strategy.on_event(b, ev.market)
+            t0 = time.perf_counter_ns()
+            b.trigger_ns = ev.recv_ns
+            try:
+                b.apply(ev)
+                if b.halted or ev.market in b.blocked:
+                    continue
+                if b.gross() >= self.guards.max_gross - EPS:
+                    for o in b.live_orders(ev.market):
+                        b.cancel(o.oid)
+                    continue
+                self.strategy.on_event(b, ev.market)
+            finally:
+                b.trigger_ns = None
+                b.timing.samples.add("event_process", (time.perf_counter_ns() - t0) / 1e6)
         if b.actions:
             self.wake.set()
         self._log()
@@ -591,6 +623,8 @@ class LiveMaker:
         for kind, data in b.events:
             self.write(kind, data)
         b.events.clear()
+        for rec in b.timing.flush():
+            self.write("timing", rec)
         for i in range(self.fills_logged, len(b.fills)):
             f = b.fills[i]
             self.write("fill", {**asdict(f), "quote": b.net_market(f.market).quote(),
@@ -671,7 +705,8 @@ class LiveMaker:
                     "equity": round(eq, 4), "cash": round(b.cash, 4), "gross": b.gross(),
                     "open_orders": len(b.open_orders()), "orders": len(b.orders), "fills": len(b.fills),
                     "synced": len(b.synced), "halted": b.halted, "queued_actions": len(b.actions),
-                    "classifier": dict(self.clf.stats), "diag": dict(b.diag)})
+                    "classifier": dict(self.clf.stats), "diag": dict(b.diag),
+                    "latency_ms": b.timing.summary(), "loop_lag_ms": self.lag.summary()})
 
     async def _sample_queue(self) -> None:
         """Exchange queue position of each resting order vs the size the net book shows at its
@@ -697,6 +732,7 @@ class LiveMaker:
         from albert.stream import disk_guard
 
         tasks = [disk_guard(self.rec, min_free_gb), self.guard_loop(), self.worker(),
+                 self.lag.run(self.rec.stop),
                  self.rec.kalshi_private_conn("u0"),
                  self.rec.kalshi_private_conn("u1", ("order_group_updates",), self.rec.kalshi_ws)]
         for i in range(0, len(kalshi), chunk):

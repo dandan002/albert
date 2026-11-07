@@ -88,7 +88,7 @@ about authenticated trading, WebSockets and order management is still to be buil
 | WebSocket | `wss://external-api-ws.kalshi.com/trade-api/ws/v2` | `wss://api.elections.kalshi.com/trade-api/ws/v2` | same |
 | Fill and order updates (lower latency, added Oct 29 2026) | `wss://warp-ws.kalshi.com/trade-api/ws/v2`. Serves **only** `fill` and `user_orders`. | – | same; changelog |
 | FIX | `mm.fix.elections.kalshi.com` (order entry: 8228 NR, 8230 RT, 8229 DC, 8231 PT, 8232 RFQ), `marketdata.fix.elections.kalshi.com:8233` | – | [V] https://docs.kalshi.com/fix/connectivity.md |
-| Private connectivity | AWS PrivateLink at **Premier tier or above**. VPC peering at Prime or above. | – | [V] api_environments; fix/connectivity |
+| Private connectivity | AWS PrivateLink at **Premier tier or above**; covers REST and WebSocket as well as FIX (changelog 2026-08-20). VPC peering at Prime or above. | – | [V] api_environments; fix/connectivity |
 | L1/L2 feed over fiber | Kalshi streams order books via the DoubleZero Edge network for its most active sports and crypto-perp markets (institutional product). | – | [U, press] https://theblock.co/news/markets/2026-08-12-kalshi-first-prediction-market-to-stream-full-order-books-via-doublezero-411589 |
 
 `api.elections.kalshi.com` (CloudFront) **caches the `GET /markets` list for up to 15 s**
@@ -151,10 +151,9 @@ cancel-all. Read and Write buckets are separate. REST and FIX share them.
 ### 2.4 FIX
 - Protocol FIXT.1.1 / FIX50SP2 over TLS 1.2+. One FIX connection per API key. Uses the same key
   pair as REST (Ed25519 or RSA). [V] https://docs.kalshi.com/fix/authentication.md
-- Only the RT (retransmission), Drop Copy, Post-Trade and replay sessions say "contact
-  institutional@kalshi.com". The non-retransmission order-entry session (KalshiNR, 8228) is listed
-  with no access gate, so it appears usable with an ordinary API key [I from
-  https://docs.kalshi.com/fix/connectivity.md].
+- **Corrected 2026-11-07:** "Members on the Premier tier or above have FIX access by default";
+  everyone else must ask institutional@kalshi.com. An ordinary Basic-tier key does not get FIX
+  order entry. [V] docs.kalshi.com/llms-full.txt (the earlier note here inferred otherwise).
 - **`CancelOrdersOnDisconnect` (tag 8013) exists only on FIX.** It cancels on any disconnect,
   including a graceful logout. [V] fix/authentication
 - Mass cancel (35=q, 530=6) is limited to 1/s. [V] fix/connectivity
@@ -312,6 +311,25 @@ Numbers marked [I] are estimates. The rest come from §7 measurements or docs.
 p99 12.8 ms (2.8M frames: 6 ms Kalshi-side, 1.4 ms network). Prod create and cancel each took
 ~4-5 ms from our send to the engine `ts_ms`, with REST RTT 5.6-6.4 ms. So signal → cancel acked
 ≈ 13 ms, the low end of the same-region estimate. Details: `deploy/aws.md`.
+
+**Where the ~6 ms order round trip goes (unauthenticated probes, 2026-11-07, from use2-az1):**
+TCP connect to Kalshi's ALB is 0.2 ms (same AZ) or 0.8 ms (other AZs). Warm requests rejected
+before any work (404, 401) take 1.7-1.9 ms, so Kalshi's proxy chain costs about 1.6 ms. The other
+3-4 ms are auth, risk checks, shard routing and the engine, which Kalshi controls. AZ choice and
+HTTP/2 made no measurable difference. Published "1 ms to Kalshi" claims (NY4/Chicago VPS sellers)
+are TCP or ping times to a nearby CloudFront edge of `api.elections.kalshi.com`, not order acks;
+no source showed a sub-5 ms REST order round trip. Free improvements:
+- Send the market's `exchange_index` on create and cancel. Auto-routing (-1, our default) "will
+  incur an additional latency cost" per the sharding docs, and its writes are billed to every
+  shard's budget. The saving is unpublished.
+- Use an Ed25519 prod key: 0.3-0.5 ms less signing per request.
+- Treat the `warp-ws` `user_order` as the ack: it arrives ~0.5 ms before the REST response.
+
+**The live L2 bot's biggest delay is ours:** `OnlineClassifier` holds every market-data event 500 ms
+(`holdback_ms`) so trades can label deltas, and the live strategy only sees released events. So
+live orders go out at least 500 ms after their trigger, about 40× the network path. Replay and
+paper run in event time and do not see this delay. The ledger's `timing` records
+(`event_to_decide`) measure it.
 
 **Budget to enforce:** p50 ≤ 100 ms, p99 ≤ 300 ms from receiving a market-data trigger to the
 cancel being acknowledged (measure with Kalshi `ts_ms` and our monotonic clock). Every venue/region

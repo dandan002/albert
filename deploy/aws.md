@@ -65,6 +65,12 @@ Prod order latency (one $1 post-only order placed and cancelled by hand, 2026-11
 So market event → our order at the engine is ~7 ms (feed) + <1 ms (decide, sign) + ~5 ms ≈
 13 ms p50. Simulator and paper default `latency_ms` is 20 (was 100). That's decision → engine,
 because replay times are already our receive times. Repeated `GET /portfolio/balance` calls take
-~1.6 s each after the first (other reads 5–8 ms), so keep balance reads out of any hot loop. `KalshiTrader` keeps idle connections for 300 s to avoid a new TLS handshake per
+~1.6 s each after the first (other reads 5–8 ms), so keep balance reads out of any hot loop.
+
+Live runs log per-order legs as `timing` ledger records (`albert/timing.py`): event → decide,
+decide → send, REST round trip, send → engine `ts_ms`, send → `warp-ws` ack. Status lines carry
+p50/p90/p99/max per leg and the asyncio loop lag. Orders currently auto-route
+(`exchange_index: -1`), which Kalshi says adds latency; see
+`.planning/research/exchange-infra-latency.md` §5.2 for the breakdown and the free fixes. `KalshiTrader` keeps idle connections for 300 s to avoid a new TLS handshake per
 sparse order. Further options, not done: an Ed25519 prod key (signing 0.3 ms → 0.03 ms) and
 AWS PrivateLink (Premier tier and above only).
