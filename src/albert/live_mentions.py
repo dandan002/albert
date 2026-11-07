@@ -28,6 +28,7 @@ from __future__ import annotations
 import asyncio
 import json
 import math
+import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -39,6 +40,7 @@ import polars as pl
 from albert.venues.kalshi_trade import TradeError, order_body, parse_fill
 
 PREFIX = "albm"
+
 EXCLUDED_GROUPS = ("earnings",)
 DUE = (timedelta(hours=5), timedelta(hours=6))      # post when start − now is in (5 h, 6 h]
 END_BEFORE = timedelta(minutes=10)
@@ -64,6 +66,15 @@ class EventState:
     orders: dict[str, dict[str, Any]] = field(default_factory=dict)   # order_id -> {ticker, price, cheap}
     closed: bool = False
     breaker: bool = False
+
+
+def _timing(t_send_ns: int, resp: Any) -> dict[str, float]:
+    """REST round trip and send -> matching-engine ``ts_ms`` (ms) for one order request."""
+    out = {"rest_ms": round((time.time_ns() - t_send_ns) / 1e6, 3)}
+    ts = resp.get("ts_ms") if isinstance(resp, dict) else None
+    if ts:
+        out["send_to_engine_ms"] = round(int(ts) - t_send_ns / 1e6, 3)
+    return out
 
 
 def plan_event(s, base: str, event: str, start: datetime, now: datetime, margin: float, *,
@@ -237,11 +248,16 @@ class MentionsBot:
         st = EventState(ev, start, end, group)
         self.events[ev] = st
         exp = math.floor(end.timestamp())
+        try:
+            shard = await self.trader.shards([r["ticker"] for r in keep])
+        except TradeError:
+            shard = {}                     # auto-route (-1) instead
         for r in keep:
             self._n += 1
             coid = f"{PREFIX}{self.run_id}-{self._n}"
             body = order_body(r["ticker"], "no", r["price"], 1, client_order_id=coid, order_group_id=group,
-                              expiration_ts=exp)
+                              expiration_ts=exp, exchange_index=shard.get(r["ticker"], -1))
+            t_send = time.time_ns()
             try:
                 resp = await self.trader.create(body)
             except TradeError as err:
@@ -252,7 +268,7 @@ class MentionsBot:
                               "coid": coid, "status": "resting"}
             self.write("order", {"event": ev, "order_id": oid, "client_order_id": coid, "ticker": r["ticker"],
                                  "side": "no", "price": r["price"], "fair": r["fair_cal"], "bid": r["bid"],
-                                 "ask": r["ask"], "expiration": exp})
+                                 "ask": r["ask"], "expiration": exp, **_timing(t_send, resp)})
         self.log(f"{ev}: {len(st.orders)} NO bids, ${self.resting_collateral():.2f} resting")
 
     async def _watch(self, now: datetime, starts: dict[str, datetime]) -> None:
@@ -294,8 +310,10 @@ class MentionsBot:
         resting = await self.trader.orders("resting")
         for o in resting:
             if o.order_id in e.orders and o.client_order_id.startswith(PREFIX):
+                t_send = time.time_ns()
                 try:
-                    await self.trader.cancel(o.order_id, o.ticker)
+                    resp = await self.trader.cancel(o.order_id, o.ticker)
+                    self.write("cancel", {"event": e.event, "order_id": o.order_id, **_timing(t_send, resp)})
                 except TradeError as err:
                     self.write("error", {"what": "cancel", "order_id": o.order_id, "error": str(err)})
         if e.group:

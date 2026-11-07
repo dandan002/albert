@@ -3,7 +3,8 @@
 Safety rules enforced here, not left to callers:
 
 * **Environment-scoped keys.** demo reads ``KALSHI_DEMO_API_KEY_ID`` / ``KALSHI_DEMO_PRIVATE_KEY``;
-  prod reads ``KALSHI_API_KEY_ID`` / ``KALSHI_PRIVATE_KEY``. Kalshi does not share keys between
+  prod reads ``KALSHI_API_KEY_FAST_ID`` / ``KALSHI_PRIVATE_KEY_FAST`` (Ed25519) when set, else
+  ``KALSHI_API_KEY_ID`` / ``KALSHI_PRIVATE_KEY``. Kalshi does not share keys between
   environments, so a demo run can never touch the real account.
 * **Prod is gated.** Writing to prod needs ``KALSHI_LIVE_ENABLED=1`` in ``.env`` *and*
   ``allow_prod=True`` from the caller (a CLI flag on every run). Reads are always allowed.
@@ -48,7 +49,9 @@ ENVS = {
              "rest_data": "https://api.elections.kalshi.com/trade-api/v2",
              "ws": "wss://external-api-ws.kalshi.com/trade-api/ws/v2",
              "ws_private": "wss://warp-ws.kalshi.com/trade-api/ws/v2",
-             "key_id": "KALSHI_API_KEY_ID", "key": "KALSHI_PRIVATE_KEY"},
+             "key_id": "KALSHI_API_KEY_ID", "key": "KALSHI_PRIVATE_KEY",
+             # Ed25519 key for the same account (signing 0.03 ms vs RSA 0.35 ms); preferred.
+             "fast": ("KALSHI_API_KEY_FAST_ID", "KALSHI_PRIVATE_KEY_FAST")},
     "demo": {"rest": "https://external-api.demo.kalshi.co/trade-api/v2",
              "rest_data": "https://demo-api.kalshi.co/trade-api/v2",
              "ws": "wss://external-api-ws.demo.kalshi.co/trade-api/ws/v2",
@@ -82,6 +85,9 @@ class NotAllowed(RuntimeError):
 
 def signer_for(env: str) -> KalshiSigner:
     e = ENVS[env]
+    fast_id, fast_pem = (secret(n) for n in e["fast"]) if "fast" in e else (None, None)
+    if fast_id and fast_pem:
+        return KalshiSigner(fast_id, load_private_key(fast_pem))
     key_id, pem = secret(e["key_id"]), secret(e["key"])
     if not key_id or not pem:
         raise RuntimeError(f"{e['key_id']} and {e['key']} must be set in .env for the {env} environment")
@@ -110,8 +116,13 @@ def fmt_count(q: float) -> str:
 
 def order_body(ticker: str, side: str, price: float, count: float, *, client_order_id: str,
                order_group_id: str | None = None, expiration_ts: int | None = None,
-               subaccount: int | None = None, post_only: bool = True) -> dict[str, Any]:
-    """A resting maker bid on ``side`` (yes|no) at ``price`` (that side's price)."""
+               subaccount: int | None = None, post_only: bool = True,
+               exchange_index: int = -1) -> dict[str, Any]:
+    """A resting maker bid on ``side`` (yes|no) at ``price`` (that side's price).
+
+    ``exchange_index`` is the market's shard (``GET /markets``; ``KalshiTrader.shards``). -1
+    auto-routes by ticker, which Kalshi says costs extra latency and bills every shard's Write
+    bucket; a shard >= 0 routes directly. Funding is per shard either way."""
     if side not in ("yes", "no"):
         raise ValueError(f"side must be yes or no, not {side!r}")
     if not 0 < price < 1:
@@ -122,7 +133,7 @@ def order_body(ticker: str, side: str, price: float, count: float, *, client_ord
         "price": fmt_price(price if side == "yes" else 1 - price),
         "count": fmt_count(count), "time_in_force": "good_till_canceled",
         "self_trade_prevention_type": "taker_at_cross", "post_only": post_only,
-        "cancel_order_on_pause": True, "exchange_index": -1,
+        "cancel_order_on_pause": True, "exchange_index": int(exchange_index),
     }
     if expiration_ts is not None:
         body["expiration_time"] = int(expiration_ts)
@@ -266,6 +277,7 @@ class KalshiTrader:
         self.http = httpx.AsyncClient(base_url=ENVS[env]["rest"], transport=transport, timeout=timeout,
                                       limits=httpx.Limits(keepalive_expiry=300))
         self.requests: list[tuple[str, str]] = []   # (method, path) log, for tests and audits
+        self._shards: dict[str, int] = {}
 
     async def aclose(self) -> None:
         await self.http.aclose()
@@ -346,8 +358,29 @@ class KalshiTrader:
         return await self._send("POST", "/portfolio/events/orders", body=body,
                                 what=f"create {body.get('client_order_id')}")
 
-    async def cancel(self, order_id: str, ticker: str) -> dict[str, Any]:
+    async def warm(self, n: int = 4) -> None:
+        """Open (or keep alive) ``n`` pooled connections with concurrent cheap reads, so a burst
+        of ``n`` concurrent orders does not pay a TLS handshake (~6-10 ms) each. The load
+        balancer drops idle connections, so call this periodically (every ~20 s)."""
+        await asyncio.gather(*(self.get("/exchange/status") for _ in range(n)), return_exceptions=True)
+
+    async def shards(self, tickers: list[str]) -> dict[str, int]:
+        """``exchange_index`` per market (cached; one ``GET /markets`` per 100 unknown tickers).
+        Markets the exchange does not return are left out (callers fall back to -1)."""
+        todo = sorted({t for t in tickers if t and t not in self._shards})
+        for i in range(0, len(todo), 100):
+            page = await self.get("/markets", {"tickers": ",".join(todo[i:i + 100]), "limit": 100})
+            for m in page.get("markets") or []:
+                if m.get("exchange_index") is not None:
+                    self._shards[m["ticker"]] = int(m["exchange_index"])
+        return {t: self._shards[t] for t in tickers if t in self._shards}
+
+    async def cancel(self, order_id: str, ticker: str, exchange_index: int | None = None) -> dict[str, Any]:
         params: dict[str, Any] = {"market_ticker": ticker}
+        if exchange_index is None:
+            exchange_index = self._shards.get(ticker)
+        if exchange_index is not None and exchange_index >= 0:
+            params["exchange_index"] = int(exchange_index)
         if self.subaccount is not None:
             params["subaccount"] = self.subaccount
         return await self._send("DELETE", f"/portfolio/events/orders/{order_id}", params=params,
