@@ -442,7 +442,7 @@ def paper_l2(
     paired_days: float = typer.Option(3.0, help="Also game moneylines played within N days, with "
                                       "their Polymarket intl price as a signal (0 = off)"),
     seed: int = typer.Option(1, help="Seed for the Kalshi market sample"),
-    latency_ms: float = typer.Option(100.0),
+    latency_ms: float = typer.Option(20.0, help="Decision-to-exchange latency for place and cancel"),
     writes_per_s: float = typer.Option(10.0),
     holdback_ms: float = typer.Option(500.0, help="Bookkeeping delay to pair trades with deltas"),
     min_spread: float = typer.Option(0.05),
@@ -886,7 +886,7 @@ def backtest_l2_cmd(
     start: str = typer.Option(None, help="First hour, YYYY-MM-DDTHH (UTC)"),
     end: str = typer.Option(None, help="End hour (exclusive), YYYY-MM-DDTHH (UTC)"),
     strategy: str = typer.Option("quote", help="Strategy name: quote | join"),
-    latency_ms: float = typer.Option(100.0, help="Decision-to-exchange latency for place and cancel"),
+    latency_ms: float = typer.Option(20.0, help="Decision-to-exchange latency for place and cancel"),
     queue: str = typer.Option("risk_averse", help="risk_averse or optimistic cancel attribution"),
     writes_per_s: float = typer.Option(10.0, help="Order write budget per second (0 = unlimited)"),
     min_spread: float = typer.Option(0.05, help="Quote only when the spread is at least this"),
