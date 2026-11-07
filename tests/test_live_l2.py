@@ -13,10 +13,18 @@ import httpx
 import pytest
 
 from albert.backtest.l2 import Event, Quoter, SimConfig, _mark_executions, events_from_rows
-from albert.live_l2 import (BOT_PREFIX, LiveBroker, LiveGuards, LiveMaker, reconcile, run_actions)
+from albert.live_l2 import BOT_PREFIX, LiveBroker, LiveGuards, LiveMaker, reconcile, run_actions
 from albert.venues import kalshi_trade as kt
-from albert.venues.kalshi_trade import (KalshiTrader, NotAllowed, TradeError, balance_dollars,
-                                        order_body, parse_fill, parse_order, positions_by_ticker)
+from albert.venues.kalshi_trade import (
+    KalshiTrader,
+    NotAllowed,
+    TradeError,
+    balance_dollars,
+    order_body,
+    parse_fill,
+    parse_order,
+    positions_by_ticker,
+)
 
 FIX = Path(__file__).parent / "fixtures" / "kalshi"
 

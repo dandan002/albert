@@ -26,7 +26,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from albert.backtest.l2 import (Event, OnlineClassifier, Quoter, SimConfig, Simulator, _pm_tops)
+from albert.backtest.l2 import Event, OnlineClassifier, Quoter, SimConfig, Simulator, _pm_tops
 from albert.stream import Recorder, disk_guard
 
 MARKOUT_S = (10, 60, 300)
@@ -62,7 +62,7 @@ class PaperMaker:
         for p in pairs:
             self.by_token.setdefault(p["token_id"], []).append((p["kalshi_ticker"], bool(p.get("complement"))))
         self.rec = Recorder(run_dir / "stream", signer, on_frame=self.on_frame)
-        self.ledger = open(run_dir / "ledger.jsonl", "a", buffering=1)
+        self.ledger = open(run_dir / "ledger.jsonl", "a", buffering=1)  # noqa: SIM115 - closed at the end of run
 
     # -- input --
     def on_frame(self, venue: str, recv_ns: int, frame: str) -> None:

@@ -23,9 +23,10 @@ about to be run over while a flow or momentum signal is active.
 import bisect
 import math
 from collections import defaultdict, deque
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from albert.backtest.l2 import EPS, Event, Quoter, SimConfig, Simulator
 
@@ -175,12 +176,12 @@ def grid_samples(tapes: dict[str, Tape], end: int, *, every_s: float = 60.0,
         while t <= end - 10 * NS:
             m0 = tp.mid(t)
             if m0 is not None:
-                b, a, bs, as_ = tp.quote(t)
+                _b, _a, bs, as_ = tp.quote(t)
                 feats: dict[str, float] = {}
                 for n in (60, 300):
                     prev = tp.mid(t - n * NS)
                     feats[f"mom_{n}"] = 0.0 if prev is None else m0 - prev
-                    net, gross, k = tp.flow(t - n * NS, t)
+                    net, gross, _k = tp.flow(t - n * NS, t)
                     feats[f"flow_{n}"] = net
                     feats[f"flowimb_{n}"] = net / gross if gross > 0 else 0.0
                 feats["imb"] = (bs - as_) / (bs + as_) if bs + as_ > 0 else 0.0

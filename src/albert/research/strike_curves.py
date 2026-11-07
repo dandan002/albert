@@ -455,7 +455,7 @@ def _rows_for(path: Path, markets: set[str]) -> list[tuple[int, str, dict]]:
 def l2_events(files: list[Path], markets: set[str]) -> Iterator[L2Event]:
     """``backtest.l2.iter_events`` restricted to ``markets`` (executions are labelled per market,
     so filtering first gives the same labels), merged hour by hour in receive order."""
-    for _, paths in _hour_files(files).items():
+    for paths in _hour_files(files).values():
         streams = []
         for p in paths:
             evs = [L2Event(t, k, msg["market_ticker"], msg) for t, k, msg in _rows_for(p, markets)]
@@ -875,7 +875,7 @@ def fit_quality(panel: pl.DataFrame, fairs: tuple[str, ...] = FAIRS, h: int = 30
 def sum_to_one(states: pl.DataFrame) -> pl.DataFrame:
     """Complete bracket sets: time-weighted distribution of sum(bids), sum(mids), sum(asks)."""
     x = states.filter(pl.col("complete")).with_columns((pl.col("leg").max().over("ladder") + 1).alias("n_legs"))
-    x = x.filter((pl.col("leg") == 0)).sort("ladder", "t_ns")
+    x = x.filter(pl.col("leg") == 0).sort("ladder", "t_ns")
     x = x.with_columns(pl.col("n_valid") == pl.col("n_legs")).rename({"n_valid": "full"})
     if x.height == 0:
         return pl.DataFrame()
@@ -1112,7 +1112,7 @@ def summarize_maker(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     if r.get(c) is not None:
                         vals += [r[c]] * max(1, round(r["qty"]))
                         cl += [r["event"]] * max(1, round(r["qty"]))
-                m, t, n, _ = clustered(vals, cl)
+                m, t, _n, _ = clustered(vals, cl)
                 d[f"{c}_c"] = _r(m)
                 d[f"t_{c}"] = _r(t, 2, 1)
             d["settled_contracts"] = round(sum(r["qty"] for r in sub if r.get("settle") is not None), 2)
@@ -1274,7 +1274,7 @@ def _hist_summary(panel: pl.DataFrame, families: tuple[str, ...],
                        "brier_80mid_20fair": round(float(np.mean((0.8 * y["mid"].to_numpy() + 0.2 * f - res) ** 2)), 5)}
                 for thr in thresholds:
                     pnl, cl = _hist_taker(y, fam, thr)
-                    m, t, n, k = clustered(pnl, cl)
+                    m, t, n, _k = clustered(pnl, cl)
                     row[f"n_thr{int(thr * 100)}"] = n
                     row[f"pnl_thr{int(thr * 100)}_c"] = _r(m)
                     row[f"t_thr{int(thr * 100)}"] = _r(t, 2, 1)

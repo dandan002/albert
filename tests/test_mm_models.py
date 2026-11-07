@@ -162,7 +162,7 @@ def test_inventory_skews_quotes_and_respects_bounds():
 def test_decisions_do_not_depend_on_future_events():
     evs = _events()
     cal = _calib(evs)
-    kw = dict(model="glft", gamma=0.01, lo=0.0, hi=1.0, min_requote_s=0.0)
+    kw = {"model": "glft", "gamma": 0.01, "lo": 0.0, "hi": 1.0, "min_requote_s": 0.0}
     _, full = _run(evs, mm.ModelQuoter(cal, **kw))
     assert full
     idx = {e.recv_ns: i for i, e in enumerate(evs)}

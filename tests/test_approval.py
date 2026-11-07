@@ -3,13 +3,28 @@ from pathlib import Path
 
 import numpy as np
 import polars as pl
-
 import pytest
 
-from albert.research.approval import (GRID, Params, Rule, arrival_prob, asof, bracket_tenths, build_context,
-                                      forecast_mechanical, forecast_rw, kalman_house, ladder_kelly, members_at,
-                                      parse_rasmussen, parse_snapshot, poll_versions, rcp_mean, track,
-                                      with_rasmussen)
+from albert.research.approval import (
+    GRID,
+    Params,
+    Rule,
+    arrival_prob,
+    asof,
+    bracket_tenths,
+    build_context,
+    forecast_mechanical,
+    forecast_rw,
+    kalman_house,
+    ladder_kelly,
+    members_at,
+    parse_rasmussen,
+    parse_snapshot,
+    poll_versions,
+    rcp_mean,
+    track,
+    with_rasmussen,
+)
 
 FIX = Path(__file__).parent / "fixtures" / "rcp"
 RAS = Path(__file__).parent / "fixtures" / "rasmussen" / "approval_history_trimmed.html"

@@ -28,10 +28,11 @@ calls ``observe(sim, ev)`` after each event so the strategy can read trades and 
 import heapq
 import math
 from collections import defaultdict, deque
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
-from albert.backtest.l2 import (EPS, Event, Quoter, SimConfig, Simulator, iter_events, markouts)
+from albert.backtest.l2 import EPS, Event, Quoter, SimConfig, Simulator, iter_events, markouts
 
 
 class Variant(Quoter):
@@ -93,9 +94,7 @@ class Variant(Quoter):
                 tot = yes + no
                 if tot >= self.tox_min and max(yes, no) >= self.tox_frac * tot:
                     return True
-        if self.clear_ns and sim.now - self._last_clear.get(market, -(2**62)) < self.clear_ns:
-            return True
-        return False
+        return bool(self.clear_ns and sim.now - self._last_clear.get(market, -2 ** 62) < self.clear_ns)
 
     def _eligible(self, market: str) -> bool:
         if market in self.banned or (self.exclude_series and market.startswith(self.exclude_series)):
@@ -158,7 +157,7 @@ class Variant(Quoter):
             return 0.0
         then = sim.mid_at(market, sim.now - self.mom_ns)
         if then is None:
-            times, vals = sim.quotes.get(market, ([], []))
+            _times, vals = sim.quotes.get(market, ([], []))
             then = next(((b + a) / 2 for b, a in vals if b is not None and a is not None), now_mid)
         return now_mid - then
 

@@ -68,13 +68,12 @@ Each phase ends with a **live smoke run that produces non-empty, sanity-checked 
 - [ ] Move the paper loop to a GCE VM (deploy/gcp.md).
 - [ ] Run it for >= 2 weeks or >= 100 fills and compare to the historical maker returns.
 
-## Phase 6: Live trading ($100, split about $50 / $50)
+## Phase 6: Live trading ($100, Kalshi only)
 
-- [ ] Order clients: Kalshi (RSA-PSS) and Polymarket US (Ed25519). Both need an explicit enable
-      flag, per-order and daily-loss caps per venue, a global kill switch, and a full order/fill
-      audit log.
-- [ ] Cross-venue trades (buying opposite sides on two venues) only after checking that the
-      resolution criteria are identical.
+- [ ] Order client: Kalshi (RSA-PSS), with an explicit enable flag, per-order and daily-loss
+      caps, a global kill switch, and a full order/fill audit log.
+- Polymarket US trading is on hold (2026-11-07): Polymarket is data only, so no cross-venue
+  trades.
 
 - [x] Elo + market blend for minor sports: the apparent edge was a look-ahead (same-start
       match/map events). Leak-free walk-forward May-Oct: no edge. Paper `elo` removed.

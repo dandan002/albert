@@ -1029,7 +1029,7 @@ def run(s, *, holdout_from: datetime = HOLDOUT) -> dict[str, Any]:
                         lad.append({"model": name, "lead": lead, "split": split, "kind": kind, "bets": 0})
                         continue
                     ret = bets[f"ret_{kind}"].to_numpy()
-                    mu, tt, _ = F.clustered_mean(ret, bets["event"].to_numpy())
+                    _mu, tt, _ = F.clustered_mean(ret, bets["event"].to_numpy())
                     lad.append({"model": name, "lead": lead, "split": split, "kind": kind, "bets": bets.height,
                                 "staked": round(float(bets[f"stake_{kind}"].sum()), 3),
                                 "pnl": round(float(ret.sum()), 4), "roi": round(float(ret.sum() / bets[f"stake_{kind}"].sum()), 4),

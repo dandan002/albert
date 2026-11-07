@@ -226,7 +226,7 @@ def fetch_games(s, seasons: dict[int, tuple[date, date]] = SEASONS, *, until: da
     """Every game in ESPN's Division I feed (``groups=50``) on every date of these seasons."""
     rows: list[dict[str, Any]] = []
     today = until or datetime.now(UTC).date()
-    for _season, (d0, d1) in seasons.items():
+    for (d0, d1) in seasons.values():
         d = d0
         while d <= min(d1, today):
             payload = espn_get(s, "scoreboard", {"dates": d.strftime("%Y%m%d"), "groups": "50", "limit": "500"})
@@ -411,7 +411,7 @@ def match_events(game_legs: pl.DataFrame, games: pl.DataFrame, *, min_score: flo
     return pl.DataFrame(out, infer_schema_length=None)
 
 
-_STRIKE_RX = re.compile(r"over (\d+(?:\.\d+)?) points", re.I)
+_STRIKE_RX = re.compile(r"over (\d+(?:\.\d+)?) points", re.IGNORECASE)
 
 
 def ladder_legs(markets: pl.DataFrame, match: pl.DataFrame, games: pl.DataFrame) -> pl.DataFrame:
@@ -1401,8 +1401,8 @@ def holdout_study(s, inp: dict[str, Any], df: pl.DataFrame, trades: pl.DataFrame
         # seeded subsample (trade-tape fills when ``trades`` covers it).
         F = maker_fills_all(df, None, ["lead", "kind", "tier", "spr_band"], ext=candle_extremes(df, ohlc))
         sections.append(("Maker fill source", pl.DataFrame({"source": [
-            "hourly traded-price low / high from the cached candles: periods starting >= t and ending <= tip - 1 h "
-            "(the last hour before tip is not seen)"]})))
+            ("hourly traded-price low / high from the cached candles: periods starting >= t and ending <= tip - 1 h "
+            "(the last hour before tip is not seen)")]})))
         if trades.height:
             sub = df.filter(pl.col("ticker").is_in(trades["ticker"].unique().implode())).with_columns(
                 (pl.col("tip") - pl.duration(hours=1)).alias("end"))
@@ -1412,13 +1412,13 @@ def holdout_study(s, inp: dict[str, Any], df: pl.DataFrame, trades: pl.DataFrame
                      .join(Fc.select("ticker", "t", "side", "margin", pl.col("filled").alias("fill_candles")),
                            on=["ticker", "t", "side", "margin"])
                      .group_by("fill_trades", "fill_candles").len().sort("fill_trades", "fill_candles"))
-            sections.append((f"Fill-proxy validation: trade-through fills from the public trade tape vs candle ranges, "
+            sections.append(((f"Fill-proxy validation: trade-through fills from the public trade tape vs candle ranges, "
                              f"same window (t, tip − 1 h], {sub['game_id'].n_unique()} seeded low-major games, "
-                             f"{trades.height} prints", agree))
+                             f"{trades.height} prints"), agree))
         F.write_parquet(s.data_dir / "cache" / "fundamental_cbb_maker_fills.parquet")
-        sections.append(("Maker around the fair value per lead x kind x tier, trade-THROUGH fills (margin chosen on "
+        sections.append((("Maker around the fair value per lead x kind x tier, trade-THROUGH fills (margin chosen on "
                          "dev per row; gate = rest only when |fair − mid| ≥ gate; sides one = only the side the fair "
-                         "value favours)", maker_table(F.filter(pl.col("rule") == "through"), ["lead", "kind", "tier"])))
+                         "value favours)"), maker_table(F.filter(pl.col("rule") == "through"), ["lead", "kind", "tier"])))
         sections.append(("Same, lenient trade-AT fills (a print at our price fills us)",
                          maker_table(F.filter(pl.col("rule") == "at"), ["lead", "kind", "tier"])))
         sections.append(("Maker per lead x kind (all tiers), both fill rules", maker_table(F, ["rule", "lead", "kind"])))

@@ -39,6 +39,7 @@ Split: dev = games with expected_expiration_time before 2026-10-01, holdout = Oc
 clustered by game.
 """
 
+import itertools
 import math
 import random
 from collections.abc import Iterable
@@ -408,9 +409,9 @@ def onsets(counts: np.ndarray, mids: np.ndarray, m0: int, ratio: float = ONSET_R
             base = np.median([c10[i - 10 - 10 * b] for b in range(12)])
             if c10[i] >= max(min_n, ratio * base):
                 rate = float(m)
-        if vol is None and i >= 5 and not (np.isnan(mids[i]) or np.isnan(mids[i - 5])):
-            if abs(mids[i] - mids[i - 5]) >= move - 1e-9:
-                vol = float(m)
+        if (vol is None and i >= 5 and not (np.isnan(mids[i]) or np.isnan(mids[i - 5]))
+                and abs(mids[i] - mids[i - 5]) >= move - 1e-9):
+            vol = float(m)
         if rate is not None and vol is not None:
             break
     return rate, vol
@@ -439,7 +440,7 @@ def analyze_game(meta: dict[str, Any], prints: pl.DataFrame) -> dict[str, list[d
 
     # 1-minute grid
     m0 = -PRE_MIN - 140
-    mins = np.arange(m0, int(math.ceil((close - sched) / 60)) + 1)
+    mins = np.arange(m0, math.ceil((close - sched) / 60) + 1)
     g = sched + 60.0 * mins
     mid_g = path.mid_at(g, 300.0)
     mid_ff = path.mid_at(g, math.inf)
@@ -621,7 +622,7 @@ TAU_EDGES = (5, 10, 20, 40, 80, 160, 320)
 def tau_bin(tau: pl.Expr) -> pl.Expr:
     e = TAU_EDGES
     expr = pl.when(tau < e[0]).then(pl.lit(e[0] / 2))
-    for a, b in zip(e, e[1:]):
+    for a, b in itertools.pairwise(e):
         expr = expr.when(tau < b).then(pl.lit(math.sqrt(a * b)))
     return expr.otherwise(pl.lit(e[-1] * 1.4))
 

@@ -1,7 +1,13 @@
 import json
 from pathlib import Path
 
-from albert.backtest.l2 import OnlineClassifier, Quoter, SimConfig, _mark_executions, events_from_rows
+from albert.backtest.l2 import (
+    OnlineClassifier,
+    Quoter,
+    SimConfig,
+    _mark_executions,
+    events_from_rows,
+)
 from albert.paper_l2 import Guards, PaperMaker
 
 FIX = Path(__file__).parent / "fixtures" / "kalshi"

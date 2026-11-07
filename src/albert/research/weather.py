@@ -75,7 +75,7 @@ def high_markets(markets: pl.DataFrame) -> pl.DataFrame:
 
 
 _DAY_RX = re.compile(r"-(\d{2})([A-Z]{3})(\d{2})$")
-_MON = {m: i + 1 for i, m in enumerate("JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC".split())}
+_MON = {m: i + 1 for i, m in enumerate(["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"])}
 
 
 def _event_day(event_ticker: str) -> date | None:

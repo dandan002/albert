@@ -202,7 +202,7 @@ def monte_carlo(result: BacktestResult, *, paths: int = 2000, seed: int = 7) -> 
             b *= max(0.0, 1 + frac * r)
         finals.append(b * start)
     finals.sort()
-    q = lambda p: round(finals[min(len(finals) - 1, int(p * len(finals)))], 2)  # noqa: E731
+    q = lambda p: round(finals[min(len(finals) - 1, int(p * len(finals)))], 2)
     return {"paths": paths, "p05": q(0.05), "p50": q(0.5), "p95": q(0.95),
             "prob_loss": round(sum(1 for x in finals if x < start) / paths, 3),
             "prob_halved": round(sum(1 for x in finals if x < start / 2) / paths, 3)}

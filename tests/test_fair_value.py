@@ -1,3 +1,4 @@
+import itertools
 import json
 import math
 from pathlib import Path
@@ -67,7 +68,7 @@ def test_imbalance_bucket_mirrors():
 def test_kalman_fit_beats_the_starting_grid_point(tape):
     obs = fv.kalman_obs(*tape)
     assert sum(len(v) for v in obs.values()) > 50
-    (q, cm, st), diag = fv.fit_kalman(obs)
+    (_q, _cm, _st), diag = fv.fit_kalman(obs)
     ll0, n = fv.kalman_loglik(obs, 1e-4, 0.3, 0.02)
     assert diag["loglik"] >= ll0 and diag["obs"] == n > 0
 
@@ -88,7 +89,7 @@ def test_features_are_causal(tape, params):
 def test_vectorised_prediction_matches_online(tape, params):
     q, t = tape
     feat = fv.features_from_tape(q, t, params, {}, {}).with_columns(pl.lit(False).alias("volatile_prev"))
-    p = fv.FairParams(**{**params.__dict__})
+    p = fv.FairParams(**params.__dict__)
     p.ridge = {str(h): [0.01 * (i % 5 - 2) for i in range(len(fv.FEATURES))] for h in fv.HORIZONS_S}
     for est, h in (("micro", 10), ("kal", 60), ("ou", 60), ("ridge", 60), ("ema_trd_300", 1)):
         vec = feat.select(fv.pred_expr(p, est, h).alias("p"))["p"].to_list()
@@ -135,14 +136,14 @@ def test_taker_pays_ask_and_both_fees(tape, params):
     for _, g in tr.group_by(["est", "h", "thr", "market"]):
         ts = sorted(g["t"].to_list())
         h = g["h"][0]
-        assert all(b - a >= h * fv.NS for a, b in zip(ts, ts[1:]))
+        assert all(b - a >= h * fv.NS for a, b in itertools.pairwise(ts))
     s = fv.taker_summary(tr, int(q["t"].max()) + 1)
     assert s.filter((pl.col("split") == "dev") & (pl.col("regime") == "all"))["trades"].sum() == done.height
 
 
 def test_fair_quoter_drop_and_skew_never_cross():
     evs = _events()
-    q, t = fv.tape_from_events(evs)
+    q, _t = fv.tape_from_events(evs)
     g, _ = fv.fit_micro(q, min_obs=5)
     params = fv.FairParams(micro_g=g)
     tracker = fv.Tracker(params)
@@ -184,10 +185,10 @@ def test_fast_simulator_reproduces_the_stock_simulator():
     from albert.backtest.l2 import Quoter, Simulator
 
     evs = _all_events()
-    q, t = fv.tape_from_events(evs)
+    q, _t = fv.tape_from_events(evs)
     g, _ = fv.fit_micro(q, min_obs=5)
     params = fv.FairParams(micro_g=g)
-    base = dict(improve=False, min_spread=0.01, lo=0.0, hi=1.0, max_pos=50)   # quotes and fills here
+    base = {"improve": False, "min_spread": 0.01, "lo": 0.0, "hi": 1.0, "max_pos": 50}   # quotes and fills here
     ref = Simulator(SimConfig(latency_ms=50.0))
     quoter = Quoter(**base)
     ref2 = Simulator(SimConfig(latency_ms=50.0))

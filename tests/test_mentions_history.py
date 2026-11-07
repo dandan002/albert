@@ -122,7 +122,7 @@ def test_clustered_slope_equals_ols_with_singleton_clusters():
     rng = np.random.default_rng(0)
     x = rng.uniform(0, 2, 200)
     y = 3 - 1.5 * x + rng.normal(0, 1, 200)
-    a, b, ta, tb = H.clustered_slope(x, y, np.arange(200))
+    a, b, _ta, tb = H.clustered_slope(x, y, np.arange(200))
     bb, aa = np.polyfit(x, y, 1)
     assert abs(a - aa) < 1e-9 and abs(b - bb) < 1e-9 and tb < -5
 

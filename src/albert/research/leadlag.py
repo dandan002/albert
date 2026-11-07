@@ -16,8 +16,15 @@ from typing import Any
 
 import polars as pl
 
-from albert.backtest.l2 import (SimConfig, Simulator, iter_events, load_pairs, pm_events, pm_files,
-                                stream_files)
+from albert.backtest.l2 import (
+    SimConfig,
+    Simulator,
+    iter_events,
+    load_pairs,
+    pm_events,
+    pm_files,
+    stream_files,
+)
 
 HORIZONS_S = (1, 5, 30, 120, 600)
 
@@ -74,8 +81,8 @@ def lead_lag_frame(sim: Simulator, pairs: dict[str, dict[str, Any]], *, move: fl
         pt, pm = sim.ext.get(ticker, ([], []))
         if not kt or not pt:
             continue
-        k_at = lambda t: sim.mid_at(ticker, t)   # noqa: E731
-        p_at = lambda t: sim.ext_at(ticker, t)   # noqa: E731
+        k_at = lambda t: sim.mid_at(ticker, t)
+        p_at = lambda t: sim.ext_at(ticker, t)
         for leader, (times, mids), other in (("pm", (pt, pm), k_at), ("kalshi", (kt, km), p_at)):
             for t, d in _moves(times, mids, move, win, gap):
                 base = other(t)

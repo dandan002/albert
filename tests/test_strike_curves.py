@@ -2,6 +2,7 @@
 ladder (7 recorded strikes, 2026-11-05 05:00-05:06 UTC, trimmed from the recorder's stream) and
 the recorded public REST metadata of six events (trimmed to the strike fields)."""
 
+import itertools
 import json
 import math
 from pathlib import Path
@@ -12,12 +13,27 @@ import pytest
 
 from albert.backtest.l2 import SimConfig, Simulator, _mark_executions, events_from_rows
 from albert.research.arb_l2 import taker_fee
-from albert.research.strike_curves import (CurveQuoter, TobIndex, _with_end, clustered,
-                                           fair_events, fit_batch, fit_ladder, grid_panel,
-                                           isotonic_decreasing, ladder_states,
-                                           ladders_from_events, leg_probs, residual_dynamics,
-                                           slope_clustered, taker_signals, taker_trades,
-                                           threshold_nonparam, tob_from_events, weather_legs)
+from albert.research.strike_curves import (
+    CurveQuoter,
+    TobIndex,
+    _with_end,
+    clustered,
+    fair_events,
+    fit_batch,
+    fit_ladder,
+    grid_panel,
+    isotonic_decreasing,
+    ladder_states,
+    ladders_from_events,
+    leg_probs,
+    residual_dynamics,
+    slope_clustered,
+    taker_signals,
+    taker_trades,
+    threshold_nonparam,
+    tob_from_events,
+    weather_legs,
+)
 
 FIX = Path(__file__).parent / "fixtures" / "kalshi"
 EVENTS = json.loads((FIX / "events_strike_ladders.json").read_text())
@@ -85,7 +101,7 @@ def test_curve_fits_reproduce_a_parametric_ladder_and_leave_one_out():
     assert np.allclose(full, truth, atol=1e-4) and np.allclose(loo, truth, atol=1e-3)
     assert th[0] == pytest.approx(0.05, abs=1e-3)
     for fam in ("normal", "skewnormal"):
-        f, lo_o, _ = fit_ladder(lo, hi, truth, w, fam)
+        f, _lo_o, _ = fit_ladder(lo, hi, truth, w, fam)
         assert np.all(np.diff(f) <= 1e-9) and np.max(np.abs(f - truth)) < 0.03
 
 
@@ -99,7 +115,7 @@ def test_batched_fit_of_unrelated_ladders_matches_one_by_one():
     th = fit_batch(L, H, P, np.ones_like(P), "normal", np.tile([0.0, math.log(0.2)], (3, 1)))
     assert np.allclose(leg_probs(L, H, th, "normal"), P, atol=1e-4)
     for i, t in enumerate(truths):
-        full, _, th1 = fit_ladder(lo, hi, t, np.ones(6), "normal")
+        _full, _, th1 = fit_ladder(lo, hi, t, np.ones(6), "normal")
         assert np.allclose(th[i], th1, atol=1e-3)
     assert abs(sum(truths[0]) - 1) < 1e-9            # the six brackets partition the line
 
@@ -174,7 +190,7 @@ def test_taker_fills_only_at_or_below_the_signal_price_after_latency(states):
     by_m: dict[str, list[int]] = {}
     for t in trades:
         by_m.setdefault(t["market"], []).append(t["t_ns"])
-    assert all(b - a >= 60e9 for ts in by_m.values() for a, b in zip(ts, ts[1:]))
+    assert all(b - a >= 60e9 for ts in by_m.values() for a, b in itertools.pairwise(ts))
 
 
 def test_curve_quoter_quotes_only_the_cheap_side(states):

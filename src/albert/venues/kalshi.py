@@ -5,11 +5,11 @@ as ``*_dollars`` strings and sizes as ``*_fp`` strings. Historical candlesticks 
 suffixes, so each parser accepts either spelling.
 """
 
-from collections.abc import Iterator
 import re
-from zoneinfo import ZoneInfo
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import polars as pl
 
@@ -72,7 +72,7 @@ def parse_ts(value: Any) -> datetime | None:
         return None
     if isinstance(value, int | float):
         return datetime.fromtimestamp(value, tz=UTC)
-    return datetime.fromisoformat(str(value).replace("Z", "+00:00")).astimezone(UTC)
+    return datetime.fromisoformat(str(value)).astimezone(UTC)
 
 
 def num(value: Any) -> float | None:
@@ -212,7 +212,7 @@ class Kalshi:
 
 # ---- normalizers ----------------------------------------------------------------------------
 _EASTERN = ZoneInfo("America/New_York")
-_MONTHS = {m: i + 1 for i, m in enumerate("JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC".split())}
+_MONTHS = {m: i + 1 for i, m in enumerate(["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"])}
 _START_RX = re.compile(r"^[A-Z0-9]+-(\d{2})([A-Z]{3})(\d{2})(\d{4})(?=[A-Z])")
 
 

@@ -211,7 +211,7 @@ def fetch_games(s, seasons: dict[int, tuple[date, date]] = SEASONS) -> pl.DataFr
     """Every NBA game on every scoreboard date of these seasons (one request per day)."""
     rows: list[dict[str, Any]] = []
     today = datetime.now(UTC).date()
-    for _season, (d0, d1) in seasons.items():
+    for (d0, d1) in seasons.values():
         d = d0
         while d <= min(d1, today):
             rows.extend(game_rows(espn_get(s, "scoreboard", {"dates": d.strftime("%Y%m%d"), "limit": "100"})))
@@ -390,8 +390,8 @@ def kalshi_markets(s, *, refresh: bool = False, oldest: datetime = STUDY_FROM) -
 # ---- Kalshi <-> ESPN ----------------------------------------------------------------------------
 KALSHI_TO_ESPN = {"GSW": "GS", "NYK": "NY", "SAS": "SA", "NOP": "NO", "UTA": "UTAH", "WAS": "WSH"}
 _EV_RX = re.compile(r"^[A-Z0-9]+-(\d{2})([A-Z]{3})(\d{2})([A-Z]{3})([A-Z]{3})$")
-_MONTHS = {m: i + 1 for i, m in enumerate("JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC".split())}
-_NAME_RX = re.compile(r"^(.+?)(?::| records)\s+\d+\+", re.I)
+_MONTHS = {m: i + 1 for i, m in enumerate(["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"])}
+_NAME_RX = re.compile(r"^(.+?)(?::| records)\s+\d+\+", re.IGNORECASE)
 _SUFFIX = {"jr", "sr", "ii", "iii", "iv", "v"}
 
 
@@ -1129,7 +1129,7 @@ def build_features(s, *, refresh: bool = False) -> dict[str, Any]:
         pl.when(home).then(pl.col("mu_margin")).otherwise(-pl.col("mu_margin")).alias("mu_margin_team"),
         *[pl.when(home).then(pl.col(f"f_{c}_home")).otherwise(pl.col(f"f_{c}_away")).alias(f"f_{c}")
           for c in ("pts", "reb", "ast", "fg3a", "fg3m")])
-    feats = feats.drop([c for c in feats.columns if c.endswith("_home") or c.endswith("_away")])
+    feats = feats.drop([c for c in feats.columns if c.endswith(("_home", "_away"))])
     actual = inp["boxes"].select("athlete_id", "game_id", pl.col("min").fill_null(0.0), *[pl.col(c).fill_null(0.0) for c in STATS], "starter", "dnp")
     feats = feats.join(actual, on=["athlete_id", "game_id"], how="left")
     for f, p in ((feats, fpath), (team_pred, tpath)):
@@ -1417,20 +1417,20 @@ def run_study(s, *, validate: bool = True) -> Path:
                      "variant_choice_dev": choice, "team_laws": {k_: v for k_, v in F["data"]["team_laws"].items() if k_ != "grid"},
                      "fill_proxy_validation": val})
     rep.text("Data, as-of timing, caveats", "\n".join([
-        "* Markets: every settled leg of KXNBAPTS / REB / AST / 3PT / PRA / TEAMTOTAL / TOTAL (historical + live endpoints); "
+        ("* Markets: every settled leg of KXNBAPTS / REB / AST / 3PT / PRA / TEAMTOTAL / TOTAL (historical + live endpoints); "
         "candles for a seeded volume-blind sample (see module doc), fetched in hash order (any prefix is a random subsample): "
-        f"{len(set(df['ticker']))} legs used here. Smoke: every 2026-27 leg settled by Nov 4 (live batch candles).",
-        "* Box scores: ESPN site API (site.api.espn.com serves no robots.txt; www.espn.com's robots.txt disallows the "
+        f"{len(set(df['ticker']))} legs used here. Smoke: every 2026-27 leg settled by Nov 4 (live batch candles)."),
+        ("* Box scores: ESPN site API (site.api.espn.com serves no robots.txt; www.espn.com's robots.txt disallows the "
         "`anthropic-ai` token -- review before reuse). A game's box enters the model at tip + 3 h; decision times are "
-        "floor-hour(tip - 24 h / 1 h); team schedule (rest, back-to-back) is known in advance.",
-        "* No injury / inactive / starting-lineup information (ESPN's injury block is today's list, not the pre-tip one): "
-        "the model knows only previous games. The market sees the official injury report.",
-        "* Legs settled at a fair price because the player never took the court (result 'scalar', ~3 %) are dropped; "
-        "the price at t is then approximately P(stat >= k | plays), which is what the model predicts.",
-        "* Quotes: hourly candle bid/ask close at t. Maker fills: hourly traded low/high in (t, last whole hour before tip] "
-        "(trade-through rule; validated against real prints in 'fill_proxy_validation').",
-        "* KXNBATEAMTOTAL lists from Feb 2026: its dev = Feb-Mar, holdout = Apr-Jun 2026. KXNBAPRA lists from Oct 2026 "
-        "(smoke only, priced with the pts variant choice and the pooled blend).",
+        "floor-hour(tip - 24 h / 1 h); team schedule (rest, back-to-back) is known in advance."),
+        ("* No injury / inactive / starting-lineup information (ESPN's injury block is today's list, not the pre-tip one): "
+        "the model knows only previous games. The market sees the official injury report."),
+        ("* Legs settled at a fair price because the player never took the court (result 'scalar', ~3 %) are dropped; "
+        "the price at t is then approximately P(stat >= k | plays), which is what the model predicts."),
+        ("* Quotes: hourly candle bid/ask close at t. Maker fills: hourly traded low/high in (t, last whole hour before tip] "
+        "(trade-through rule; validated against real prints in 'fill_proxy_validation')."),
+        ("* KXNBATEAMTOTAL lists from Feb 2026: its dev = Feb-Mar, holdout = Apr-Jun 2026. KXNBAPRA lists from Oct 2026 "
+        "(smoke only, priced with the pts variant choice and the pooled blend)."),
     ]))
     rep.table("Rows by kind x lead x split (sampled legs with a quote at t)", lead_counts, max_rows=40)
     rep.table("Settlement check: Kalshi result vs ESPN box (lead 1 h rows)", settle)

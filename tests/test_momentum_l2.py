@@ -2,8 +2,16 @@ import json
 from pathlib import Path
 
 from albert.backtest.l2 import SimConfig, _mark_executions, events_from_rows
-from albert.research.momentum_l2 import (SignalQuoter, clustered, collect, grid_samples, outcomes,
-                                         run_overlay, taker_fee, trigger_samples)
+from albert.research.momentum_l2 import (
+    SignalQuoter,
+    clustered,
+    collect,
+    grid_samples,
+    outcomes,
+    run_overlay,
+    taker_fee,
+    trigger_samples,
+)
 
 FIX = Path(__file__).parent / "fixtures" / "kalshi"
 

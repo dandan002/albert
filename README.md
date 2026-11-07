@@ -5,7 +5,7 @@ politics, culture, weather, science). It is built to answer one question with ev
 any real money moves:
 
 > Is there a repeatable edge, after real fees and real execution, that can compound a $100
-> bankroll split across Kalshi and Polymarket US?
+> bankroll traded on Kalshi (Polymarket used as data only)?
 
 Albert ingests data from three venues, matches the same event across them, researches three
 edge hypotheses, backtests them with realistic execution, and paper-trades them on live quotes.
@@ -40,7 +40,7 @@ repository. Live trading is Phase 6, and it has not been built.
 | Venue | Role | What Albert uses |
 |---|---|---|
 | **Kalshi** | trading venue (CFTC-regulated) | series/categories, settled + open markets, trades, bid/ask candlesticks, order books |
-| **Polymarket US** (`gateway.polymarket.us`) | trading venue (CFTC-regulated) | markets, events, order books, BBO, price history, resolutions |
+| **Polymarket US** (`gateway.polymarket.us`) | data only (trading on hold since 2026-11-07) | markets, events, order books, BBO, price history, resolutions |
 | **Polymarket international** (`polymarket.com`) | **data only** | market metadata/resolutions (Gamma), on-chain wallet trades, leaderboards, price history (Data API v2) |
 
 US residents are geoblocked from trading on polymarket.com. Albert only reads its public data

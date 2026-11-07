@@ -1,5 +1,6 @@
 """In-play dynamics helpers on a recorded in-play MLB trades page (trimmed copy of a raw page)."""
 
+import itertools
 import json
 import math
 from datetime import UTC, datetime, timedelta
@@ -123,7 +124,7 @@ def test_jump_events_are_causal_and_respect_the_refractory_period():
     ev = d.jump_events(path, 0.05, path.t[0], path.t[-1] + 1)
     assert ev, "the fixture holds two runs of >= 5c moves"
     times = [path.t[i] for i, _, _ in ev]
-    assert all(b - a >= 60.0 for a, b in zip(times, times[1:]))
+    assert all(b - a >= 60.0 for a, b in itertools.pairwise(times))
     for i, ref, sgn in ev:
         assert abs(path.mid[i] - ref) >= 0.05 - 1e-9 and sgn == (1 if path.mid[i] > ref else -1)
         # the same event is found when every later print is removed (no look-ahead)

@@ -36,16 +36,25 @@ import heapq
 import json
 import math
 from collections import defaultdict
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import numpy as np
 import polars as pl
 
-from albert.backtest.l2 import (EPS, Event, SimConfig, Simulator, iter_events, load_pairs, pm_files,
-                                stream_files)
+from albert.backtest.l2 import (
+    EPS,
+    Event,
+    SimConfig,
+    Simulator,
+    iter_events,
+    load_pairs,
+    pm_files,
+    stream_files,
+)
 from albert.stream import read_stream
 
 HORIZONS_S = (0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60)
@@ -214,7 +223,7 @@ def scheduled_starts(pairs: dict[str, dict[str, Any]], market_info: dict[str, di
         if not exp or league not in GAME_HOURS:
             out[t] = None
             continue
-        dt = datetime.fromisoformat(exp.replace("Z", "+00:00")) - timedelta(hours=GAME_HOURS[league])
+        dt = datetime.fromisoformat(exp) - timedelta(hours=GAME_HOURS[league])
         out[t] = int(dt.timestamp() * 1e9)
     return out
 
@@ -274,8 +283,8 @@ def xcorr(d: Data, bin_s: float = 1.0, max_lag_s: int = 30) -> pl.DataFrame:
     den_p = defaultdict(float)
     nobs = defaultdict(int)
     step = int(bin_s * 1e9)
-    for slug, ts in games(d).items():
-        t = sorted(ts, key=lambda x: bool(d.pairs[x].get("complement")))[0]
+    for ts in games(d).values():
+        t = min(ts, key=lambda x: bool(d.pairs[x].get("complement")))
         kb, pb = d.k.get(t), d.p.get(t)
         if not kb or not pb or not kb.t or not pb.t:
             continue

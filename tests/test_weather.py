@@ -29,8 +29,8 @@ def _model(**kw):
 
     from albert.research.weather import HighModel
 
-    base = dict(bias=0.0, sigma=2.0, u_values=np.array([0.0, 1.0, 2.0]),
-                u_probs=np.array([0.4, 0.5, 0.1]))
+    base = {"bias": 0.0, "sigma": 2.0, "u_values": np.array([0.0, 1.0, 2.0]),
+                "u_probs": np.array([0.4, 0.5, 0.1])}
     return HighModel(**{**base, **kw})
 
 

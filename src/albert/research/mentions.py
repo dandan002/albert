@@ -46,7 +46,7 @@ NAME = "mentions"
 HOLDOUT_FROM = datetime(2026, 10, 1, tzinfo=UTC)
 KALSHI = "https://api.elections.kalshi.com/trade-api/v2"
 
-_THRESH = re.compile(r"\((\d+)\+\s*times?\)", re.I)
+_THRESH = re.compile(r"\((\d+)\+\s*times?\)", re.IGNORECASE)
 
 
 # ---- leg parsing ----------------------------------------------------------------------------
@@ -73,7 +73,7 @@ SPEAKERS = {  # series -> speaker group; anything else falls back to the series 
 def speaker_of(series: str) -> str:
     if series in SPEAKERS:
         return SPEAKERS[series]
-    if series.startswith("KXEARNINGSMENTION") or series.startswith("KXMENTIONEARN"):
+    if series.startswith(("KXEARNINGSMENTION", "KXMENTIONEARN")):
         return "earnings"
     return series.removeprefix("KX").removesuffix("MENTION").lower()
 
@@ -207,7 +207,7 @@ def window_end(event: str) -> datetime | None:
     m = re.search(r"-(\d\d)([A-Z]{3})(\d\d)", event)
     if not m:
         return None
-    months = "JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC".split()
+    months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
     yy, mon, dd = m.groups()
     if mon not in months:
         return None
@@ -352,7 +352,7 @@ def word_pattern(alts: tuple[str, ...] | list[str]) -> re.Pattern:
         # phrases: tokens separated by spaces, hyphens or punctuation ("drill, baby, drill");
         # plurals inside a noun phrase count ("taxes on tips")
         parts.append(r"[\s\-,\.;:!…]+".join(token(w) + suffix for w in a.split()))
-    return re.compile(r"(?<![\w])(?:" + "|".join(parts) + r")(?![\w])", re.I)
+    return re.compile(r"(?<![\w])(?:" + "|".join(parts) + r")(?![\w])", re.IGNORECASE)
 
 
 def fb_type(doc_type: str | None, title: str | None) -> str:

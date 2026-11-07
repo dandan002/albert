@@ -6,8 +6,9 @@ sent as a bearer header (never stored). Free tier: 60 requests/minute, 1,000/hou
 matches per page.
 """
 
+from collections.abc import Iterator
 from datetime import datetime
-from typing import Any, Iterator
+from typing import Any
 
 import polars as pl
 
@@ -53,7 +54,7 @@ def _ts(v: Any) -> datetime | None:
     if not v:
         return None
     try:
-        return datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+        return datetime.fromisoformat(str(v))
     except ValueError:
         return None
 

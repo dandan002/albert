@@ -14,7 +14,6 @@ from cryptography.hazmat.primitives.asymmetric import ed25519, padding, rsa
 
 from albert.config import secret
 
-
 PrivateKey = rsa.RSAPrivateKey | ed25519.Ed25519PrivateKey
 
 
@@ -40,7 +39,7 @@ def load_private_key(text: str) -> PrivateKey:
                 pem = f"-----BEGIN RSA PRIVATE KEY-----\n{lines}\n-----END RSA PRIVATE KEY-----\n"
                 key = serialization.load_pem_private_key(pem.encode(), password=None)
     if not isinstance(key, (rsa.RSAPrivateKey, ed25519.Ed25519PrivateKey)):
-        raise ValueError("Kalshi private key must be RSA or Ed25519")
+        raise ValueError("Kalshi private key must be RSA or Ed25519")  # noqa: TRY004 - a bad .env value
     return key
 
 

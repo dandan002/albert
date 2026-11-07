@@ -1,6 +1,6 @@
 import json
-from pathlib import Path
 from datetime import UTC, date, datetime, time
+from pathlib import Path
 
 import typer
 
@@ -197,7 +197,8 @@ def ingest_pm_wallets(
     max_pages: int = typer.Option(20, help="Max 1000-trade pages per wallet"),
 ) -> None:
     """Leaderboard wallets and their full trade history, then backfill market resolutions."""
-    from albert.ingest import ingest_pm_resolutions_for_trades, ingest_pm_wallets as run
+    from albert.ingest import ingest_pm_resolutions_for_trades
+    from albert.ingest import ingest_pm_wallets as run
 
     s, c = _clients()
     result = run(s, c, _day(start), _day(end), top=top,
@@ -684,7 +685,7 @@ def live_mentions(
     run_dir = root / env / datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     limits = MentionLimits(margin=margin, max_collateral=max_collateral, max_daily_loss=max_daily_loss,
                            max_events=max_events, group_limit=group_limit)
-    bot = MentionsBot(s, env, trader, run_dir, limits=limits, base=ENVS[env]["rest"], stop_file=root / "STOP",
+    bot = MentionsBot(s, env, trader, run_dir, limits=limits, base=ENVS[env]["rest_data"], stop_file=root / "STOP",
                       log=typer.echo)
 
     async def main():
@@ -741,7 +742,7 @@ def live_l2(
         raise typer.BadParameter(f"{env} is not enabled for orders (prod needs KALSHI_LIVE_ENABLED=1 and --live)")
     tickers = ([t.strip() for t in markets.split(",") if t.strip()] if markets else
                [m["ticker"] for m in select_kalshi(series, kalshi, days=days, seed=seed,
-                                                   rest=ENVS[env]["rest"])])
+                                                   rest=ENVS[env]["rest_data"])])
     run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     root = s.data_dir / "live"
     run_dir = root / env / run_id
@@ -817,11 +818,10 @@ def record_cmd(
     import asyncio
     import signal
     from dataclasses import asdict
+    from pathlib import Path
 
     from albert.ingest import kalshi_series
     from albert.store import write_manifest
-    from pathlib import Path
-
     from albert.stream import Recorder, record, select_kalshi, select_paired, select_pm
     from albert.venues.kalshi_auth import KalshiSigner
 

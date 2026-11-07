@@ -104,7 +104,7 @@ def test_blend_fit_recovers_coefficients_and_falls_back_for_small_groups():
                      "mid": 0.5, "p": 0.6, "y": g % 2})
     df = pl.DataFrame(rows)
     b = nm.fit_blends(df)
-    a, bm, c = b["spread|FCS"]["blend"]
+    _a, bm, c = b["spread|FCS"]["blend"]
     assert abs(bm - 0.6) < 0.1 and abs(c - 0.5) < 0.1 and b["spread|FCS"]["t_blend"][2] > 5
     assert b["team_total|FCS"]["source"].startswith("all|FCS")
     fv = nm.apply_fair(df, b)

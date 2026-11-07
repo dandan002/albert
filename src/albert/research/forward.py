@@ -304,7 +304,7 @@ def mention_orders(df: pl.DataFrame) -> pl.DataFrame:
     ok = df["eligible"].to_numpy()
     cols = [_col(fair, "fair_cal")]
     for m in MENTIONS_MARGINS:
-        tag = int(round(m * 100))
+        tag = round(m * 100)
         cols.append(_col(bid_prices(fair, bid, ask, m)[1], f"o_cal{tag}_no", ok))
         cols.append(_col(bid_prices(mid, bid, ask, m)[1], f"o_mid{tag}_no", ok))
     return df.with_columns(cols)
@@ -507,7 +507,7 @@ def rain_orders(df: pl.DataFrame) -> pl.DataFrame:
     fair = sigmoid(a + b * logit(mid) + c_ * logit(p))
     midcal = sigmoid(a2 + b2 * logit(mid))
     ok = df["eligible"].to_numpy()
-    tag = int(round(RAIN_MARGIN * 100))
+    tag = round(RAIN_MARGIN * 100)
     cols = [_col(fair, "fair_blend"), _col(midcal, "fair_midcal")]
     for name, f in (("blend", fair), ("midcal", midcal), ("mid", mid)):
         y, n = bid_prices(f, bid, ask, RAIN_MARGIN)
@@ -580,7 +580,7 @@ def fcs_orders(df: pl.DataFrame) -> pl.DataFrame:
     bid, ask, mid = (df[c].to_numpy().astype(float) for c in ("bid", "ask", "mid"))
     ok = df["eligible"].to_numpy()
     margin = float(df["cfg_margin"][0]) if df.height else 0.03
-    tag = int(round(margin * 100))
+    tag = round(margin * 100)
     cols = []
     for side in ("yes", "no"):
         px = df[f"px_{side}"].to_numpy().astype(float)

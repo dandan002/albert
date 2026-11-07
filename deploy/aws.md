@@ -23,3 +23,37 @@
 - Pull data back: `rsync -az albert:albert/data/raw/stream/ data/raw/stream/` (append-only).
 - Emergency direct SSH (only if SSM is down): `aws ec2 authorize-security-group-ingress --region us-east-2
   --group-id sg-04dc0331e14485794 --protocol tcp --port 22 --cidr <your ip>/32`, then revoke it after.
+
+## Kalshi hosts and latency (measured 2026-11-07 from this instance)
+
+The code uses Kalshi's recommended hosts (docs.kalshi.com/getting_started/api_environments), set in
+`venues/kalshi_trade.ENVS` and `stream.py`:
+
+| Traffic | Prod host | Demo host |
+|---|---|---|
+| Signed REST (orders, account) | `external-api.kalshi.com` | `external-api.demo.kalshi.co` |
+| Market-data REST (unsigned lists, books) | `api.elections.kalshi.com` (CloudFront, cached) | `demo-api.kalshi.co` |
+| WebSocket market data, `order_group_updates` | `external-api-ws.kalshi.com` | `external-api-ws.demo.kalshi.co` |
+| WebSocket `fill`, `user_orders` (rejects other channels) | `warp-ws.kalshi.com` | `warp-ws.demo.kalshi.co` |
+
+- `external-api*` and `warp-ws` resolve to EC2 hosts in us-east-2: TCP RTT ~1 ms from here.
+- The shared host `api.elections.kalshi.com` is CloudFront and its edge varies; the recorder had
+  been routed via Ashburn (iad12, ~23 ms RTT), which put ~12 ms on every frame.
+- Market-data REST stays on the shared host on purpose: the direct host is uncached and returned
+  429 to the recorder's startup market listing; that traffic is not latency-sensitive. Research
+  `CachedClient` code also keeps the old host because the cache key includes the URL.
+
+| Prod, keep-alive p50 | Shared (CloudFront) host | Direct host |
+|---|---|---|
+| REST public GET | 7–18 ms | 4.3 ms |
+| REST signed GET | 15–37 ms | 7.4 ms |
+| First request on a new connection | 38–69 ms | 10 ms |
+| WS ping RTT | 2.7 ms (25 ms via iad) | 1.3 ms (warp-ws 1.3 ms) |
+| WS exchange send → our receive | 1.8–12 ms | 1.4 ms |
+
+Kalshi's own event → send time is ~5 ms p50. Demo runs in us-west-2: ~48–52 ms from here
+whatever the host (demo create/cancel RTT p50 ~60–73 ms); it proves plumbing only.
+Prod order create/cancel latency is not measured yet (prod is gated); expect roughly the signed
+REST figure. `KalshiTrader` keeps idle connections for 300 s to avoid a new TLS handshake per
+sparse order. Further options, not done: an Ed25519 prod key (signing 0.3 ms → 0.03 ms) and
+AWS PrivateLink (Premier tier and above only).

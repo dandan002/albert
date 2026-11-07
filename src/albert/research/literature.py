@@ -17,6 +17,7 @@ after fees, with standard errors clustered by event (legs of one event are not i
    before the event over-react and are reversed by the outcome.
 """
 
+import itertools
 from datetime import timedelta
 
 import numpy as np
@@ -29,7 +30,7 @@ BANDS = [0.0, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.0]
 
 
 def band_expr(col: str = "price") -> pl.Expr:
-    labels = [f"{int(lo * 100):02d}-{int(hi * 100):02d}c" for lo, hi in zip(BANDS, BANDS[1:])]
+    labels = [f"{int(lo * 100):02d}-{int(hi * 100):02d}c" for lo, hi in itertools.pairwise(BANDS)]
     return pl.col(col).cut(BANDS[1:-1], labels=labels, left_closed=True).cast(pl.String).alias("band")
 
 

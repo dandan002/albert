@@ -507,7 +507,7 @@ def rt_score_pmf(liked: int, total: int, hours_left: float, growth: dict[str, fl
     a, b = m * fresh["kappa"], (1 - m) * fresh["kappa"]
     pmf: dict[int, float] = {}
     for z in qs:
-        dn = max(int(round(math.expm1(mu + growth["sd"] * z))), 0)
+        dn = max(round(math.expm1(mu + growth["sd"] * z)), 0)
         f = np.arange(dn + 1)
         pm = stats.betabinom.pmf(f, dn, a, b) if dn > 0 else np.array([1.0])
         for sc, w in zip(rt_round(liked + f, total + dn).astype(int), pm, strict=True):
@@ -629,7 +629,7 @@ def taker_segments(df: pl.DataFrame, by: str, holdout_from: datetime, theta: flo
 def run_vercel(s, holdout_from: datetime = datetime(2026, 10, 1, tzinfo=UTC), variant: str = "dow") -> Path:
     from albert.research.fundamental import attach_quotes, evaluate, report
 
-    labs_page = sorted((s.data_dir / "cache" / NAME / "vercel").glob("labs_*.html"))[-1]
+    labs_page = max((s.data_dir / "cache" / NAME / "vercel").glob("labs_*.html"))
     hist = vercel_rawdata(labs_page.read_text())
     panel = daily_panel(hist)
     mk = vercel_markets(s)

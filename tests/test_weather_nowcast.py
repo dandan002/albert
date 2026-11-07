@@ -1,3 +1,4 @@
+import itertools
 from datetime import UTC, date, datetime
 
 import polars as pl
@@ -20,8 +21,8 @@ def test_running_extremes_use_the_standard_time_cli_day(fixture_text):
     # CLI day in EDT starts 05:00 UTC (local standard midnight): the 00:51-04:51 obs belong to Oct 30.
     assert hi[0][0] == datetime(2026, 10, 31, 5, 51, tzinfo=UTC)
     assert len(hi) == 19 and hi[-1][1] == 58.0 and lo[-1][1] == 47.0
-    assert all(b[1] >= a[1] for a, b in zip(hi, hi[1:]))
-    assert all(b[1] <= a[1] for a, b in zip(lo, lo[1:]))
+    assert all(b[1] >= a[1] for a, b in itertools.pairwise(hi))
+    assert all(b[1] <= a[1] for a, b in itertools.pairwise(lo))
 
 
 def test_resolution_events_on_recorded_observations(fixture_text):

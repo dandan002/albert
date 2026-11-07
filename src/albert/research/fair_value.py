@@ -57,16 +57,26 @@ import json
 import math
 import sys
 from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import numpy as np
 import polars as pl
 
-from albert.backtest.l2 import (EPS, Event, Market, Quoter, SimConfig, Simulator, iter_events,
-                                markouts, stream_files)
+from albert.backtest.l2 import (
+    EPS,
+    Event,
+    Market,
+    Quoter,
+    SimConfig,
+    Simulator,
+    iter_events,
+    markouts,
+    stream_files,
+)
 
 NS = 10**9
 HORIZONS_S = (1, 10, 60, 300)
@@ -1161,7 +1171,7 @@ def maker_test(root: Path, start: str, split: str, end: str, params: FairParams,
     return dt, pl.DataFrame(table, infer_schema_length=None).sort("split", "latency_ms", "mode", "est", "regime")
 
 
-MAKER_BASE = dict(improve=True, min_spread=0.05, cooldown_s=300)
+MAKER_BASE = {"improve": True, "min_spread": 0.05, "cooldown_s": 300}
 
 
 def fair_value_study(s, *, start: str = "2026-11-05T03", split: str = "2026-11-05T11",

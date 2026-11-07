@@ -177,7 +177,7 @@ def test_first_fills_equal_mentions_maker_fast_fills_on_real_prints():
     trades = _oct5_trades()
     snap = _oct5_snapshot().with_columns(pl.col("ticker").str.ends_with("TRAN").cast(pl.Int8).alias("y"))
     for m in F.MENTIONS_MARGINS:
-        tag = int(round(m * 100))
+        tag = round(m * 100)
         o = F.order_frame(snap.drop([c for c in snap.columns if c.startswith("o_") and c != f"o_cal{tag}_no"]))
         o = o.join(snap.select("ticker", "t", "y"), on=["ticker", "t"])
         mine = F.settle(F.first_fills(o, trades)).sort("ticker", "t")
@@ -271,7 +271,7 @@ def test_rain_inputs_build_iem_only_features_from_recorded_payloads(tmp_path):
     assert row["left"] == 1.0 and row["seen"] == 0.0                    # t is before the CLI day starts
     assert row["nbs_pany"] is not None and row["gfs_pany"] is not None
     assert row["pre_max"] is None and row["pre_n"] == 0                 # no ASOS reports: recent rain missing
-    assert not any(c.startswith("om_") or c.startswith("q_") for c in f.columns)
+    assert not any(c.startswith(("om_", "q_")) for c in f.columns)
     # MOS runs used were public at t (NBS 2 h, GFS 5 h lag)
     nbs = pl.DataFrame(rain.mos_rows(mos["NBS"], "NYC"))
     assert nbs.filter(pl.col("runtime") <= t - rain.MOS_LAG["NBS"]).height > 0
@@ -311,7 +311,7 @@ def test_rain_orders_use_the_frozen_d12z_blend():
     df = pl.DataFrame({"mid": [0.52, 0.015, 0.52], "bid": [0.51, 0.01, 0.51], "ask": [0.53, 0.02, 0.53],
                        "p_model": [0.30, 0.01, 0.30], "eligible": [True, True, False]})
     out = F.rain_orders(df)
-    lg = lambda x: np.log(x / (1 - x))  # noqa: E731
+    lg = lambda x: np.log(x / (1 - x))
     want = 1 / (1 + np.exp(-(-0.244 + 0.788 * lg(0.52) + 0.485 * lg(0.30))))
     assert out["fair_blend"][0] == pytest.approx(want)
     assert out["fair_midcal"][0] == pytest.approx(1 / (1 + np.exp(-(-0.362 + 1.292 * lg(0.52)))))
