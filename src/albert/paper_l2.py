@@ -209,7 +209,7 @@ class PaperMaker:
         return end
 
 
-def report(s, c, run: str | None = None) -> Path:
+def report(s, c, run: str | None = None, out: str = "paper_l2") -> Path:
     """Fills from paper run ledgers, scored like ``backtest l2``: markouts, PnL marked to the last
     mid of the run, and settlement PnL where the market has resolved."""
     import math
@@ -218,7 +218,7 @@ def report(s, c, run: str | None = None) -> Path:
 
     from albert.reports import Report
 
-    root = s.data_dir / "paper_l2"
+    root = s.data_dir / out
     runs = [root / run] if run else sorted(p for p in root.iterdir() if (p / "ledger.jsonl").exists())
     fills, marks, info = [], {}, []
     for rd in runs:
@@ -240,7 +240,7 @@ def report(s, c, run: str | None = None) -> Path:
                 n += 1
             elif r["kind"] == "markout":
                 marks[(rd.name, r["fill"], r["h"])] = (r["mo"], r.get("mx"))
-    rep = Report(s.reports_dir, "paper-l2")
+    rep = Report(s.reports_dir, out.replace("_", "-"))
     rep.table("Runs", pl.DataFrame(info, infer_schema_length=None))
     if not fills:
         rep.text("Fills", "No fills yet.")

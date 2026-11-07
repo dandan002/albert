@@ -453,9 +453,14 @@ def paper_l2(
     max_loss: float = typer.Option(5.0, help="Halt when run PnL (marked to mid) < -$X"),
     pm_band: float = typer.Option(None, help="Keep bids this far inside the Polymarket fair value"),
     pm_pull: float = typer.Option(0.0, help="Pull quotes when Polymarket moved this much"),
+    out: str = typer.Option("paper_l2", help="Folder under data/ for runs, STOP file and log"),
+    max_spread: float = typer.Option(0.25, help="Select: widest quoted spread"),
+    select_min_spread: float = typer.Option(0.0, help="Select: narrowest quoted spread"),
+    min_vol24h: float = typer.Option(None, help="Select: trailing 24 h volume >= this (contracts)"),
+    max_vol24h: float = typer.Option(None, help="Select: trailing 24 h volume <= this (illiquid universe)"),
 ) -> None:
     """Live paper maker: the backtest's Quoter and queue model on live WebSocket books.
-    No orders are sent. Stop with `touch data/paper_l2/STOP` or SIGTERM."""
+    No orders are sent. Stop with `touch data/<out>/STOP` or SIGTERM."""
     import asyncio
     import signal
 
@@ -467,13 +472,15 @@ def paper_l2(
 
     s, c = _clients()
     series = kalshi_series(s, c)
-    k_rows = select_kalshi(series, kalshi, days=days, seed=seed) if kalshi else []
+    vol = None if min_vol24h is None and max_vol24h is None else (min_vol24h or 0.0, max_vol24h if max_vol24h is not None else float("inf"))
+    k_rows = select_kalshi(series, kalshi, days=days, seed=seed, max_spread=max_spread, min_spread=select_min_spread,
+                           vol24h=vol) if kalshi else []
     pairs = select_paired(paired_days) if paired_days else []
     tickers = [m["ticker"] for m in k_rows]
     tickers += [p["kalshi_ticker"] for p in pairs if p["kalshi_ticker"] not in set(tickers)]
     tokens = sorted({p["token_id"] for p in pairs})
     run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    root = s.data_dir / "paper_l2"
+    root = s.data_dir / out
     run_dir = root / run_id
     (run_dir / "stream" / "pairs").mkdir(parents=True)
     (run_dir / "stream" / "pairs" / f"{run_id}.json").write_text(json.dumps(pairs, indent=1))
@@ -487,6 +494,7 @@ def paper_l2(
     pm.write("start", {"run_id": run_id, "minutes": minutes, "params": params,
                        "latency_ms": latency_ms, "writes_per_s": writes_per_s,
                        "holdback_ms": holdback_ms, "guards": vars(guards), "seed": seed,
+                       "select": {"days": days, "max_spread": max_spread, "min_spread": select_min_spread, "vol24h": vol},
                        "kalshi_markets": tickers, "pm_tokens": tokens, "pairs": len(pairs)})
     typer.echo(f"paper l2 {run_id}: {len(tickers)} Kalshi markets, {len(tokens)} Polymarket tokens")
 
@@ -531,12 +539,13 @@ def paper_mentions_report(env: str = typer.Option("paper", help="Ledger folder u
 
 
 @paper_app.command("l2-report")
-def paper_l2_report(run: str = typer.Option(None, help="Run id under data/paper_l2 (default: all)")) -> None:
+def paper_l2_report(run: str = typer.Option(None, help="Run id under data/<out> (default: all)"),
+                    out: str = typer.Option("paper_l2", help="Runs folder under data/ (paper_l2_illiquid, ...)")) -> None:
     """Score live paper maker runs: markouts, mark-to-mid and settlement PnL."""
     from albert.paper_l2 import report
 
     s, c = _clients()
-    typer.echo(report(s, c, run))
+    typer.echo(report(s, c, run, out))
 
 
 @paper_app.command("reset")
