@@ -69,8 +69,17 @@ because replay times are already our receive times. Repeated `GET /portfolio/bal
 
 Live runs log per-order legs as `timing` ledger records (`albert/timing.py`): event → decide,
 decide → send, REST round trip, send → engine `ts_ms`, send → `warp-ws` ack. Status lines carry
-p50/p90/p99/max per leg and the asyncio loop lag. Orders currently auto-route
-(`exchange_index: -1`), which Kalshi says adds latency; see
-`.planning/research/exchange-infra-latency.md` §5.2 for the breakdown and the free fixes. `KalshiTrader` keeps idle connections for 300 s to avoid a new TLS handshake per
+p50/p90/p99/max per leg and the asyncio loop lag.
+
+Latency fixes (2026-11-07):
+
+| Change | Measured effect |
+|---|---|
+| Live L2 bot: classifier holdback 500 → 0 ms | event → decide p50 582 → 0.22 ms (demo run) |
+| Orders sent concurrently (4 in flight, pool re-warmed every 20 s) | a burst no longer waits N round trips |
+| Explicit `exchange_index` from `GET /markets` (was -1, auto-route) | prod A/B, 8 pairs each: create RTT p50 6.64 → 6.16 ms, cancel 5.49 → 4.54 ms; send → engine: create 4.5 → 3.8 ms, cancel 3.5 → 2.1 ms |
+| Ed25519 prod key (`KALSHI_API_KEY_FAST_ID` / `KALSHI_PRIVATE_KEY_FAST`, preferred by `signer_for`) | signing p50 0.35 → 0.03 ms |
+
+See `.planning/research/exchange-infra-latency.md` §5.2 for where the remaining ~5 ms goes. `KalshiTrader` keeps idle connections for 300 s to avoid a new TLS handshake per
 sparse order. Further options, not done: an Ed25519 prod key (signing 0.3 ms → 0.03 ms) and
 AWS PrivateLink (Premier tier and above only).

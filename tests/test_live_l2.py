@@ -6,6 +6,7 @@ objects, which carry the same fields; replace them with demo recordings once dem
 import asyncio
 import copy
 import json
+import time
 import uuid
 from pathlib import Path
 
@@ -194,6 +195,9 @@ class FakeTrader:
         for i in out:
             await self.cancel(i, "")
         return out
+
+    async def shards(self, tickers):
+        return {t: 0 for t in tickers}          # every non-financial market seen so far: shard 0
 
     async def create_order_group(self, limit):
         self.log.append(("group", limit))
@@ -470,3 +474,106 @@ def test_live_maker_logs_timing_and_the_holdback_shows_in_event_to_decide(tmp_pa
     driven = [x for x in recs if "event_to_decide" in x]
     assert driven and all(x["event_to_decide"] >= 500 for x in driven)
     assert all(x["action"] in ("create", "cancel") and "rest" in x for x in recs)
+
+
+# ---- latency fixes: shard routing, concurrent sends, no live holdback ------------------------------
+def test_shards_lookup_and_cancel_routes_directly(monkeypatch):
+    monkeypatch.setattr(kt, "secret", lambda name: "1" if name == kt.LIVE_FLAG else None)
+    page = _load("forward_markets_KXRAIN")           # recorded GET /markets: exchange_index 0
+    tickers = [m["ticker"] for m in page["markets"]]
+    seen = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append((req.method, req.url.path, dict(req.url.params)))
+        if req.url.path.endswith("/markets"):
+            return httpx.Response(200, json=page)
+        return httpx.Response(200, json={"order_id": "x", "reduced_by": "1.00", "ts_ms": 1})
+
+    t = KalshiTrader("prod", _Signer(), allow_prod=True, transport=httpx.MockTransport(handler))
+    got = asyncio.run(t.shards(tickers + ["NOT-LISTED"]))
+    assert got == {tk: 0 for tk in tickers}
+    asyncio.run(t.shards(tickers))                    # cached: no second request
+    assert sum(1 for s in seen if s[1].endswith("/markets")) == 1
+    assert seen[0][2]["tickers"] == ",".join(sorted(tickers + ["NOT-LISTED"]))
+    asyncio.run(t.cancel("01a1a73c-99a8-79b6-8f8a-d46d62dbffd9", tickers[0]))
+    assert seen[-1][2] == {"market_ticker": tickers[0], "exchange_index": "0"}
+    asyncio.run(t.cancel("01a1a73c-99a8-79b6-8f8a-d46d62dbffd9", "NOT-LISTED"))
+    assert seen[-1][2] == {"market_ticker": "NOT-LISTED"}           # unknown: auto-route
+    assert order_body("T-1", "yes", 0.4, 1, client_order_id="a", exchange_index=3)["exchange_index"] == 3
+    assert order_body("T-1", "yes", 0.4, 1, client_order_id="a")["exchange_index"] == -1
+
+
+class _SlowTrader(FakeTrader):
+    def __init__(self) -> None:
+        super().__init__()
+        self.inflight = self.peak = 0
+
+    async def create(self, body):
+        self.inflight += 1
+        self.peak = max(self.peak, self.inflight)
+        await asyncio.sleep(0.02)
+        self.inflight -= 1
+        return await super().create(body)
+
+
+def test_run_actions_sends_a_burst_concurrently_and_routes_by_shard():
+    b = LiveBroker(SimConfig(writes_per_s=None), LiveGuards(), client_prefix="alb-T")
+    b.shard = {"M-0": 0}
+    for i in range(8):
+        b.place("M-0" if i < 4 else "M-3", "yes", 0.10 + i / 100)
+    fake = _SlowTrader()
+    t0 = time.perf_counter()
+    assert asyncio.run(run_actions(b, fake, expiry_s=900, concurrency=4)) == 8
+    assert fake.peak == 4 and time.perf_counter() - t0 < 0.15          # 2 rounds, not 8
+    assert all(o.status == "active" for o in b.orders.values())
+    recs = b.timing.flush(time.time_ns() + 10**12)
+    assert len(recs) == 8 and all(r["action"] == "create" and "rest" in r for r in recs)
+
+
+def test_run_actions_body_carries_the_shard():
+    b = LiveBroker(SimConfig(writes_per_s=None), LiveGuards(), client_prefix="alb-T")
+    b.shard = {"M-3": 3}
+    b.place("M-3", "yes", 0.2)
+    b.place("M-X", "yes", 0.2)
+    bodies = []
+
+    class _Rec(FakeTrader):
+        async def create(self, body):
+            bodies.append(body)
+            return await super().create(body)
+    asyncio.run(run_actions(b, _Rec(), expiry_s=900))
+    assert [x["exchange_index"] for x in bodies] == [3, -1]
+
+
+def test_live_maker_decides_on_the_triggering_frame_without_holdback(tmp_path):
+    fake = FakeTrader()
+    lm = LiveMaker(tmp_path, "demo", None, fake, run_id="R",
+                   strategy=Quoter(min_spread=0.0, lo=0.0, improve=True, min_requote_s=0),
+                   cfg=SimConfig(writes_per_s=10.0), guards=LiveGuards(), pairs=[])
+    asyncio.run(lm.prepare([_events()[0].market]))
+    assert lm.broker.shard == {_events()[0].market: 0}
+    clock = {"now": 0}
+    lm.broker.timing.clock = lambda: clock["now"]
+    for r in _rows()[:200]:
+        clock["now"] = r["recv_ns"]
+        lm.on_frame("kalshi", r["recv_ns"], r["frame"])
+        asyncio.run(run_actions(lm.broker, fake, expiry_s=900))
+    recs = lm.broker.timing.flush(clock["now"] + 10**12)
+    recs += [json.loads(x) for x in (tmp_path / "ledger.jsonl").read_text().splitlines()
+             if json.loads(x)["kind"] == "timing"]
+    driven = [x for x in recs if "event_to_decide" in x]
+    assert driven and all(x["event_to_decide"] == 0 for x in driven)
+
+
+def test_prod_signer_prefers_the_fast_ed25519_key(monkeypatch):
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ed25519
+
+    pem = ed25519.Ed25519PrivateKey.generate().private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()).decode()
+    env = {"KALSHI_API_KEY_FAST_ID": "fast-id", "KALSHI_PRIVATE_KEY_FAST": pem,
+           "KALSHI_API_KEY_ID": "rsa-id", "KALSHI_PRIVATE_KEY": pem}
+    monkeypatch.setattr(kt, "secret", env.get)
+    assert kt.signer_for("prod").headers("GET", "/x")["KALSHI-ACCESS-KEY"] == "fast-id"
+    del env["KALSHI_PRIVATE_KEY_FAST"]
+    assert kt.signer_for("prod").headers("GET", "/x")["KALSHI-ACCESS-KEY"] == "rsa-id"

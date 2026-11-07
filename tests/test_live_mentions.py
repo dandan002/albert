@@ -93,6 +93,10 @@ class FakeTrader:
         self.calls.append(("cancel_own", prefix))
         return done
 
+    async def shards(self, tickers):
+        page = self.markets or _j(f"forward_markets_{EV}.json")      # recorded GET /markets
+        return {m["ticker"]: m["exchange_index"] for m in page["markets"] if m["ticker"] in tickers}
+
     async def create_order_group(self, limit):
         self.calls.append(("group", limit))
         return "g-1"
@@ -138,6 +142,7 @@ def test_posts_one_no_bid_per_leg_with_group_expiry_and_prefix(tmp_path):
         assert b["client_order_id"].startswith(PREFIX) and b["side"] == "ask" and b["post_only"]
         assert b["count"] == "1.00" and b["order_group_id"] == "g-1"
         assert b["expiration_time"] == int((START - END_BEFORE).timestamp())
+        assert b["exchange_index"] == 0          # routed to the shard the recorded markets list
     # the event is posted once; at start - 10 min it is closed (group triggered, orders cancelled)
     asyncio.run(bot.tick())
     assert len(t.created) == 6

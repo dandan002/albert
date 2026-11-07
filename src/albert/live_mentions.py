@@ -248,11 +248,15 @@ class MentionsBot:
         st = EventState(ev, start, end, group)
         self.events[ev] = st
         exp = math.floor(end.timestamp())
+        try:
+            shard = await self.trader.shards([r["ticker"] for r in keep])
+        except TradeError:
+            shard = {}                     # auto-route (-1) instead
         for r in keep:
             self._n += 1
             coid = f"{PREFIX}{self.run_id}-{self._n}"
             body = order_body(r["ticker"], "no", r["price"], 1, client_order_id=coid, order_group_id=group,
-                              expiration_ts=exp)
+                              expiration_ts=exp, exchange_index=shard.get(r["ticker"], -1))
             t_send = time.time_ns()
             try:
                 resp = await self.trader.create(body)

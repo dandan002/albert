@@ -35,7 +35,7 @@ never calls Cancel All Orders: the account also holds the user's manual orders.
 import asyncio
 import json
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -65,7 +65,9 @@ from albert.venues.kalshi_trade import (
     parse_order,
 )
 
-BOT_PREFIX = "alb"                 # every bot client_order_id starts with this
+BOT_PREFIX = "alb"
+SEND_CONCURRENCY = 4                # order requests in flight at once (warm connections kept)
+WARM_EVERY_S = 20.0                 # re-warm the pool before the load balancer's idle timeout                 # every bot client_order_id starts with this
 MARKOUT_S = (10, 60, 300)
 OPEN_STATES = ("pending", "active", "cancelling", "cancel_pending")
 
@@ -125,6 +127,7 @@ class LiveBroker:
         self._tokens = cfg.writes_per_s or 0.0
         self._tokens_ns = 0
         self.timing = OrderTiming()
+        self.shard: dict[str, int] = {}      # exchange_index per market; missing -> auto-route
         self.trigger_ns: int | None = None   # recv_ns of the market-data event being processed
 
     # -- strategy API (same as Simulator) --
@@ -390,22 +393,32 @@ class _NetMarkets:
 
 
 async def run_actions(broker: LiveBroker, trader, *, expiry_s: float,
-                      wall_s=time.time, max_errors: int = 5) -> int:
-    """Send every queued action (in order). Returns the number sent."""
-    sent, errors = 0, 0
-    while broker.actions:
-        kind, oid = broker.actions.pop(0)
+                      wall_s=time.time, max_errors: int = 5, concurrency: int = 4) -> int:
+    """Send every queued action, up to ``concurrency`` requests in flight at once (a burst of
+    N orders no longer waits N round trips). Returns the number sent once the queue is empty and
+    nothing is in flight. Order per oid is safe: a cancel is queued only after its create was
+    acked (``cancel`` marks an unacked create ``cancel_pending``; ``on_created`` queues it)."""
+    state = {"sent": 0, "errors": 0}
+    shard = getattr(broker, "shard", {})
+
+    def error(e_count: int = 1) -> None:
+        state["errors"] += e_count
+        if state["errors"] >= max_errors:
+            broker.halt(f"{state['errors']} order errors")
+
+    async def one(kind: str, oid: int) -> None:
         o = broker.orders[oid]
         tm = broker.timing
         try:
             if kind == "create":
                 if o.status not in ("pending", "cancel_pending"):
                     tm.drop(kind, oid)
-                    continue
+                    return
                 body = order_body(o.market, o.side, o.price, o.qty,
                                   client_order_id=broker.client_id(oid),
                                   order_group_id=broker.group,
-                                  expiration_ts=int(wall_s() + expiry_s))
+                                  expiration_ts=int(wall_s() + expiry_s),
+                                  exchange_index=shard.get(o.market, -1))
                 tm.sent(kind, oid)
                 resp = await trader.create(body)
                 tm.acked(kind, oid, resp)
@@ -413,42 +426,49 @@ async def run_actions(broker: LiveBroker, trader, *, expiry_s: float,
             elif kind == "cancel":
                 if oid not in broker.exch_id or o.status in ("cancelled", "filled", "rejected"):
                     tm.drop(kind, oid)
-                    continue
+                    return
                 tm.sent(kind, oid)
                 resp = await trader.cancel(broker.exch_id[oid], o.market)
                 tm.acked(kind, oid, resp)
                 broker.on_cancelled(oid)
-            sent += 1
+            state["sent"] += 1
         except httpx.HTTPError as e:
-            tm.failed(kind, oid, "transport")
             # The request may or may not have reached the exchange. A create is treated as live
             # and to be cancelled: if it exists, the user_orders channel or reconciliation finds
             # it by client_order_id and cancels it. A cancel is retried by the strategy.
-            errors += 1
+            tm.failed(kind, oid, "transport")
             broker.diag[f"transport_errors_{kind}"] += 1
             broker.events.append(("error", {"kind": kind, "oid": oid, "transport": repr(e)[:200]}))
             if kind == "create":
                 o.status = "cancel_pending"
             elif o.status == "cancelling":
                 o.status = "active"
-            if errors >= max_errors:
-                broker.halt(f"{errors} order errors")
+            error()
         except TradeError as e:
             tm.failed(kind, oid, f"http {e.status}")
             if kind == "create":
                 broker.on_rejected(oid, e)
                 if e.status >= 500 or e.status == 429:
-                    errors += 1
+                    error()
             elif e.status == 404:
                 broker.on_cancelled(oid)      # already gone: the user_orders channel has the truth
             else:
-                errors += 1
                 broker.events.append(("error", {"kind": kind, "oid": oid, "status": e.status,
                                                 "body": e.body}))
                 o.status = "active" if o.status == "cancelling" else o.status
-            if errors >= max_errors:
-                broker.halt(f"{errors} order errors")
-    return sent
+                error()
+
+    inflight: set[asyncio.Task] = set()
+    while broker.actions or inflight:
+        while broker.actions and len(inflight) < concurrency:
+            kind, oid = broker.actions.pop(0)
+            inflight.add(asyncio.create_task(one(kind, oid)))
+        if inflight:
+            done, _ = await asyncio.wait(inflight, return_when=asyncio.FIRST_COMPLETED)
+            inflight -= done
+            for d in done:
+                d.result()                      # surface bugs (NotAllowed etc.) instead of hiding them
+    return state["sent"]
 
 
 def reconcile(broker: LiveBroker, resting: list, positions: dict[str, float],
@@ -498,7 +518,7 @@ class LiveMaker:
 
     def __init__(self, run_dir: Path, env: str, signer, trader, *, run_id: str, strategy,
                  cfg: SimConfig, guards: LiveGuards, pairs: list[dict[str, Any]],
-                 holdback_ms: float = 500.0, stop_file: Path | None = None) -> None:
+                 holdback_ms: float = 0.0, stop_file: Path | None = None) -> None:
         from albert.stream import Recorder
 
         guards.check()
@@ -506,6 +526,9 @@ class LiveMaker:
         self.strategy, self.guards = strategy, guards
         self.prefix = f"{BOT_PREFIX}{run_id}"
         self.broker = LiveBroker(cfg, guards, client_prefix=self.prefix)
+        # No holdback live (2026-11-07): the classifier's labels only move external size between
+        # chunks of a level, and the live book holds no own orders, so the level totals the
+        # strategy reads are the same either way. A holdback only delayed every decision.
         self.clf = OnlineClassifier(holdback_ms)
         self.stop_file = stop_file
         self.baseline: dict[str, float] = {}
@@ -538,17 +561,22 @@ class LiveMaker:
         manual = {o.ticker for o in resting if not o.client_order_id.startswith(BOT_PREFIX)}
         blocked = (manual | set(self.baseline)) & set(markets)
         self.broker.blocked |= manual | set(self.baseline)
+        self.broker.shard = await self.trader.shards([m for m in markets if m not in self.broker.blocked])
+        if hasattr(self.trader, "warm"):
+            await self.trader.warm(SEND_CONCURRENCY)
         self.broker.group = await self.trader.create_order_group(self.guards.group_contracts_limit)
         balance = await self.trader.balance()
         self.write("prepare", {"cancelled_stale_bot_orders": stale, "manual_order_markets": sorted(manual),
                                "positions_before": self.baseline, "blocked": sorted(blocked),
-                               "order_group": self.broker.group, "balance": balance})
+                               "order_group": self.broker.group, "balance": balance,
+                               "shards": dict(sorted(Counter(self.broker.shard.values()).items()))})
         return [m for m in markets if m not in self.broker.blocked]
 
     async def shutdown(self) -> dict[str, Any]:
         b = self.broker
         b.halt(b.halted or "shutdown")
-        await run_actions(b, self.trader, expiry_s=self.guards.order_expiry_s)
+        await run_actions(b, self.trader, expiry_s=self.guards.order_expiry_s,
+                          concurrency=SEND_CONCURRENCY)
         leftover = await self.trader.cancel_own(self.prefix)
         if b.group:
             try:
@@ -652,12 +680,13 @@ class LiveMaker:
                 pass
             self.wake.clear()
             if self.broker.actions:
-                await run_actions(self.broker, self.trader, expiry_s=self.guards.order_expiry_s)
+                await run_actions(self.broker, self.trader, expiry_s=self.guards.order_expiry_s,
+                                  concurrency=SEND_CONCURRENCY)
                 self._log()
 
     async def guard_loop(self) -> None:
         g, b = self.guards, self.broker
-        next_status = next_recon = next_queue = 0.0
+        next_status = next_recon = next_queue = next_warm = 0.0
         while not self.rec.stop.is_set():
             await self.rec._sleep_or_stop(0.2)
             self.step(time.time_ns())
@@ -696,6 +725,9 @@ class LiveMaker:
                 if mono >= next_queue:
                     next_queue = mono + g.queue_every_s
                     await self._sample_queue()
+                if mono >= next_warm and hasattr(self.trader, "warm"):
+                    next_warm = mono + WARM_EVERY_S
+                    await self.trader.warm(SEND_CONCURRENCY)
             except TradeError as e:
                 self.write("error", {"what": "guard REST", "status": e.status, "body": e.body})
             self._log()
