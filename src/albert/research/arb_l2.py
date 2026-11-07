@@ -36,10 +36,11 @@ import itertools
 import json
 import math
 from collections import defaultdict
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 LATENCIES_MS = (25, 50, 100, 250, 500)
 TAKER = 0.07
@@ -109,7 +110,7 @@ class ArbSet:
 def _ts_ns(s: str | None) -> int | None:
     if not s:
         return None
-    return int(datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp() * 1e9)
+    return int(datetime.fromisoformat(s).timestamp() * 1e9)
 
 
 def build_sets(events: dict[str, dict[str, Any]], recorded: set[str],

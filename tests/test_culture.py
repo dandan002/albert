@@ -3,6 +3,7 @@
 page of Verity (2026-10-03 21:40 UTC, trimmed around the critics scorecard) and a recorded Wayback
 CDX listing. Synthetic numbers only for pure math (beta-binomial fit, rounding)."""
 
+import itertools
 import math
 from datetime import date
 from pathlib import Path
@@ -11,9 +12,19 @@ import numpy as np
 import polars as pl
 import pytest
 
-from albert.research.culture import (Fetcher, daily_panel, fit_freshrate, point_forecast, predictive,
-                                     prob_above, rt_prob_above, rt_round, rt_scorecard, vercel_rawdata,
-                                     wayback_cdx)
+from albert.research.culture import (
+    Fetcher,
+    daily_panel,
+    fit_freshrate,
+    point_forecast,
+    predictive,
+    prob_above,
+    rt_prob_above,
+    rt_round,
+    rt_scorecard,
+    vercel_rawdata,
+    wayback_cdx,
+)
 
 FIX = Path(__file__).parent / "fixtures"
 LABS = (FIX / "vercel" / "labs_page_trimmed.html").read_text()
@@ -36,7 +47,7 @@ def test_vercel_rawdata_parses_daily_shares(hist):
 
 
 def test_forecast_uses_only_data_up_to_latest_known_day(hist):
-    days, x = daily_panel(hist)[("anthropic", "requests")]
+    _days, x = daily_panel(hist)[("anthropic", "requests")]
     i = len(x) - 3
     for h in (1, 2):
         for variant in ("last", "dow", "mean7_dow"):
@@ -50,10 +61,10 @@ def test_forecast_uses_only_data_up_to_latest_known_day(hist):
 
 
 def test_prob_above_is_a_survival_curve(hist):
-    days, x = daily_panel(hist)[("openai", "requests")]
+    _days, x = daily_panel(hist)[("openai", "requests")]
     mu, sc = predictive(x, len(x) - 1, 1, "dow")
     ps = [prob_above(mu, sc, k) for k in (5, 15, 20, 25, 40)]
-    assert all(a >= b for a, b in zip(ps, ps[1:], strict=False))
+    assert all(a >= b for a, b in itertools.pairwise(ps))
     assert ps[0] > 0.9 and ps[-1] < 0.1
 
 
@@ -76,7 +87,7 @@ def test_rt_prob_above_monotone_and_sharp_when_settled():
     assert rt_prob_above(43, 128, 1.0, 34, growth, fresh) == 0.0
     growth = {"a": math.log(41), "b": 0.0, "c": 0.0, "sd": 0.3}  # ~40 more reviews
     ps = [rt_prob_above(43, 128, 48.0, k, growth, fresh) for k in (20, 30, 34, 40, 60)]
-    assert all(a >= b for a, b in zip(ps, ps[1:], strict=False)) and ps[0] > 0.95 and ps[-1] < 0.05
+    assert all(a >= b for a, b in itertools.pairwise(ps)) and ps[0] > 0.95 and ps[-1] < 0.05
 
 
 def test_fit_freshrate_recovers_beta_binomial():
@@ -85,7 +96,7 @@ def test_fit_freshrate_recovers_beta_binomial():
     for _ in range(400):
         total = int(rng.integers(20, 150))
         r = rng.uniform(0.2, 0.9)
-        liked = int(round(r * total))
+        liked = round(r * total)
         dn = int(rng.integers(5, 60))
         m = 1 / (1 + math.exp(-(math.log((liked + 0.5) / (total - liked + 0.5)) - 0.3)))
         q = rng.beta(m * 15, (1 - m) * 15)

@@ -7,8 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from albert.research.arb_l2 import (Books, Event, build_sets, replay, set_edge, summarize,
-                                    taker_fee)
+from albert.research.arb_l2 import Books, Event, build_sets, replay, set_edge, summarize, taker_fee
 
 FIX = Path(__file__).parent / "fixtures" / "kalshi"
 KINDS = {"orderbook_snapshot": "snapshot", "orderbook_delta": "delta", "trade": "trade"}
@@ -52,7 +51,7 @@ def test_build_sets_from_recorded_event_metadata():
 def test_ladder_arb_found_in_the_recording_and_lost_to_latency():
     sets = build_sets(LADDER, {leg["t"] for leg in LADDER["KXTOKENUSE-26NOV09"]["legs"]})
     assert [s.kind for s in sets] == ["ladder"]
-    eps, diag = replay(iter(_events()), sets)
+    eps, _diag = replay(iter(_events()), sets)
     assert len(eps) == 1
     ep = eps[0]
     assert ep.limits == [pytest.approx(0.61), pytest.approx(0.30)]

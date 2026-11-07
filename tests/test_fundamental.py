@@ -5,7 +5,14 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 
-from albert.research.fundamental import attach_quotes, clustered_mean, evaluate, fit_logistic, taker_fee, taker_pnl
+from albert.research.fundamental import (
+    attach_quotes,
+    clustered_mean,
+    evaluate,
+    fit_logistic,
+    taker_fee,
+    taker_pnl,
+)
 from albert.venues.kalshi import candle_rows
 
 FIX = Path(__file__).parent / "fixtures" / "kalshi"
@@ -52,9 +59,9 @@ def test_blend_recovers_informative_model_and_split():
     assert out["blend"]["c_model"] > 0.5 and out["blend"]["t_c"] > 3
     hold = [r for r in out["taker"] if r["split"] == "holdout" and r["trades"]]
     assert hold and max(r["pnl_c"] for r in hold) > 0
-    beta, t = fit_logistic(np.column_stack([np.ones(n), np.log(truth / (1 - truth))]), y.astype(float), np.arange(n))
+    beta, _t = fit_logistic(np.column_stack([np.ones(n), np.log(truth / (1 - truth))]), y.astype(float), np.arange(n))
     assert abs(beta[1] - 1) < 0.2
-    mu, tt, k = clustered_mean(np.array([1.0, 1.0, -1.0, 3.0]), np.array([1, 1, 2, 3]))
+    mu, _tt, k = clustered_mean(np.array([1.0, 1.0, -1.0, 3.0]), np.array([1, 1, 2, 3]))
     assert k == 3 and abs(mu - 1.0) < 1e-12
 
 

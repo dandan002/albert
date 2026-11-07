@@ -46,26 +46,43 @@ import math
 import sys
 import time
 from collections import defaultdict
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any
 
 import polars as pl
 
-from albert.backtest.l2 import (EPS, Event, JoinBest, Market, Quoter, SimConfig, Simulator,
-                                iter_events, markouts, stream_files)
+from albert.backtest.l2 import (
+    EPS,
+    Event,
+    JoinBest,
+    Market,
+    Quoter,
+    SimConfig,
+    Simulator,
+    iter_events,
+    markouts,
+    stream_files,
+)
 from albert.research.intraminute_maker import VacatedLevel, fill_rows
 from albert.research.maker_variants import Variant
-from albert.research.momentum_l2 import (SignalQuoter, collect, grid_samples, outcomes, taker_fee,
-                                         trigger_samples)
+from albert.research.momentum_l2 import (
+    SignalQuoter,
+    collect,
+    grid_samples,
+    outcomes,
+    taker_fee,
+    trigger_samples,
+)
 from albert.research.volatile import GAME_SERIES, series_of
 
 BUCKET_NS = 300 * 10**9
 API = "https://api.elections.kalshi.com/trade-api/v2"
 METRICS = ("mo", "mx", "net", "hold")
-BASE = dict(min_spread=0.05, improve=True, cooldown_s=300.0)
-MOM3 = dict(mom_window_s=21600.0, mom_move=0.03)
+BASE = {"min_spread": 0.05, "improve": True, "cooldown_s": 300.0}
+MOM3 = {"mom_window_s": 21600.0, "mom_move": 0.03}
 
 
 # ---- regimes ---------------------------------------------------------------------------------
@@ -270,8 +287,7 @@ def make_lane(name: str, fee_info: dict[str, dict], category_of: dict[str, str |
 def run_lanes(events: Iterable[Event], lanes: list[Lane], log: Callable[[str], None] | None = None) -> None:
     """One pass over the events, every lane stepping on each event in turn."""
     hour, t0, n = None, time.time(), 0
-    for ev in events:
-        n += 1
+    for n, ev in enumerate(events, 1):
         h = ev.recv_ns // 3_600_000_000_000
         if log is not None and h != hour:
             if hour is not None:
@@ -359,8 +375,8 @@ def momentum_rows(tapes: dict, end: int, split_ns: int, latencies: Iterable[floa
     # Grid features, one market at a time (bounded memory): dev quintile cut, then the trades.
     feats = ("imb", "ofi_10")
     dev_abs: dict[str, list[float]] = {f: [] for f in feats}
-    for mk in tapes:
-        for r in grid_samples({mk: tapes[mk]}, end, fee_info=fee_info):
+    for mk, tape in tapes.items():
+        for r in grid_samples({mk: tape}, end, fee_info=fee_info):
             if r["t_ns"] < split_ns:
                 for f in feats:
                     if abs(r[f]) > 1e-12:
@@ -369,8 +385,8 @@ def momentum_rows(tapes: dict, end: int, split_ns: int, latencies: Iterable[floa
     for f in feats:
         nz = sorted(dev_abs[f])
         thr[f] = nz[int(0.8 * len(nz))] if nz else math.inf
-    for mk in tapes:
-        for r in grid_samples({mk: tapes[mk]}, end, fee_info=fee_info):
+    for mk, tape in tapes.items():
+        for r in grid_samples({mk: tape}, end, fee_info=fee_info):
             for f in feats:
                 if abs(r[f]) >= thr[f] and abs(r[f]) > 1e-12:
                     add(f"tk_{f}_follow", r["market"], r["t_ns"], math.copysign(1.0, r[f]))
@@ -818,7 +834,12 @@ def run(start: str = "2026-11-05T03", end: str = "2026-11-05T18", *, split: str 
         p = cache / f"{tag}_leadlag.parquet"
         if not p.exists():
             from albert.backtest.l2 import load_pairs
-            from albert.research.leadlag_fast import event_study, load, market_info, scheduled_starts
+            from albert.research.leadlag_fast import (
+                event_study,
+                load,
+                market_info,
+                scheduled_starts,
+            )
 
             pairs = load_pairs(root)
             frames = []

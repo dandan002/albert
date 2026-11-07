@@ -64,8 +64,16 @@ from typing import Any
 import numpy as np
 import polars as pl
 
-from albert.backtest.l2 import (EPS, Event, Quoter, SimConfig, Simulator, iter_events, markouts,
-                                stream_files)
+from albert.backtest.l2 import (
+    EPS,
+    Event,
+    Quoter,
+    SimConfig,
+    Simulator,
+    iter_events,
+    markouts,
+    stream_files,
+)
 
 TICK = 0.01
 HOUR_NS = 3600 * 10**9
@@ -526,7 +534,7 @@ def sigma_summary(sig: pl.DataFrame, vol: pl.DataFrame) -> pl.DataFrame:
                (pl.col("S").sum() / pl.col("T").sum()).alias("var_p"),
                (pl.col("Sx").sum() / pl.col("T").sum()).alias("var_x"),
                (pl.col("S").sum() / (pl.col("Sx") * pl.col("pq2") * 1e4).sum()).alias("binary_ratio"),
-               ((pl.col("S60").sum() / pl.col("T60").sum())).alias("var_p60"),
+               (pl.col("S60").sum() / pl.col("T60").sum()).alias("var_p60"),
                (pl.col("S") == 0).mean().alias("zero_frac")]
         a = f.group_by(keys).agg(*agg) if keys else f.select(*agg)
         a = a.with_columns((pl.col("var_p") * 60).sqrt().alias("sd_1min_c"),
@@ -829,7 +837,7 @@ def summarize(rows: list[dict[str, Any]], results: dict[str, float | None]) -> d
         res = results.get(r["market"])
         if res is not None:
             st.append({**r, "settle": (res if r["side"] == "yes" else 1 - res) - r["price"] - r["fee"] / r["qty"]})
-    mean, t, k = clustered(st, "settle")
+    mean, t, _k = clustered(st, "settle")
     out["settled_n"] = len(st)
     out["settle"] = None if mean is None else round(100 * mean, 2)
     out["t_settle"] = None if t is None else round(t, 2)
@@ -908,7 +916,7 @@ def _iso_ns(s: str | None) -> int | None:
 
     if not s:
         return None
-    return int(datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp() * 1e9)
+    return int(datetime.fromisoformat(s).timestamp() * 1e9)
 
 
 def _hour_ns(key: str) -> int:

@@ -6,8 +6,17 @@ import pytest
 
 from albert.backtest.l2 import SimConfig, _mark_executions, events_from_rows
 from albert.research.yes_bias import (
-    LaneSim, OneSided, PrintParams, aggregate, band_of, cell_stats, maker_fee, parse_event,
-    print_maker_market, structure_of)
+    LaneSim,
+    OneSided,
+    PrintParams,
+    aggregate,
+    band_of,
+    cell_stats,
+    maker_fee,
+    parse_event,
+    print_maker_market,
+    structure_of,
+)
 from albert.venues import kalshi as k
 
 FIX = Path(__file__).parent / "fixtures" / "kalshi"
@@ -28,7 +37,7 @@ def _events(name: str):
     return evs
 
 
-PERMISSIVE = dict(min_spread=0.01, lo=0.0, hi=1.0, ttl_s=120.0, cooldown_s=30.0, cap_market=50.0)
+PERMISSIVE = {"min_spread": 0.01, "lo": 0.0, "hi": 1.0, "ttl_s": 120.0, "cooldown_s": 30.0, "cap_market": 50.0}
 
 
 @pytest.mark.parametrize("side", ["sell_yes", "buy_yes"])

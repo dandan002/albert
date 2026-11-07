@@ -26,7 +26,7 @@ def _replay(strat):
 def test_baseline_variant_equals_quoter():
     from albert.backtest.l2 import Quoter
 
-    kw = dict(min_spread=0.0, lo=0.0, improve=True, min_requote_s=0)
+    kw = {"min_spread": 0.0, "lo": 0.0, "improve": True, "min_requote_s": 0}
     a = _replay(Variant(**kw))
     b = Simulator(SimConfig(latency_ms=50))
     q = Quoter(**kw)
@@ -38,7 +38,7 @@ def test_baseline_variant_equals_quoter():
 
 
 def test_levers_change_behaviour_and_never_cross():
-    kw = dict(min_spread=0.0, lo=0.0, improve=True, min_requote_s=0)
+    kw = {"min_spread": 0.0, "lo": 0.0, "improve": True, "min_requote_s": 0}
     base = _replay(Variant(**kw))
     tox = Variant(tox_window_s=600, tox_min=1, tox_frac=0.5, **kw)
     sim = _replay(tox)
@@ -54,7 +54,7 @@ def test_round_trips_and_scoring():
             {"t_ns": 3, "market": "M-A", "side": "no", "price": 0.55, "qty": 1.0, "fee": 0.0}]
     rt = round_trips(rows)
     assert rt["paired"] == 1.0 and abs(rt["paired_pnl"] - 0.05) < 1e-9
-    m, t, k = clustered([{**r, "event": "E", "x": 0.1} for r in rows], "x")
+    m, _t, k = clustered([{**r, "event": "E", "x": 0.1} for r in rows], "x")
     assert abs(m - 0.1) < 1e-9 and k == 1
     sim = _replay(Variant(min_spread=0.0, lo=0.0, improve=False, min_requote_s=0))
     summ, out = score(sim, {})
@@ -62,7 +62,7 @@ def test_round_trips_and_scoring():
 
 
 def test_momentum_tilt_drops_a_side():
-    kw = dict(min_spread=0.0, lo=0.0, improve=True, min_requote_s=0)
+    kw = {"min_spread": 0.0, "lo": 0.0, "improve": True, "min_requote_s": 0}
     base = _replay(Variant(**kw))
     mom = _replay(Variant(mom_window_s=6 * 3600, mom_move=0.01, **kw))
     assert len(mom.orders) != len(base.orders)

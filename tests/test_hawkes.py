@@ -7,11 +7,31 @@ import polars as pl
 import pytest
 
 from albert.backtest.l2 import Quoter, SimConfig, Simulator, _mark_executions, events_from_rows
-from albert.research.hawkes import (BASE, _nll1_grad, _nll2_grad, OnlineTox, ToxParams, ToxQuoter, build_tape, cl_mean,
-                                    cl_ols, exec_markouts, features, fit_hawkes, fit_hawkes2,
-                                    hist_grid, hist_maker_markouts, hist_taker, loglik1,
-                                    loglik1_bruteforce, loglik2, merged_trades, run_many,
-                                    simulate_hawkes, tox_regressions)
+from albert.research.hawkes import (
+    BASE,
+    OnlineTox,
+    ToxParams,
+    ToxQuoter,
+    _nll1_grad,
+    _nll2_grad,
+    build_tape,
+    cl_mean,
+    cl_ols,
+    exec_markouts,
+    features,
+    fit_hawkes,
+    fit_hawkes2,
+    hist_grid,
+    hist_maker_markouts,
+    hist_taker,
+    loglik1,
+    loglik1_bruteforce,
+    loglik2,
+    merged_trades,
+    run_many,
+    simulate_hawkes,
+    tox_regressions,
+)
 
 FIX = Path(__file__).parent / "fixtures" / "kalshi"
 P = ToxParams(mu=1e-3, n=0.7, beta=0.01, mu_mid=3e-3, n_mid=0.8, beta_mid=0.75)
@@ -163,7 +183,7 @@ def test_tox_quoter_without_filter_is_the_baseline_quoter_and_pull_blocks_quotes
               "never": (ToxQuoter(tox, pull_on="lam", pull_thr=0.0, **BASE), cfg),
               "inf": (ToxQuoter(tox, pull_on="lam_rel", pull_thr=math.inf, **BASE), cfg)}
     sims, _ = _replay(strats, tox, evs)
-    key = lambda s: [(o.placed_ns, o.side, o.price, o.status) for o in s.orders.values()]  # noqa: E731
+    key = lambda s: [(o.placed_ns, o.side, o.price, o.status) for o in s.orders.values()]
     assert key(sims["same"]) == key(base_sim) == key(sims["inf"])
     assert [(f.t_ns, f.price) for f in sims["same"].fills] == [(f.t_ns, f.price) for f in base_sim.fills]
     assert len(sims["never"].orders) == 0 and strats["never"][0].pulls > 0
@@ -191,7 +211,7 @@ def test_online_intensity_matches_closed_form():
 def test_clustered_stats_and_regression_table():
     y = np.array([1.0, 3.0, -1.0, 1.0])
     g = np.array(["a", "a", "b", "b"])
-    m, t, k = cl_mean(y, g)
+    m, _t, k = cl_mean(y, g)
     assert m == pytest.approx(1.0) and k == 2
     b, _, n, _ = cl_ols(np.array([0.0, 1.0, 2.0, 3.0, 4.0]), np.array([1.0, 3.0, 5.0, 7.0, 9.0]),
                         np.array(["a", "b", "c", "d", "e"]))

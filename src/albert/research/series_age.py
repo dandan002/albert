@@ -45,7 +45,7 @@ AGE_LABELS = ("a0_lt2w", "a1_2_6w", "a2_6_16w", "a3_old")
 SEED = 20261105
 
 _DATE_RX = re.compile(r"-(\d{2})(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(\d{2})")
-_MONTHS = {m: i + 1 for i, m in enumerate("JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC".split())}
+_MONTHS = {m: i + 1 for i, m in enumerate(["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"])}
 
 
 def cache_dir(s) -> Path:
@@ -761,7 +761,13 @@ def run(s, *, k_young: int = 3, k_old: int = 2, k_hist: int = 1, max_legs: int =
     """Full study; returns every table (also written by :func:`write_report`). Calibration uses
     quotes with spread ≤ ``max_spread`` (a mid between an empty bid and a 99c ask is not a
     price); rules trade every quoted row at its own bid."""
-    from albert.research.fundamental import evaluate, evaluate_maker, fetch_trades, maker_fills, clustered_mean
+    from albert.research.fundamental import (
+        clustered_mean,
+        evaluate,
+        evaluate_maker,
+        fetch_trades,
+        maker_fills,
+    )
 
     m = universe(s)
     lpath = cache_dir(s) / "launch.parquet"

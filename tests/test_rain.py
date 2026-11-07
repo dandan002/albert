@@ -8,12 +8,12 @@ from albert.research import rain
 
 # Real Kalshi rules_primary strings (KXRAIN-26AUG16-NYC, KXRAIN-26SEP16-MIL, KXRAIN-26OCT30-WPB).
 RULES = [
-    ("If the total precipitation at CLINYC in New York City in Aug 16, 2026 is strictly greater than "
-     "0 inches, then the market resolves to Yes.", "NYC"),
-    ("If the total precipitation at KMKE in Milwaukee in Sep 16, 2026 is strictly greater than 0 "
-     "inches, then the market resolves to Yes.", "MKE"),
-    ("If the total precipitation at CLIDJT in West Palm Beach in Oct 30, 2026 is strictly greater "
-     "than 0 inches, then the market resolves to Yes.", "DJT"),
+    (("If the total precipitation at CLINYC in New York City in Aug 16, 2026 is strictly greater than "
+     "0 inches, then the market resolves to Yes."), "NYC"),
+    (("If the total precipitation at KMKE in Milwaukee in Sep 16, 2026 is strictly greater than 0 "
+     "inches, then the market resolves to Yes."), "MKE"),
+    (("If the total precipitation at CLIDJT in West Palm Beach in Oct 30, 2026 is strictly greater "
+     "than 0 inches, then the market resolves to Yes."), "DJT"),
 ]
 
 

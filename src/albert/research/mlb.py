@@ -109,7 +109,7 @@ def parse_schedule(payload: dict[str, Any]) -> list[dict[str, Any]]:
                 inn_h.append((inn.get("home") or {}).get("runs"))
             row = {
                 "game_pk": g["gamePk"], "season": int(g.get("season") or 0), "game_type": g.get("gameType"),
-                "game_date": datetime.fromisoformat(g["gameDate"].replace("Z", "+00:00")),
+                "game_date": datetime.fromisoformat(g["gameDate"]),
                 "official_date": date.fromisoformat(g["officialDate"]),
                 "status": st.get("detailedState"), "coded_state": st.get("codedGameState"),
                 "start_tbd": bool(st.get("startTimeTBD")),
@@ -781,7 +781,7 @@ def fit_model(feat: pl.DataFrame, variant: str) -> dict[str, Any]:
     st2 = max(excess - sg2 - sn2, 0.0)
     return {"variant": variant, "names": feature_names(variant), "beta": beta.tolist(), "alpha": alpha,
             "delta_x": delta_x, "alpha_x": alpha_x, "sg2": sg2, "sn2": sn2, "st2": st2, "loglik_per_half": ll,
-            "n_half_innings": int(len(y)), "n_extra_halves": int(len(y_x)), "sd_outs": SD_OUTS,
+            "n_half_innings": len(y), "n_extra_halves": len(y_x), "sd_outs": SD_OUTS,
             "mean_runs_half": float(y.mean()), "mean_pred_half": float(np.exp(X @ beta).mean())}
 
 
@@ -933,9 +933,9 @@ def prob_for(spec: dict, summ: dict[str, Any]) -> float:
     if s == "KXMLBGAME":
         return summ["p_home"] if spec["side"] == "home" else 1 - summ["p_home"]
     if s == "KXMLBTOTAL":
-        return float(summ["total_pmf"][int(math.floor(k)) + 1:].sum())
+        return float(summ["total_pmf"][math.floor(k) + 1:].sum())
     if s == "KXMLBF5TOTAL":
-        return float(summ["f5_pmf"][int(math.floor(k)) + 1:].sum())
+        return float(summ["f5_pmf"][math.floor(k) + 1:].sum())
     if s == "KXMLBSPREAD":
         mg = summ["margin"] if spec["side"] == "home" else -summ["margin"]
         return float((mg > k).mean())
@@ -1030,7 +1030,7 @@ def taker_real(df: pl.DataFrame, theta: float) -> pl.DataFrame:
     rows = []
     for r in df.iter_rows(named=True):
         mult = FEE_MULT[r["series"]]
-        fee = lambda q: math.ceil(0.07 * mult * q * (1 - q) * 1e4 - 1e-9) / 1e4  # noqa: E731
+        fee = lambda q: math.ceil(0.07 * mult * q * (1 - q) * 1e4 - 1e-9) / 1e4
         ey = r["p"] - r["ask"] - fee(r["ask"])
         en = (1 - r["p"]) - (1 - r["bid"]) - fee(1 - r["bid"])
         if max(ey, en) < theta:

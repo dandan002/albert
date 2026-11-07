@@ -19,13 +19,22 @@ must say which.
 """
 
 from collections import defaultdict
+from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import polars as pl
 
-from albert.backtest.l2 import EPS, Event, SimConfig, Simulator, iter_events, stream_files, trade_key
+from albert.backtest.l2 import (
+    EPS,
+    Event,
+    SimConfig,
+    Simulator,
+    iter_events,
+    stream_files,
+    trade_key,
+)
 
 TIGHT = 0.06
 
@@ -47,7 +56,7 @@ def _in_play_bounds(info: dict[str, dict[str, Any]]) -> dict[str, tuple[int, int
         exp = (m or {}).get("expected_expiration_time")
         if hours is None or not exp:
             continue
-        e = datetime.fromisoformat(exp.replace("Z", "+00:00"))
+        e = datetime.fromisoformat(exp)
         out[t] = (int((e - timedelta(hours=hours)).timestamp() * 1e9),
                   int((e + timedelta(hours=1)).timestamp() * 1e9))
     return out

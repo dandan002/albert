@@ -28,10 +28,11 @@ from __future__ import annotations
 import asyncio
 import json
 import math
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import polars as pl
 
@@ -91,7 +92,7 @@ def plan_event(s, base: str, event: str, start: datetime, now: datetime, margin:
     excluded = said > said24 + F.SAID_JUMP + 1e-12
     rows = rows.with_columns(pl.lit(excluded).alias("excluded"), (pl.col("quoted") & pl.lit(not excluded)).alias("eligible"))
     rows = F.mention_orders(rows)
-    tag = int(round(margin * 100))
+    tag = round(margin * 100)
     col = f"o_cal{tag}_no"
     if col not in rows.columns:          # a margin outside the frozen pair: same formula
         fair = rows["fair_cal"].to_numpy()
@@ -208,7 +209,7 @@ class MentionsBot:
         try:
             plan = await asyncio.to_thread(plan_event, self.s, self.base, ev, start, now, self.limits.margin,
                                            transport=self.transport)
-        except Exception as err:               # a bad listing must not stop the bot
+        except Exception as err:  # noqa: BLE001 - a bad listing must not stop the bot
             self.write("error", {"what": "plan", "event": ev, "error": repr(err)[:300]})
             return
         if not plan.height:
@@ -235,7 +236,7 @@ class MentionsBot:
         group = await self.trader.create_order_group(self.limits.group_limit)
         st = EventState(ev, start, end, group)
         self.events[ev] = st
-        exp = int(math.floor(end.timestamp()))
+        exp = math.floor(end.timestamp())
         for r in keep:
             self._n += 1
             coid = f"{PREFIX}{self.run_id}-{self._n}"

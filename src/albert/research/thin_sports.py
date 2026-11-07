@@ -238,12 +238,12 @@ def fetch_games(s, leagues: tuple[str, ...] = tuple(LEAGUES), *, last: date = da
 
 
 # ---- Kalshi legs ------------------------------------------------------------------------------
-_MONTHS = {m: i + 1 for i, m in enumerate("JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC".split())}
+_MONTHS = {m: i + 1 for i, m in enumerate(["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"])}
 _GK_RX = re.compile(r"^(\d{2})([A-Z]{3})(\d{2})(\d{4})?([A-Z0-9]+)$")
 _VS_RX = re.compile(r"(?:wins the|result of the|in the) (.+?) vs (.+?) (?:professional |women's |men's )?"
                     r"(?:English|USL|Argentine|college|soccer|match|game)")
-_SPREAD_RX = re.compile(r"^(.+?) wins by more than (\d+)\.5 goals", re.I)
-_TOTAL_RX = re.compile(r"^Over (\d+)\.5 goals", re.I)
+_SPREAD_RX = re.compile(r"^(.+?) wins by more than (\d+)\.5 goals", re.IGNORECASE)
+_TOTAL_RX = re.compile(r"^Over (\d+)\.5 goals", re.IGNORECASE)
 
 
 def leg_kind(series: str) -> str:

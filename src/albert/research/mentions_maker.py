@@ -434,8 +434,7 @@ def maker_table(G: pl.DataFrame, by: tuple[str, ...] = ("when", "variant"), *, m
         if not dv.height:
             continue
         m = dv.sort("pnl_per_fill_c", descending=True)["margin"][0]
-        for r in g.filter(pl.col("margin") == m).iter_rows(named=True):
-            chosen.append(r)
+        chosen.extend(g.filter(pl.col("margin") == m).iter_rows(named=True))
     C = pl.DataFrame(chosen, infer_schema_length=None).sort([*by, "split"]) if chosen else pl.DataFrame()
     return T, C
 

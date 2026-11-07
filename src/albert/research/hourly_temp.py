@@ -352,8 +352,9 @@ HARMONICS = 3
 
 def local_hour(t_min: Any, city: str) -> Any:
     """Fractional local clock hour for minute numbers since the epoch (vectorised)."""
-    import numpy as np
     from zoneinfo import ZoneInfo
+
+    import numpy as np
 
     tz = ZoneInfo(TZ[city])
     t_min = np.asarray(t_min, dtype=np.int64)

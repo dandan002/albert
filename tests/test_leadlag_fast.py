@@ -7,8 +7,18 @@ from pathlib import Path
 import pytest
 
 from albert.backtest.l2 import _mark_executions, events_from_rows
-from albert.research.leadlag_fast import (Book, Data, _pm_items, clustered, event_study, kalshi_books,
-                                          path_stats, pm_books, pm_moves, taker_fee)
+from albert.research.leadlag_fast import (
+    Book,
+    Data,
+    _pm_items,
+    clustered,
+    event_study,
+    kalshi_books,
+    path_stats,
+    pm_books,
+    pm_moves,
+    taker_fee,
+)
 
 FIX = Path(__file__).parent / "fixtures"
 
@@ -22,7 +32,7 @@ def test_pm_items_carry_server_timestamps_and_complement():
     rows = _pm_rows()
     items = [it for r in rows for it in _pm_items(r)]
     assert items and all(ts is None or ts > 1.7e12 for _, ts, _, _ in items)
-    asset, _, bid, ask = next(it for it in items if it[2] is not None and it[3] is not None)
+    asset, _, _bid, _ask = next(it for it in items if it[2] is not None and it[3] is not None)
     pairs = {"K-A": {"token_id": asset, "complement": False, "pm_slug": "g"},
              "K-B": {"token_id": asset, "complement": True, "pm_slug": "g"}}
     paths: list = []

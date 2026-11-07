@@ -40,15 +40,15 @@ import json
 import math
 import time
 from collections import defaultdict, deque
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import numpy as np
 import polars as pl
 
-from albert.backtest.l2 import (EPS, Event, Quoter, SimConfig, Simulator, iter_events,
-                                stream_files)
+from albert.backtest.l2 import EPS, Event, Quoter, SimConfig, Simulator, iter_events, stream_files
 
 NS = 10**9
 TICK = 0.01
@@ -1358,7 +1358,7 @@ def hist_study(s, *, split: str = "2026-10-01", cap: int = 150, seed: int = 0,
     split_dt = datetime.fromisoformat(split).replace(tzinfo=UTC)
     cov = (hist_coverage(s).filter(pl.col("expected_expiration_time").is_not_null())
            .with_columns((pl.col("expected_expiration_time") < split_dt).alias("dev")))
-    us = lambda c: pl.col(c).dt.epoch("us")  # noqa: E731
+    us = lambda c: pl.col(c).dt.epoch("us")
     h = 3600 * 10**6
     legs = cov.sort("ticker").group_by("event_ticker", maintain_order=True).first()
     pre_pool = legs.with_columns((us("expected_expiration_time") - 25 * h).alias("a"),

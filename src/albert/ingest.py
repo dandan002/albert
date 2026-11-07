@@ -11,9 +11,9 @@ from albert.config import Settings, secret
 from albert.http import CachedClient
 from albert.store import read_table, write_manifest, write_table
 from albert.venues import kalshi as k
+from albert.venues import pandascore as ps
 from albert.venues import polymarket as pm
 from albert.venues import polymarket_us as pmus
-from albert.venues import pandascore as ps
 from albert.venues import weather as wx
 
 

@@ -46,17 +46,26 @@ import json
 import math
 import time
 from collections import defaultdict
+from collections.abc import Iterable, Iterator
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable, Iterator
+from typing import Any
 
 import numpy as np
 import polars as pl
 from scipy.optimize import minimize
 from scipy.special import gammaln, ndtr
 
-from albert.backtest.l2 import (EPS, Event, Quoter, SimConfig, Simulator, iter_events, markouts,
-                                stream_files)
+from albert.backtest.l2 import (
+    EPS,
+    Event,
+    Quoter,
+    SimConfig,
+    Simulator,
+    iter_events,
+    markouts,
+    stream_files,
+)
 
 TICK = 0.01
 MAKER_RATE = 0.0175
@@ -356,7 +365,7 @@ class DasMM(Quoter):
             bel = (1 - self.reset) * bel + self.reset * self._prior((q["yes_bid"] + q["yes_ask"]) / 2)
         a = self._alpha(ev.market)
         price = float(ev.msg["yes_price_dollars"])
-        i = int(round(price * 100)) - 1
+        i = round(price * 100) - 1
         if 0 <= i < len(self.ticks):
             up = self._up[i]
             like = a * up + (1 - a) / 2 if ev.msg["taker_side"] == "yes" else a * (1 - up) + (1 - a) / 2
@@ -517,7 +526,7 @@ def l2_market_stats(sim: Simulator, orders: pl.DataFrame, t0: int, t1: int) -> p
     rows = []
     for mkt, g in o.group_by("market"):
         mkt = mkt[0]
-        times, vals = sim.quotes.get(mkt, ([], []))
+        times, _vals = sim.quotes.get(mkt, ([], []))
         grid = list(range(t0 - t0 % 60_000_000_000 + 60_000_000_000, t1, 60_000_000_000))
         mids = [sim.mid_at(mkt, t) for t in grid] if times else []
         spreads = [(a - b) for b, a in (sim.quote_at(mkt, t) for t in grid) if b is not None and a is not None] if times else []
@@ -550,7 +559,7 @@ def static_alpha(stats_dev: pl.DataFrame, orders_dev: pl.DataFrame, markets: Ite
     EKOP fit and dev |mid move| over 300 s where it has one, else the series' pooled EKOP fit
     (each market-bucket of the series one observation) and the series median move, else the pooled
     fit over all markets. Columns: market, pin, pin_mom, absmove300_c, pin_src."""
-    ser = lambda c: pl.col(c).str.split("-").list.first()   # noqa: E731
+    ser = lambda c: pl.col(c).str.split("-").list.first()
     o = orders_dev.with_columns(ser("market").alias("series"))
     cnt = bucket_counts(o, ["series", "market"])
     pooled = fit_units(cnt.drop("market"), ["series"])
@@ -592,7 +601,7 @@ def rolling_alpha(orders: pl.DataFrame, buckets: pl.DataFrame, n_prev: int = 12)
          .join(c, on=["market", "bucket"], how="full", coalesce=True)
          .with_columns(pl.col("B").fill_null(0.0), pl.col("S").fill_null(0.0))
          .sort("market", "bucket"))
-    roll = dict(window_size=n_prev, min_samples=1)
+    roll = {"window_size": n_prev, "min_samples": 1}
     b = b.with_columns(
         ((pl.col("B") - pl.col("S")).abs() - noise_expr(pl.col("B") + pl.col("S"))).alias("_imb"),
         (pl.col("B") + pl.col("S")).alias("_tot"),
@@ -969,7 +978,7 @@ def tape_state(orders: pl.DataFrame, stale_s: float = 900.0) -> pl.DataFrame:
         pl.when(pl.col("buy")).then(pl.col("p_hi")).alias("_a"), pl.when(pl.col("buy")).then(pl.col("us")).alias("_at"),
         pl.when(~pl.col("buy")).then(pl.col("p_lo")).alias("_b"), pl.when(~pl.col("buy")).then(pl.col("us")).alias("_bt"),
     ).with_columns(pl.col("_a", "_at", "_b", "_bt").forward_fill().over("ticker"))
-    fresh = lambda c: (pl.col("us") - pl.col(c)) <= int(stale_s * _US)   # noqa: E731
+    fresh = lambda c: (pl.col("us") - pl.col(c)) <= int(stale_s * _US)
     st = st.with_columns(pl.when(fresh("_at")).then(pl.col("_a")).alias("ask_px"),
                          pl.when(fresh("_bt")).then(pl.col("_b")).alias("bid_px"))
     return st.with_columns(

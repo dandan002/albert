@@ -60,6 +60,7 @@ Rerun: ``rain.fetch_iem`` (cached), ``fundamental.fetch_candles`` for pre-cutoff
 
 import csv
 import io
+import itertools
 import math
 import re
 from dataclasses import dataclass, field
@@ -99,7 +100,7 @@ OLD_ID = {"DJT": "PBI"}
 
 _CODE_RX = re.compile(r"\bat (?:CLI|K)([A-Z]{3}) in ")
 _DAY_RX = re.compile(r"-(\d{2})([A-Z]{3})(\d{2})$")
-_MON = {m: i + 1 for i, m in enumerate("JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC".split())}
+_MON = {m: i + 1 for i, m in enumerate(["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"])}
 
 
 def rule_code(rules: str | None) -> str | None:
@@ -683,7 +684,7 @@ def price_band(mid: pl.Expr) -> pl.Expr:
 
 def calibration_table(df: pl.DataFrame, col: str) -> pl.DataFrame:
     bins = [0, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.85, 1.0001]
-    d = df.with_columns(pl.col(col).cut(bins[1:-1], labels=[f"{a:.2f}-{b:.2f}" for a, b in zip(bins, bins[1:])]
+    d = df.with_columns(pl.col(col).cut(bins[1:-1], labels=[f"{a:.2f}-{b:.2f}" for a, b in itertools.pairwise(bins)]
                                         ).alias("bin"))
     return (d.group_by("holdout", "bin").agg(pl.len().alias("n"), pl.col(col).mean().alias("mean_pred"),
                                              pl.col("y").mean().alias("freq"))

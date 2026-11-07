@@ -1,7 +1,6 @@
 """Research and backtest pipelines used by the CLI. Each writes a report under data/reports."""
 
 from dataclasses import replace
-
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -459,7 +458,7 @@ def research_esports_reference(s: Settings, c: Clients, *, leads: tuple[float, .
     rule: buy on Kalshi when the Polymarket price beats Kalshi's ask (+ fee) by ``margin``.
     No parameters are fitted, so every month is out of sample.
     """
-    from albert.ingest import _kalshi_candles, IngestResult
+    from albert.ingest import IngestResult, _kalshi_candles
     from albert.matching import match_kalshi_pm_esports
 
     markets = read_table(s.tables_dir, "kalshi_markets")

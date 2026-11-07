@@ -51,7 +51,7 @@ def test_decisions_do_not_depend_on_future_events():
     """Replaying only the events up to each decision reproduces the decisions made so far
     (the same labelled events are reused, so this isolates the strategy from the labeller)."""
     evs = _events()
-    kw = dict(cause="any", offset=0, ttl_s=5, min_spread_after=0.0, lo=0.0, hi=1.0, cooldown_s=0)
+    kw = {"cause": "any", "offset": 0, "ttl_s": 5, "min_spread_after": 0.0, "lo": 0.0, "hi": 1.0, "cooldown_s": 0}
     _, full = _run(evs, VacatedLevel(**kw))
     assert full
     idx = {e.recv_ns: i for i, e in enumerate(evs)}
@@ -92,5 +92,5 @@ def test_lifetime_and_clustered_stats():
     assert st["orders_tracked"] > 0 and st["alone_s_median"] is not None and st["alone_s_median"] >= 0
     rows = [{"event": "a", "qty": 1.0, "x": 0.02}, {"event": "a", "qty": 1.0, "x": 0.04},
             {"event": "b", "qty": 2.0, "x": -0.01}]
-    mean, t, k = clustered(rows, "x")
+    mean, _t, k = clustered(rows, "x")
     assert k == 2 and mean == pytest.approx((0.06 - 0.02) / 4)

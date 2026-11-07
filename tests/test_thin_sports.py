@@ -1,3 +1,4 @@
+import itertools
 from datetime import UTC, date, datetime, timedelta
 
 import numpy as np
@@ -82,8 +83,8 @@ def test_leg_prob_is_a_proper_distribution():
     assert abs(pmf.sum() - 1) < 1e-6
     h, d, a = (T.leg_prob("win", x, None, pmf) for x in ("home", "tie", "away"))
     assert abs(h + d + a - 1) < 1e-6 and h > a
-    over = [T.leg_prob("total", None, kk, pmf) for kk in range(0, 7)]
-    assert all(x > y for x, y in zip(over, over[1:]))
+    over = [T.leg_prob("total", None, kk, pmf) for kk in range(7)]
+    assert all(x > y for x, y in itertools.pairwise(over))
     assert T.leg_prob("spread", "home", 0, pmf) == pytest.approx(h)
     assert T.leg_prob("btts", None, None, pmf) == pytest.approx((1 - np.exp(-1.6)) * (1 - np.exp(-1.1)))
     hw = T.leg_prob("win", "home", None, pmf, ot_home=0.5)
@@ -110,7 +111,7 @@ def _synthetic_games(rng, n_teams=8, n_games=400, kind="soccer"):
 
 def test_models_recover_strength_and_never_see_later_games():
     rng = np.random.default_rng(3)
-    g, strength = _synthetic_games(rng)
+    g, _strength = _synthetic_games(rng)
     t = g["start"].max() + timedelta(days=1)
     q = pl.DataFrame({"game_id": ["q"], "home_id": ["7"], "away_id": ["0"], "neutral": [False], "t": [t]})
     prm = {"half_life": 365.0, "lam": 1.0, "kappa": 1.0}

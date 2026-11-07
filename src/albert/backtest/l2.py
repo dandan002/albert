@@ -691,11 +691,11 @@ class Quoter:
         fair = sim.ext_at(market, sim.now)
         if fair is None and self.pm_only:
             return want
-        if fair is not None and self.pm_pull:
-            if sim.ext_range(market, sim.now - self.pm_window_ns, sim.now) >= self.pm_pull - EPS:
-                self._cool_until[market] = max(self._cool_until.get(market, 0),
-                                               sim.now + self.pm_window_ns)
-                return want
+        if (fair is not None and self.pm_pull
+                and sim.ext_range(market, sim.now - self.pm_window_ns, sim.now) >= self.pm_pull - EPS):
+            self._cool_until[market] = max(self._cool_until.get(market, 0),
+                                           sim.now + self.pm_window_ns)
+            return want
         tick = 0.01 if self.improve and spread >= 0.03 - EPS else 0.0
         pos = sim.position[market]
         yes, no = round(q["yes_bid"] + tick, 6), round(1 - q["yes_ask"] + tick, 6)

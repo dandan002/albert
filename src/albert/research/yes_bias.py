@@ -140,8 +140,9 @@ def event_structure(events: Iterable[str], cache: Path, *, fetch: bool = True,
     have = json.loads(cache.read_text()) if cache.exists() else {}
     todo = sorted(set(events) - set(have))
     if fetch and todo:
-        import httpx
         from concurrent.futures import ThreadPoolExecutor
+
+        import httpx
 
         def one(e: str) -> tuple[str, Any]:
             for _ in range(3):
@@ -577,11 +578,19 @@ def fills_table(f: pl.DataFrame, by: list[str] | None = None) -> pl.DataFrame:
 
 
 # ---- 3. recorded L2 ----------------------------------------------------------------------------
-from albert.backtest.l2 import (Event, Market, Quoter, SimConfig, Simulator, iter_events,  # noqa: E402
-                                markouts, stream_files)
-from albert.fees import kalshi_fee  # noqa: E402
+from albert.backtest.l2 import (
+    Event,
+    Market,
+    Quoter,
+    SimConfig,
+    Simulator,
+    iter_events,
+    markouts,
+    stream_files,
+)
+from albert.fees import kalshi_fee
 
-BASE = dict(improve=True, min_spread=0.05, cooldown_s=300.0)
+BASE = {"improve": True, "min_spread": 0.05, "cooldown_s": 300.0}
 BUCKET_NS = 300 * 10**9
 
 
@@ -598,7 +607,7 @@ class _FastMarket(Market):
 
 
 class _NoList(list):
-    def append(self, x: Any) -> None:   # noqa: D401 - a list that never stores
+    def append(self, x: Any) -> None:
         return None
 
 

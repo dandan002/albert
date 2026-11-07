@@ -706,7 +706,7 @@ def run_loop(trader: PaperTrader, *, interval_seconds: float, iterations: int) -
     """
     stop = {"flag": False}
 
-    def _stop(signum, frame):  # noqa: ARG001
+    def _stop(signum, frame):
         stop["flag"] = True
         print(f"[{_now():%Y-%m-%d %H:%M:%S}] signal {signum}: stopping after this tick", flush=True)
 
@@ -719,7 +719,7 @@ def run_loop(trader: PaperTrader, *, interval_seconds: float, iterations: int) -
         try:
             counts = trader.tick()
             failures = 0
-        except Exception as error:  # keep the service alive; the ledger records what happened
+        except Exception as error:  # noqa: BLE001 - keep the service alive; the ledger records it
             failures += 1
             trader.log("tick_error", error=repr(error), consecutive=failures)
             counts = {"error": repr(error)[:200]}
@@ -743,8 +743,8 @@ def run_loop(trader: PaperTrader, *, interval_seconds: float, iterations: int) -
 
 def status(s: Settings) -> str:
     st = PaperState.load(s.paper_dir / "state.json")
-    lines = [f"equity {st.equity():.2f} (peak {st.peak_equity:.2f}) realized_pnl {st.realized_pnl:+.2f} "
-             f"settled {st.settled} halted={st.halted}",
+    lines = [(f"equity {st.equity():.2f} (peak {st.peak_equity:.2f}) realized_pnl {st.realized_pnl:+.2f} "
+             f"settled {st.settled} halted={st.halted}"),
              f"cash {st.cash}", f"open positions: {len(st.positions)}",
              f"resting orders: {len(st.orders)} (reserved {sum(o.reserved for o in st.orders):.2f})"]
     for o in st.orders:

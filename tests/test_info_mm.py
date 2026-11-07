@@ -1,3 +1,4 @@
+import itertools
 import json
 import math
 from pathlib import Path
@@ -111,14 +112,14 @@ def test_zero_profit_quotes_are_the_gm_fixed_point():
         up = im.ndtr((das.v - price) / das.sigma)
         like = 0.4 * up + 0.3 if buy else 0.4 * (1 - up) + 0.3
         return float((das.v * bel * like).sum() / (bel * like).sum())
-    fee = lambda p: 0.0175 * p * (1 - p)   # noqa: E731
+    fee = lambda p: 0.0175 * p * (1 - p)
     assert ask - e_given(ask, True) >= fee(ask) - 1e-9                       # ask earns
     assert (ask - 0.01) - e_given(ask - 0.01, True) < fee(ask - 0.01)        # one tick tighter loses
     assert e_given(bid, False) - bid >= fee(bid) - 1e-9
     assert e_given(bid + 0.01, False) - (bid + 0.01) < fee(bid + 0.01)
     # informed buying moves the belief up
     for _ in range(5):
-        lb = 0.4 * das._up[int(round(ask * 100)) - 1] + 0.3
+        lb = 0.4 * das._up[round(ask * 100) - 1] + 0.3
         bel = bel * lb / (bel * lb).sum()
     assert float(das.v @ bel) > 0.42
 
@@ -159,7 +160,7 @@ def test_das_quotes_improve_inside_the_zero_profit_quote_and_never_cross():
 
 def test_das_decisions_do_not_depend_on_future_events():
     evs = _events("ws_stream_ladder_arb.jsonl")
-    kw = dict(alpha=0.2, sigma=0.03, lo=0.0, hi=1.0, cooldown_s=0)
+    kw = {"alpha": 0.2, "sigma": 0.03, "lo": 0.0, "hi": 1.0, "cooldown_s": 0}
     _, full = _quotes_at_place(evs, im.DasMM(**kw))
     assert full
     idx = {e.recv_ns: i for i, e in enumerate(evs)}
@@ -216,7 +217,7 @@ def test_print_maker_fills_only_through_and_respects_cooldown():
         else:                             # our ask = last buy - 1c, lifted by a buy printing above it
             assert buy[i] and hi[i] > 1 - r["price"] + 1e-9 and 1 - r["price"] == pytest.approx(r["ask0"] - 0.01)
     t = fills["us"].to_list()
-    assert all(b - a >= 60_000_000 for a, b in zip(t, t[1:]))
+    assert all(b - a >= 60_000_000 for a, b in itertools.pairwise(t))
     assert im.print_maker(o, min_spread=0.02, cooldown_s=60).height >= im.print_maker(o, min_spread=0.05, cooldown_s=60).height
 
 

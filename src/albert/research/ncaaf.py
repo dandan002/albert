@@ -186,7 +186,7 @@ def team_tiers(games: pl.DataFrame, *, min_fcs_games: int = 5) -> dict[tuple[int
 
 # ---- Kalshi <-> ESPN matching ---------------------------------------------------------------
 _EVENT_RX = re.compile(r"^[A-Z0-9]+-(\d{2})([A-Z]{3})(\d{2})([A-Z0-9]+)$")
-_MONTHS = {m: i + 1 for i, m in enumerate("JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC".split())}
+_MONTHS = {m: i + 1 for i, m in enumerate(["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"])}
 
 
 def event_key(event_ticker: str) -> tuple[datetime, str] | None:
@@ -275,7 +275,7 @@ def match_events(game_legs: pl.DataFrame, games: pl.DataFrame, *, min_score: flo
     return pl.DataFrame(out, infer_schema_length=None)
 
 
-_STRIKE_RX = re.compile(r"over (\d+(?:\.\d+)?) points", re.I)
+_STRIKE_RX = re.compile(r"over (\d+(?:\.\d+)?) points", re.IGNORECASE)
 
 
 def ladder_legs(markets: pl.DataFrame, match: pl.DataFrame, games: pl.DataFrame) -> pl.DataFrame:
@@ -1229,8 +1229,8 @@ def holdout_study(s, inp: dict[str, Any], run: dict[str, Any], model: str, law: 
     dists = {k: f[law] for k, f in fits.items()}
     frames = {lead: contract_frame(inp, run, dists, lead, tier) for lead in LEADS_H}
     grid, full = evaluate_grid(frames, model)
-    sections: list[tuple[str, pl.DataFrame]] = [("Model vs Kalshi per decision time and contract kind "
-                                                 "(dev = Aug-Sep, holdout = Oct; taker at the dev-chosen θ)", grid)]
+    sections: list[tuple[str, pl.DataFrame]] = [(("Model vs Kalshi per decision time and contract kind "
+                                                 "(dev = Aug-Sep, holdout = Oct; taker at the dev-chosen θ)"), grid)]
     # Segments (per kind, at each lead): Brier by tier and price band, taker at the dev θ.
     for lead, df in frames.items():
         df = df.with_columns(price_band(pl.col("mid")).alias("band"))

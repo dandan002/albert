@@ -319,7 +319,7 @@ def summarize(rows: list[dict[str, Any]], split_ns: int) -> dict[str, Any]:
         d: dict[str, Any] = {"fills": len(sub), "entry_fills": len(entries),
                              "events": len({r["event"] for r in sub})}
         for col in ("mo_10s", "mo_60s", "mx_10s", "mx_60s", "mo_300s", "settle"):
-            m, t, k = clustered(entries, col)
+            m, t, _k = clustered(entries, col)
             d[col] = None if m is None else round(m * 100, 2)
             d[f"t_{col}"] = None if t is None else round(t, 2)
         d["settled_entries"] = sum(1 for r in entries if r["settle"] is not None)

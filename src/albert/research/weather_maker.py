@@ -756,7 +756,7 @@ def taker_table(rows: pl.DataFrame, fairs: tuple[str, ...]) -> pl.DataFrame:
                     "ticker", "cluster", "p", "y", "bid", "ask", "fee_multiplier"), theta)
                 if not tr.height:
                     continue
-                mu, tt, k = fu.clustered_mean(tr["pnl"].to_numpy(), tr["cluster"].to_numpy())
+                mu, tt, _k = fu.clustered_mean(tr["pnl"].to_numpy(), tr["cluster"].to_numpy())
                 res[(theta, h)] = (tr.height, mu, tt)
                 if not h and tr.height >= 30 and (best is None or mu > best[1]):
                     best = (theta, mu)
@@ -1187,7 +1187,7 @@ def monthly_candles(s, markets: pl.DataFrame, *, log=print) -> pl.DataFrame:
     api = k.Kalshi(CachedClient("kalshi", s.kalshi_base, cache_dir(s), min_interval=0.5, max_retries=8))
     cutoff = api.cutoff().get("market_settled_ts")
     rows: list[dict[str, Any]] = []
-    from albert.research.hourly_temp import _patient   # retries through shared-rate-limit 429s
+    from albert.research.hourly_temp import _patient  # retries through shared-rate-limit 429s
 
     for m in markets.filter(pl.col("close_time") < cutoff).iter_rows(named=True) if cutoff else []:
         page = _patient(lambda m=m: api.candles(m["ticker"], m["open_time"], m["close_time"], 60, True), tries=12,

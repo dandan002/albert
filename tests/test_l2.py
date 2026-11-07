@@ -1,8 +1,16 @@
 import json
 from pathlib import Path
 
-from albert.backtest.l2 import (Event, JoinBest, Quoter, SimConfig, Simulator, _mark_executions,
-                                events_from_rows, markouts)
+from albert.backtest.l2 import (
+    Event,
+    JoinBest,
+    Quoter,
+    SimConfig,
+    Simulator,
+    _mark_executions,
+    events_from_rows,
+    markouts,
+)
 
 FIX = Path(__file__).parent / "fixtures" / "kalshi"
 T0 = 1_793_851_200_000_000_000

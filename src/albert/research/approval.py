@@ -114,8 +114,8 @@ class Fetcher:
 
 
 # ---- parsing ---------------------------------------------------------------------------------
-_PUSH = re.compile(r'self\.__next_f\.push\(\[1,"(.*?)"\]\)</script>', re.S)
-_ROW = re.compile(r"^([0-9a-f]+):(.*)$", re.S)
+_PUSH = re.compile(r'self\.__next_f\.push\(\[1,"(.*?)"\]\)</script>', re.DOTALL)
+_ROW = re.compile(r"^([0-9a-f]+):(.*)$", re.DOTALL)
 
 
 def rsc_rows(html: str) -> dict[str, str]:
@@ -210,7 +210,7 @@ def parse_snapshot(html: str, ts: datetime) -> Snapshot | None:
             for v in appr.get("votes", []):
                 dt = str(v.get("date", "")).lstrip("$D")
                 try:
-                    stamp = datetime.fromisoformat(dt.replace("Z", "+00:00"))
+                    stamp = datetime.fromisoformat(dt)
                 except ValueError:
                     continue
                 chart.append({"stamp": stamp, "approve": _f(v.get("value"))})
@@ -264,10 +264,10 @@ def rcp_mean(values: list[float] | np.ndarray) -> float:
 
 
 # ---- Kalshi side -----------------------------------------------------------------------------
-_TO = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*to\s*(\d+(?:\.\d+)?)\s*%?\s*$", re.I)
+_TO = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*to\s*(\d+(?:\.\d+)?)\s*%?\s*$", re.IGNORECASE)
 _EX = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*%?\s*$")
-_ABOVE = re.compile(r"^\s*above\s*(\d+(?:\.\d+)?)\s*%?\s*$", re.I)
-_BELOW = re.compile(r"^\s*below\s*(\d+(?:\.\d+)?)\s*%?\s*$", re.I)
+_ABOVE = re.compile(r"^\s*above\s*(\d+(?:\.\d+)?)\s*%?\s*$", re.IGNORECASE)
+_BELOW = re.compile(r"^\s*below\s*(\d+(?:\.\d+)?)\s*%?\s*$", re.IGNORECASE)
 LO_INF, HI_INF = 0, 1000                          # tenths of a point
 
 
@@ -945,7 +945,7 @@ def reproduction_checks(ctx: Context, snaps: list[Snapshot], sv: pl.DataFrame, p
 
 # ---- driver ----------------------------------------------------------------------------------
 RW_SIGMAS = (0.1, 0.15, 0.2, 0.3, 0.4)
-MECH_GRID = [dict(value_mode=vm, prune_window=w, prune_rate=pr, sigma_res=sr)
+MECH_GRID = [{"value_mode": vm, "prune_window": w, "prune_rate": pr, "sigma_res": sr}
              for vm in ("kalman", "last") for w in (17, 19, 21) for pr in (0.15, 0.35, 0.6) for sr in (0.03, 0.08)]
 
 
@@ -966,7 +966,13 @@ def run(fetch: bool = False, sims: int = 4000, seed: int = 7) -> Path:
     """Full study: data -> dev fit -> frozen models -> holdout once -> report."""
     from albert.config import Settings
     from albert.reports import md_table
-    from albert.research.fundamental import attach_quotes, evaluate, fetch_candles, report, settled_markets
+    from albert.research.fundamental import (
+        attach_quotes,
+        evaluate,
+        fetch_candles,
+        report,
+        settled_markets,
+    )
 
     s = Settings()
     cache = s.data_dir / "cache" / "approval"
@@ -1041,9 +1047,9 @@ def run(fetch: bool = False, sims: int = 4000, seed: int = 7) -> Path:
     for split in ("dev", "holdout"):
         part = lad.filter(pl.col("split") == split)
         traded = part.filter(pl.col("ladder_n") > 0)
-        mu, tt, k = clustered_mean(traded["ladder_pnl"].to_numpy(), traded["event"].to_numpy()) if traded.height else (0, None, 0)
+        _mu, tt, k = clustered_mean(traded["ladder_pnl"].to_numpy(), traded["event"].to_numpy()) if traded.height else (0, None, 0)
         bp = part.filter(pl.col("best_pnl").is_not_null())
-        mu2, tt2, k2 = clustered_mean(bp["best_pnl"].to_numpy(), bp["event"].to_numpy()) if bp.height else (0, None, 0)
+        mu2, tt2, _k2 = clustered_mean(bp["best_pnl"].to_numpy(), bp["event"].to_numpy()) if bp.height else (0, None, 0)
         lad_rows.append({"split": split, "theta": th_star, "decisions": part.height, "ladder_decisions_traded": traded.height,
                          "ladder_staked_$": round(float(traded["ladder_staked"].sum()), 2),
                          "ladder_pnl_$": round(float(traded["ladder_pnl"].sum()), 2),
