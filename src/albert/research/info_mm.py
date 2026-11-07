@@ -789,7 +789,7 @@ def l2_study(s, start: str = "2026-11-05T03", end: str = "2026-11-05T18", split:
     assert rec is not None
     res = market_results({f.market for f in sim0.fills}, res_cache)
     fills[f"quoter_{int(lat0)}"] = fill_frame(sim0, res, fee_info)
-    meta[f"quoter_{int(lat0)}"] = {"orders": len(sim0.orders), "events": st.get("events"), "diag": dict(sim0.diag)}
+    meta[f"quoter_{int(lat0)}"] = {"orders": len(sim0.orders), "replay_events": st.get("events"), "diag": dict(sim0.diag)}
     trades = rec.trades_frame()
     orders = l2_orders(trades)
     stats_dev = l2_market_stats(sim0, orders, t_lo, split_ns).with_columns(pl.lit("dev").alias("window"))
@@ -806,7 +806,7 @@ def l2_study(s, start: str = "2026-11-05T03", end: str = "2026-11-05T18", split:
         sim, _, st = run_l2(s, start, end, baseline_quoter(fee_info), latency_ms=lat, fee_info=fee_info)
         res = market_results({f.market for f in sim.fills}, res_cache)
         fills[f"quoter_{int(lat)}"] = fill_frame(sim, res, fee_info)
-        meta[f"quoter_{int(lat)}"] = {"orders": len(sim.orders), "events": st.get("events"), "diag": dict(sim.diag)}
+        meta[f"quoter_{int(lat)}"] = {"orders": len(sim.orders), "replay_events": st.get("events"), "diag": dict(sim.diag)}
         del sim
 
     adverse = adverse_tables(execs, split_ns)
@@ -829,7 +829,7 @@ def l2_study(s, start: str = "2026-11-05T03", end: str = "2026-11-05T18", split:
                 f = attach_info(f, t_col="placed_ns", mid_cols=("bid0", "ask0"), roll=roll, static=static,
                                 buckets=buckets, split_ns=split_ns, adverse=adverse)
             fills[f"{name}_{int(lat)}"] = f
-            meta[f"{name}_{int(lat)}"] = {"orders": len(sim.orders), "events": st.get("events"),
+            meta[f"{name}_{int(lat)}"] = {"orders": len(sim.orders), "replay_events": st.get("events"),
                                           "trades_seen": strat.trades_seen, "gate_blocks": dict(strat.gate_blocks),
                                           "diag": dict(sim.diag)}
             del sim
