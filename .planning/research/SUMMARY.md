@@ -281,3 +281,28 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
   - **Net:** information from fundamentals exists in a few thin markets (FCS spreads, rain) but
     passive fills are adversely selected enough to consume it; no strategy is significant on
     holdout except the mentions NO-bid price pattern.
+- **Round 3 and data-source policy (2026-11-06 ~02–05 UTC).**
+  - **Policy (user decision):** use a data host only if its *own* robots.txt allows us, and never
+    fetch blocked content through another host. Removed with code, caches and fixtures:
+    rollcall.com/Factba.se (blocks AI crawlers), api.weather.gov and Open-Meteo (`Disallow: /`),
+    nflverse release files fetched via api.github.com (github.com blocks the download path for AI
+    agents; the NFL study went with it). Kept: Kalshi, Polymarket APIs, ESPN API host (no
+    robots.txt; www.espn.com blocks AI crawlers), MLB Stats API, IEM. The rain model is being
+    rebuilt on IEM inputs only.
+  - **Mentions NO-bid pattern is stable** (`mentions_history.py`): the frozen round-2 rule (NO bid
+    at bias-corrected mid + 8c/12c from 6 h before the speech to start − 10 min, trade-through
+    fills on real prints, circuit breaker) on 548 events round 2 never saw (Apr 2025 – Aug 16
+    2026): **+5.8c/fill (t 5.4) at 8c, +7.9c (t 6.4) at 12c**; 15/18 (16/18) months positive, no
+    month significantly negative, no decay (−1.3c/yr, t −0.6); Trump +5.7c, Vance +8.6c, other
+    speakers +6.1c; earnings calls flat (exclude). Holds in ≤ 5c books (+3.0c, t 2.2). Plain-mid
+    control earns the same and taking NO at t loses: it is selling YES into pre-speech price
+    spikes, not information. Median 295 contracts trade through our price per fill (capacity is
+    collateral-bound, not liquidity-bound). Mention series have no maker fee. Unknowns: real queue
+    position (the rule assumes we are never ahead), start-time edits in old milestones.
+  - *NFL EPA model* (removed with nflverse): no information in ≤ 5c books (2026 ladders ~1c wide);
+    2025 signal came from 5–34c books.
+  - *NBA props* (`nba_props.py`): c ≈ 0 in ≤ 5c books; no version pays on holdout or 2026-27
+    smoke test; no pre-tip injury data.
+  - *Forward paper test* (`forward.py`, `deploy/forward-loop.sh`, running for mentions + FCS):
+    records the frozen rules' hypothetical bids each hour; `python3 -m albert.research.forward
+    score all`.
