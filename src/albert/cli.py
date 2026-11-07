@@ -505,6 +505,31 @@ def paper_l2(
                f"equity {end['equity']:+.2f}, halted={end['halted']}  ({run_dir})")
 
 
+@paper_app.command("mentions-report")
+def paper_mentions_report(env: str = typer.Option("paper", help="Ledger folder under data/live/mentions")) -> None:
+    """Score the mentions bot's runs: bids, simulated (paper) or real fills, settlement PnL."""
+    import polars as pl
+
+    from albert.paper_trader import ledger_report
+
+    s = settings()
+    ledgers = sorted((s.data_dir / "live" / "mentions" / env).glob("*/ledger.jsonl"))
+    df = ledger_report(s, ledgers)
+    if not df.height:
+        typer.echo(f"no orders yet in {len(ledgers)} {env} runs")
+        return
+    f = df.filter("filled")
+    settled = f.filter(pl.col("pnl").is_not_null())
+    typer.echo(f"{env}: {df.height} bids on {df['event'].n_unique()} events, {f.height} filled "
+               f"({f.height / df.height:.0%}), {settled.height} settled")
+    if settled.height:
+        typer.echo(f"settled PnL ${settled['pnl'].sum():+.2f} ({settled['pnl'].mean() * 100:+.1f}c per fill), "
+                   f"cost ${settled['price'].sum():.2f}")
+    with pl.Config(tbl_rows=50, tbl_cols=20, tbl_width_chars=160):
+        typer.echo(df.group_by("event").agg(pl.len().alias("bids"), pl.col("filled").sum().alias("fills"),
+                                            pl.col("pnl").sum().round(2).alias("pnl")).sort("event"))
+
+
 @paper_app.command("l2-report")
 def paper_l2_report(run: str = typer.Option(None, help="Run id under data/paper_l2 (default: all)")) -> None:
     """Score live paper maker runs: markouts, mark-to-mid and settlement PnL."""
@@ -656,7 +681,7 @@ def live_plumbing(market: str = typer.Option(None, help="Demo market (default: p
 
 @live_app.command("mentions")
 def live_mentions(
-    env: str = ENV_OPT,
+    env: str = typer.Option("demo", "--env", help="demo | prod | paper (prod market data, simulated fills, no orders)"),
     live: bool = typer.Option(False, "--live", help="Required for prod (with KALSHI_LIVE_ENABLED=1)"),
     minutes: float = typer.Option(1440.0),
     margin: float = typer.Option(0.12, help="NO bid at floor(1 - fair - margin)"),
@@ -665,27 +690,39 @@ def live_mentions(
     max_events: int = typer.Option(3),
     group_limit: int = typer.Option(5, help="Exchange-side: contracts matched per rolling 15 s per event"),
     poll_s: float = typer.Option(60.0),
-    force_event: str = typer.Option(None, help="Demo only: post this event now (orders expire in 15 min)"),
+    force_event: str = typer.Option(None, help="Demo/paper only: post this event now (orders expire in 15 min)"),
 ) -> None:
     """Pre-speech NO bids on Kalshi mention markets (research/mentions_history). Stop with
-    `touch data/live/mentions/STOP` or SIGTERM; every bot order carries an expiration_time."""
+    `touch data/live/mentions/STOP` or SIGTERM; every bot order carries an expiration_time.
+    `--env paper` runs the same bot on prod markets with simulated orders (albert.paper_trader);
+    its kill file is data/live/mentions/paper/STOP."""
     import asyncio
     import signal
 
     from albert.live_mentions import MentionLimits, MentionsBot
     from albert.venues.kalshi_trade import ENVS, KalshiTrader, signer_for
 
-    if force_event and env != "demo":
-        raise typer.BadParameter("--force-event is demo-only")
+    if force_event and env not in ("demo", "paper"):
+        raise typer.BadParameter("--force-event is for demo and paper only")
     s = settings()
-    trader = KalshiTrader(env, signer_for(env), allow_prod=live)
+    root = s.data_dir / "live" / "mentions"
+    stop_file = root / "STOP"
+    if env == "paper":
+        from albert.paper_trader import PaperTrader
+
+        if live:
+            raise typer.BadParameter("--live makes no sense with --env paper")
+        trader = PaperTrader(KalshiTrader("prod", signer_for("prod"), allow_prod=False))
+        data_env, stop_file = "prod", root / "paper" / "STOP"
+    else:
+        trader = KalshiTrader(env, signer_for(env), allow_prod=live)
+        data_env = env
     if not trader.writable:
         raise typer.BadParameter(f"{env} is not enabled for orders (prod needs KALSHI_LIVE_ENABLED=1 and --live)")
-    root = s.data_dir / "live" / "mentions"
     run_dir = root / env / datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     limits = MentionLimits(margin=margin, max_collateral=max_collateral, max_daily_loss=max_daily_loss,
                            max_events=max_events, group_limit=group_limit)
-    bot = MentionsBot(s, env, trader, run_dir, limits=limits, base=ENVS[env]["rest_data"], stop_file=root / "STOP",
+    bot = MentionsBot(s, env, trader, run_dir, limits=limits, base=ENVS[data_env]["rest_data"], stop_file=stop_file,
                       log=typer.echo)
 
     async def main():
