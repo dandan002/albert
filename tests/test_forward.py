@@ -255,17 +255,7 @@ def test_asos_multi_maps_stations_to_codes():
     assert F.asos_multi("station,valid,lon,lat,p01i\n").height == 0
 
 
-def test_om_multi_splits_locations_in_request_order():
-    page = _j("openmeteo/forward_previous_runs_multi.json")
-    om = F.om_multi(page, ["NYC", "PIT"])
-    assert set(om["code"]) == {"NYC", "PIT"} and set(om["n"]) == {1, 2}
-    assert set(om["model"]) <= set(rain.OM_MODELS) and len(set(om["model"])) >= 9
-    assert om.filter(pl.col("code") == "NYC").height == rain.om_frame(page[0], "NYC").height
-    with pytest.raises(ValueError):
-        F.om_multi(page, ["NYC"])
-
-
-def test_rain_inputs_build_round1_features_from_recorded_payloads(tmp_path):
+def test_rain_inputs_build_iem_only_features_from_recorded_payloads(tmp_path):
     s = Settings(data_dir=tmp_path)
     (tmp_path / "cache").mkdir()
     asos = (FIX / "iem" / "forward_asos_multi.csv").read_text()
@@ -273,22 +263,40 @@ def test_rain_inputs_build_round1_features_from_recorded_payloads(tmp_path):
     cli = pl.DataFrame(rain.cli_precip_rows(_j("iem/cli_precip.json"), "NYC"), infer_schema_length=None)
     F.write_parquet(cli, rain._table(s, "cli"))
     mos = {"NBS": (FIX / "iem" / "forward_mos_nbs_knyc.csv").read_text(), "GFS": (FIX / "iem" / "forward_mos_gfs_knyc.csv").read_text()}
-    om = _j("openmeteo/forward_previous_runs_multi.json")[:1]
-    r = Router({"/asos.py": "station,valid,lon,lat,p01i\n", "/mos.py": lambda req: mos[req.url.params["model"]],
-                "/v1/forecast": om})
+    r = Router({"/asos.py": "station,valid,lon,lat,p01i\n", "/mos.py": lambda req: mos[req.url.params["model"]]})
     t = datetime(2026, 11, 6, 2, 45, tzinfo=UTC)
     f = F.rain_inputs(s, ["NYC"], date(2026, 11, 6), t, transport=r.transport())
     assert f.height == 1 and f["code"][0] == "NYC" and not f["decided"][0]
     row = f.row(0, named=True)
     assert row["left"] == 1.0 and row["seen"] == 0.0                    # t is before the CLI day starts
-    assert row["om_n"] >= 9 and row["nbs_pany"] is not None and row["gfs_pany"] is not None
-    # MOS runs used were public at t (NBS 2 h, GFS 5 h lag): rebuild with t one hour earlier differs only via lags
+    assert row["nbs_pany"] is not None and row["gfs_pany"] is not None
+    assert row["pre_max"] is None and row["pre_n"] == 0                 # no ASOS reports: recent rain missing
+    assert not any(c.startswith("om_") or c.startswith("q_") for c in f.columns)
+    # MOS runs used were public at t (NBS 2 h, GFS 5 h lag)
     nbs = pl.DataFrame(rain.mos_rows(mos["NBS"], "NYC"))
     assert nbs.filter(pl.col("runtime") <= t - rain.MOS_LAG["NBS"]).height > 0
-    hosts = {p for p, _ in r.calls}
-    assert any(p.endswith("/asos.py") for p in hosts) and any(p.endswith("/v1/forecast") for p in hosts)
+    # Only IEM is asked: ASOS from 8 h 10 min before t (recent-rain look-back) and both MOS models.
+    paths = [p_ for p_, _ in r.calls]
+    assert paths and all(p_.endswith(("/asos.py", "/mos.py")) for p_ in paths)
+    sts = next(q for p_, q in r.calls if p_.endswith("/asos.py"))["sts"]
+    assert sts == (t - rain.OBS_LAG - rain.RECENT - rain.RECENT_STALE).strftime("%Y-%m-%dT%H:%MZ")
     p = F.rain_predict(_toy_model(f), f)
     assert 0 < p[0] < 1
+
+
+def test_rain_model_refuses_a_frozen_file_for_another_variant(tmp_path):
+    s = Settings(data_dir=tmp_path)
+    path = F.lead_dir(s, "rain") / "frozen_model.json"
+    path.write_text(json.dumps({"variant": "ens", "lam": 30.0, "features": ["logit_clim", "om_lq"], "beta": [0.0],
+                                "mu": [], "sd": []}))
+    with pytest.raises(RuntimeError, match="re-freeze"):
+        F.rain_model(s)
+    _, names = rain.design(F.rain_feature_stub(), rain.VARIANTS[F.RAIN_VARIANT], [])
+    m = _toy_model(F.rain_feature_stub())
+    path.write_text(json.dumps({"variant": F.RAIN_VARIANT, "lam": F.RAIN_LAMBDA, "features": names, "cities": [],
+                                "beta": m.beta.tolist(), "mu": m.mu.tolist(), "sd": m.sd.tolist()}))
+    assert F.rain_model(s).beta.shape == (len(names) + 1,)
+    assert (F.RAIN_VARIANT, F.RAIN_LAMBDA) == (rain.IEM_VARIANT, rain.IEM_LAMBDA)
 
 
 def _toy_model(f: pl.DataFrame):
@@ -304,7 +312,7 @@ def test_rain_orders_use_the_frozen_d12z_blend():
                        "p_model": [0.30, 0.01, 0.30], "eligible": [True, True, False]})
     out = F.rain_orders(df)
     lg = lambda x: np.log(x / (1 - x))  # noqa: E731
-    want = 1 / (1 + np.exp(-(-0.308 + 0.706 * lg(0.52) + 0.587 * lg(0.30))))
+    want = 1 / (1 + np.exp(-(-0.244 + 0.788 * lg(0.52) + 0.485 * lg(0.30))))
     assert out["fair_blend"][0] == pytest.approx(want)
     assert out["fair_midcal"][0] == pytest.approx(1 / (1 + np.exp(-(-0.362 + 1.292 * lg(0.52)))))
     assert out["o_blend8_yes"][0] == np.floor((want - 0.08) * 100) / 100

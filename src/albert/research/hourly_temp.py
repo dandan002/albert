@@ -25,8 +25,10 @@ I(S) - I0 from the newest known index value is regressed on the climatological d
 for Sep-Oct 2025 and Aug 2026 plus the dev index), the recent changes over 15/30/60 min, the NBM
 forecast change over (u0, S] and the anomaly NBM(u0) - I0; log sigma on log recent volatility and
 |drift|; the predictive CDF is the empirical distribution of standardised residuals. Variants
-(persistence, drift only, + trend, + NBM, + OU anomaly, + HRRR 15-minute) were compared by
-leave-one-day-out CV on dev minutes; OU won in every city and lead, HRRR added nothing.
+(persistence, drift only, + trend, + NBM, + OU anomaly) were compared by leave-one-day-out CV on
+dev minutes; OU won in every city and lead. (A + HRRR 15-minute variant, from the Open-Meteo
+single-runs archive, added nothing; it was removed on 2026-11-06 with that source, whose
+robots.txt disallows everything.)
 
 **Result** (``run(s, holdout=True)``, report ``research-fundamental-hourly_temp-*``): the market mid
 beats the nowcast at every lead and city (holdout Brier 0.123 vs 0.088); the model adds a little
@@ -497,7 +499,6 @@ VARIANTS = {
     "trend": ["clim", "d15", "d30", "d60"],            # fitted damped-anomaly regression
     "nbm": ["clim", "d15", "d30", "d60", "nbm"],       # + NBM forecast change
     "ou": ["clim", "d15", "d30", "d60", "nbm", "anom"],  # + anomaly vs NBM level (damped toward F)
-    "hrrr": ["clim", "d15", "d30", "d60", "nbm", "anom", "hc", "ha"],  # + HRRR 15-min change and anomaly
 }
 LOG_ABS_Z = -0.6352                                    # E[log |z|] for z ~ N(0, 1)
 
@@ -572,8 +573,8 @@ HOLDOUT_TO = datetime(2026, 11, 1, tzinfo=UTC)
 
 def full_features(grid: dict[str, tuple[Any, Any]], fc: dict[str, pl.DataFrame], city: str, S: Any, lead: int,
                   coef: dict[str, Any], delay: int | None = None) -> dict[str, Any]:
-    """Index features plus forecast features from ``fc``: NBM (``nbm`` change, ``anom`` = NBM
-    level - I0) and, when present, HRRR (``hc`` change, ``ha`` = HRRR level - I0)."""
+    """Index features plus NBM forecast features from ``fc``: ``nbm`` change and ``anom`` = NBM
+    level - I0."""
     import numpy as np
 
     f = features(grid, city, S, lead, coef, delay if delay is not None else DELAY_MIN)
@@ -582,10 +583,6 @@ def full_features(grid: dict[str, tuple[Any, Any]], fc: dict[str, pl.DataFrame],
     f["nbm"] = nbm_change(nbm, city, S - lead, f["u0"], S)
     f["anom"] = nbm_change(nbm, city, S - lead, f["u0"], S, level=True) - f["I0"]
     f["ok"] = f["ok"] & np.isfinite(f["nbm"]) & np.isfinite(f["anom"])
-    if fc.get("hrrr") is not None:
-        f["hc"] = hrrr_feature(fc["hrrr"], city, S - lead, f["u0"], S)
-        f["ha"] = hrrr_feature(fc["hrrr"], city, S - lead, f["u0"], S, level=True) - f["I0"]
-        f["ok"] = f["ok"] & np.isfinite(f["hc"]) & np.isfinite(f["ha"])
     return f
 
 
@@ -735,10 +732,7 @@ def load_inputs(s, *, through: datetime) -> dict[str, Any]:
     prox = [minute_grid(pl.concat([proxy_index(o, c) for c in TZ])) for o in (o25, o26)]
     nbm = pl.read_parquet(s.tables_dir / "wx_nbm.parquet")
     nbm = nbm.filter(pl.col("runtime") + NBM_LAG < through)
-    hrrr = None
-    if (d / "hrrr.parquet").exists():
-        hrrr = pl.read_parquet(d / "hrrr.parquet").filter(pl.col("run") + HRRR_LAG < through)
-    return {"index": idx, "grid": minute_grid(idx), "proxy": prox, "fc": {"nbm": nbm, "hrrr": hrrr},
+    return {"index": idx, "grid": minute_grid(idx), "proxy": prox, "fc": {"nbm": nbm},
             "markets": pl.read_parquet(d / "markets.parquet")}
 
 
@@ -896,101 +890,6 @@ def _append_tables(path: Path, results: dict[str, Any], seg_city: pl.DataFrame, 
             "## Calibration: market mid", "", md(cal_mid.with_columns(pl.col("bin").cast(pl.String))), ""]
     with path.open("a") as fh:
         fh.write("\n".join(out))
-
-
-# ---- HRRR 15-minute forecasts (Open-Meteo single-runs archive) -------------------------------------
-OM_SINGLE = "https://single-runs-api.open-meteo.com"
-HRRR_LAG = timedelta(hours=2)          # run init + 2 h: HRRR posts ~1 h after init, plus archive delay
-HRRR_EVERY = 3                         # the archive keeps the 00/03/.../21 UTC runs
-# Member-station coordinates (IEM network geojson, FL/NY/NJ/IL/CA_ASOS); the HRRR point per city is
-# the members' centroid (one location per city keeps the Open-Meteo call weight low).
-COORDS = {"FLL": (26.0787, -80.1622), "FXE": (26.2, -80.17), "MIA": (25.788, -80.3169), "OPF": (25.9102, -80.2828),
-          "PMP": (26.2464, -80.111), "FRG": (40.7288, -73.4134), "HPN": (41.0669, -73.7075),
-          "ISP": (40.7939, -73.1017), "LGA": (40.7794, -73.8803), "CDW": (40.8764, -74.2831),
-          "EWR": (40.6827, -74.1693), "SMQ": (40.6239, -74.6694), "TEB": (40.859, -74.0562),
-          "ARR": (41.77, -88.48), "DPA": (41.9078, -88.2486), "MDW": (41.786, -87.7524), "ORD": (41.9602, -87.9316),
-          "PWK": (42.1208, -87.9047), "HHR": (33.9228, -118.3352), "LAX": (33.9382, -118.3865),
-          "LGB": (33.8118, -118.1472), "SMO": (34.021, -118.4471), "SNA": (33.6757, -117.8682)}
-
-
-def city_point(city: str) -> tuple[float, float]:
-    mem = INDEX[next(s for s, c in CITY.items() if c == city)]
-    lat = sum(COORDS[m][0] for m in mem) / len(mem)
-    lon = sum(COORDS[m][1] for m in mem) / len(mem)
-    return round(lat, 4), round(lon, 4)
-
-
-def fetch_hrrr_run(client: CachedClient, run: datetime, cities: list[str], hours: int = 9) -> Any:
-    pts = [city_point(c) for c in cities]
-    return client.get("/v1/forecast", {
-        "latitude": ",".join(str(p[0]) for p in pts), "longitude": ",".join(str(p[1]) for p in pts),
-        "models": "ncep_hrrr_conus", "run": run.strftime("%Y-%m-%dT%H:%M"), "minutely_15": "temperature_2m",
-        "temperature_unit": "fahrenheit", "forecast_hours": hours}).payload
-
-
-def hrrr_rows(payload: Any, run: datetime, cities: list[str]) -> list[dict[str, Any]]:
-    rows = []
-    for c, loc in zip(cities, payload if isinstance(payload, list) else [payload]):
-        m = loc.get("minutely_15") or {}
-        for ts, v in zip(m.get("time") or [], m.get("temperature_2m") or []):
-            if v is not None:
-                rows.append({"city": c, "run": run, "valid": datetime.fromisoformat(ts).replace(tzinfo=UTC),
-                             "tf": float(v)})
-    return rows
-
-
-HRRR_SCHEMA = {"city": pl.String, "run": pl.Datetime("us", "UTC"), "valid": pl.Datetime("us", "UTC"),
-               "tf": pl.Float64}
-
-
-def load_hrrr(s, start: datetime, end: datetime) -> pl.DataFrame:
-    """Every archived HRRR run initialised in [start, end), 15-minute 2 m temperature at each
-    city's member centroid. Runs missing from the archive are skipped."""
-    from albert.http import HttpError
-
-    cl = CachedClient("openmeteo", OM_SINGLE, cache_dir(s), min_interval=1.0)
-    cities = list(TZ)
-    rows: list[dict[str, Any]] = []
-    run = start
-    while run < end:
-        try:
-            rows.extend(hrrr_rows(fetch_hrrr_run(cl, run, cities), run, cities))
-        except HttpError as error:
-            if "request limit" in str(error):        # Open-Meteo hourly/daily quota (shared IP)
-                import time
-
-                now = datetime.now(UTC)
-                print(f"quota hit at {now:%H:%M}; waiting for the next hour", flush=True)
-                time.sleep(3630 - now.minute * 60 - now.second)
-                continue
-            print(f"skip HRRR run {run:%Y-%m-%dT%H}: {str(error)[-120:]}", flush=True)
-        run += timedelta(hours=HRRR_EVERY)
-    return pl.DataFrame(rows, schema=HRRR_SCHEMA)
-
-
-def hrrr_feature(hrrr: pl.DataFrame, city: str, t_dec: Any, a: Any, b: Any, *, level: bool = False) -> Any:
-    """HRRR change F(b) - F(a) (or level F(a)) from the newest run with init + HRRR_LAG <= t."""
-    import numpy as np
-
-    g = hrrr.filter(pl.col("city") == city).sort("run", "valid")
-    runs = (g["run"].dt.epoch("s").to_numpy() // 60).astype(np.int64)
-    vt = (g["valid"].dt.epoch("s").to_numpy() // 60).astype(np.int64)
-    tf = g["tf"].to_numpy()
-    uniq = np.unique(runs)
-    lag = int(HRRR_LAG.total_seconds() // 60)
-    t_dec, a, b = (np.asarray(x, dtype=np.int64) for x in (t_dec, a, b))
-    newest = np.searchsorted(uniq, t_dec - lag, side="right") - 1
-    out = np.full(len(t_dec), np.nan)
-    for back in range(3):
-        pick = newest - back
-        for r in np.unique(pick[pick >= 0]):
-            sel = runs == uniq[r]
-            x, y = vt[sel], tf[sel]
-            if len(x) < 2:
-                continue
-            ok = (pick == r) & np.isnan(out) & (a >= x[0]) & (b <= x[-1])
-            out[ok] = np.interp(a[ok], x, y) if level else np.interp(b[ok], x, y) - np.interp(a[ok], x, y)
-    return out
 
 
 def blend_taker(q: pl.DataFrame) -> pl.DataFrame:

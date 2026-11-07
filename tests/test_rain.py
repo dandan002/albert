@@ -58,40 +58,47 @@ def test_mos_rows_nbs(fixture_text):
     assert len(pops) >= 8 and max(r["p06"] for r in pops) == 39.0
 
 
-def test_openmeteo_rows(fixture):
-    rows = rain.openmeteo_rows(fixture("openmeteo/previous_runs.json"), "NYC")
-    df = pl.DataFrame(rows)
-    assert set(df["model"].unique()) == {"ncep_gfs013", "ecmwf_ifs025"}
-    assert set(df["n"].unique()) == {1, 2}
-    assert df.height == 2 * 2 * 48 and df["mm"].sum() > 0     # inches here (unit param), > 0
-
-
 def _win(code: str, day: date, slot: str) -> pl.DataFrame:
     lo, hi = rain.lst_bounds(code, day)
     return pl.DataFrame({"code": [code], "day": [day], "slot": [slot], "t": [rain.slot_time(day, slot)],
                          "lo": [lo], "hi": [hi]})
 
 
-def test_om_features_use_only_runs_public_at_t(fixture):
-    om = pl.DataFrame(rain.openmeteo_rows(fixture("openmeteo/previous_runs.json"), "NYC"))
-    # NYC CLI day 2026-09-01 = [05Z, 05Z+1d); at d 00z (t = 2026-09-01 00Z) hours up to 16Z can
-    # come from day1 runs (T - 24h + 8h <= t), the rest needs day2.
-    win = _win("NYC", date(2026, 9, 1), "d 00z")
-    base = rain.om_features(win, om.filter(pl.col("ts") < datetime(2026, 9, 2, 6, tzinfo=UTC)))
-    t = win["t"][0]
-    hours = pl.datetime_range(win["lo"][0] + timedelta(hours=1), win["hi"][0], "1h", eager=True)
-    want = 0.0
-    for ts in hours:
-        n = 1 if ts - timedelta(hours=24) + rain.OM_LAG <= t else 2
-        want += om.filter((pl.col("model") == "ncep_gfs013") & (pl.col("ts") == ts) & (pl.col("n") == n))["mm"].sum()
-    assert base["q_ncep_gfs013"][0] == pytest.approx(want)
-    # Poison a day1 value for a late hour: day1 is not yet public there, so nothing changes.
-    late = datetime(2026, 9, 2, 3, tzinfo=UTC)
-    poison = om.with_columns(pl.when((pl.col("ts") == late) & (pl.col("n") == 1)).then(99.0)
-                             .otherwise(pl.col("mm")).alias("mm"))
-    again = rain.om_features(win, poison.filter(pl.col("ts") < datetime(2026, 9, 2, 6, tzinfo=UTC)))
-    assert again["q_ncep_gfs013"][0] == pytest.approx(want)
-    assert 0 <= again["om_wet01"][0] <= 1
+def test_recent_rain_uses_reports_valid_by_t_minus_lag(fixture_text):
+    obs = pl.DataFrame(rain.asos_precip_rows(fixture_text("iem/asos_precip.csv"), "NYC"))
+    win = pl.concat([_win("NYC", date(2026, 9, 1), "d 12z"), _win("NYC", date(2026, 9, 2), "d 00z")])
+    got = rain.recent_rain(win, obs).sort("slot")
+    for r in got.iter_rows(named=True):
+        u = rain.slot_time(r["day"], r["slot"]) - rain.OBS_LAG
+        last = obs.filter(pl.col("ts") <= u)["ts"].max()
+        span = obs.filter((pl.col("ts") > last - rain.RECENT) & (pl.col("ts") <= last))
+        assert r["pre_max"] == pytest.approx(span["p01i"].max()) and r["pre_n"] == span.height
+    by = dict(zip(got["slot"], got["pre_max"], strict=True))
+    assert by["d 12z"] == pytest.approx(0.11)          # the 05:51Z hour of 2026-09-01, before the 12z decision
+    # A wet report after t - OBS_LAG is not seen; a stale station (nothing within 2 h) is missing.
+    late = pl.DataFrame({"code": ["NYC"], "ts": [datetime(2026, 9, 1, 11, 55, tzinfo=UTC)], "p01i": [0.5],
+                         "lat": [None], "lon": [None]}, schema=obs.schema)
+    assert rain.recent_rain(win, pl.concat([obs, late])).sort("slot")["pre_max"].to_list() == got["pre_max"].to_list()
+    old = obs.filter(pl.col("ts") < datetime(2026, 9, 1, 9, tzinfo=UTC))
+    stale = rain.recent_rain(win.filter(pl.col("slot") == "d 12z"), old)
+    assert stale["pre_max"][0] is None and stale["pre_n"][0] == 0
+
+
+def test_build_features_and_design_are_iem_only(fixture, fixture_text):
+    obs = pl.DataFrame(rain.asos_precip_rows(fixture_text("iem/asos_precip.csv"), "NYC"))
+    mos = pl.DataFrame(rain.mos_rows(fixture_text("iem/nbs_pop.csv"), "NYC"))
+    cli = pl.DataFrame(rain.cli_precip_rows(fixture("iem/cli_precip.json"), "NYC"), infer_schema_length=None)
+    clim = rain.climatology(cli.with_columns(pl.col("day").dt.offset_by("-1y")), False, years=(2025,))
+    win = _win("NYC", date(2026, 9, 1), "d 12z")
+    f = rain.build_features(win, obs, mos, clim)
+    assert f.height == 1 and not any("om" in c for c in f.columns)
+    X, names = rain.design(f, rain.VARIANTS[rain.IEM_VARIANT], [])
+    assert X.shape == (1, len(names)) and np.isfinite(X).all()
+    assert {"log_pre_max", "pre_wet", "pre_missing", "trace_today", "nbs_missing", "gfs_missing"} <= set(names)
+    row = dict(zip(names, X[0], strict=True))
+    assert row["pre_wet"] == 1.0 and row["pre_missing"] == 0.0
+    assert row["nbs_missing"] == 1.0                    # the 2025 NBS run is not for this day: missing, filled
+    assert set(rain.VARIANTS) == {"climo", "nbm", "mos", "mos_obs", "full"}
 
 
 def test_mos_features_respect_runtime_lag(fixture_text):

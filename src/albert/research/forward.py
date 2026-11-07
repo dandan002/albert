@@ -19,14 +19,15 @@ Leads (``data/cache/forward/<lead>/<UTC stamp>.parquet``, one row per market):
   at start - 24 h, from one batch-candle request); the circuit-breaker variant (cancel the event
   at the first print >= 95c on a leg asked <= 80c at ``t``) is scored as ``+cb``.
 * ``rain`` (``weather_maker`` / ``rain``): at 12:00-14:00 UTC (the loop runs 12:05), today's
-  ``KXRAIN`` legs whose book is <= 3c wide. Model = round 1's ``ens`` ridge logit (lambda 30)
-  trained exactly as ``rain.expanding_predictions`` trains the November model (slot d 12z,
-  station-days before 2026-10-30), saved once to ``rain/frozen_model.json``; inputs fetched live
-  (IEM ASOS + NBS/GFS MOS, Open-Meteo previous runs) through round 1's own feature code with its
-  as-of lags. Fair = the dev blend sigmoid(-0.308 + 0.706 logit(mid) + 0.587 logit(p)); a YES and
-  a NO bid at 8c; controls: the dev mid-recalibration sigmoid(-0.362 + 1.292 logit(mid)) and the
-  raw mid. Rows where rain was already reported at ``t`` are excluded (as in the study); orders
-  rest until the first ASOS report of >= 0.01" + 10 min, the end of the CLI day, or the close.
+  ``KXRAIN`` legs whose book is <= 3c wide. Model = the IEM-only ridge logit (``rain.IEM_VARIANT``,
+  re-frozen 2026-11-06 after Open-Meteo was dropped) trained exactly as
+  ``rain.expanding_predictions`` trains the November model (slot d 12z, station-days before
+  2026-10-30), saved once to ``rain/frozen_model.json``; inputs fetched live from IEM only (ASOS
+  precipitation, NBS / GFS MOS) through the study's own feature code with its as-of lags. Fair =
+  the dev blend sigmoid(a + b logit(mid) + c logit(p)) (``RAIN_BLEND``); a YES and a NO bid at 8c;
+  controls: the dev mid-recalibration (``RAIN_MIDCAL``) and the raw mid. Rows where rain was
+  already reported at ``t`` are excluded (as in the study); orders rest until the first ASOS
+  report of >= 0.01" + 10 min, the end of the CLI day, or the close.
 * ``fcs`` (``ncaaf_maker``): FCS spread legs 5-7 h before ESPN kickoff (an hourly check of the
   ``football_game`` milestones), books 6-15c wide. ``ncaaf_maker.snapshot_open`` computes the
   frozen model, blend (``frozen.json``) and the frozen maker bids (margin 3c, |fair - mid| >= 2c,
@@ -42,8 +43,8 @@ never enter the ledger and are left out of the score unless ``--include-adhoc``.
     nice -n 10 python -m albert.research.forward snapshot rain --force
     nice -n 10 python -m albert.research.forward score all
 
-Public data only: Kalshi market / order book / trade / milestone endpoints, IEM, Open-Meteo,
-ESPN (inside ``ncaaf_maker``). Raw responses are recorded under ``data/cache/forward/raw``.
+Public data only: Kalshi market / order book / trade / milestone endpoints, IEM, ESPN (inside
+``ncaaf_maker``). Raw responses are recorded under ``data/cache/forward/raw``.
 """
 
 from __future__ import annotations
@@ -73,13 +74,14 @@ SAID_BID, SAID_JUMP = 0.97, 0.12
 CB_PRINT, CB_ASK = 0.95, 0.80
 SPEECH_GROUPS = ("trump", "vance", "earnings", "worldnews", "bernie")
 
-# rain: research-fundamental-weather_maker-20261106T001548Z (group "d 12z", dev fits)
-RAIN_BLEND = (-0.308, 0.706, 0.587)
+# rain: research-fundamental-rain-iem-20261107T010544Z (rain.run_iem: IEM-only model, group "d 12z",
+# dev fits; the Open-Meteo era blend was (-0.308, 0.706, 0.587), the mid-only fit is unchanged)
+RAIN_BLEND = (-0.244, 0.788, 0.485)
 RAIN_MIDCAL = (-0.362, 1.292)
 RAIN_MARGIN = 0.08
 RAIN_MAX_SPREAD_C = 3
 RAIN_HOURS = (12, 14)                              # due 12:00 <= now < 14:00 UTC
-RAIN_SLOT, RAIN_VARIANT, RAIN_LAMBDA = "d 12z", "ens", 30.0
+RAIN_SLOT, RAIN_VARIANT, RAIN_LAMBDA = "d 12z", "mos_obs", 1.0      # rain.IEM_VARIANT / IEM_LAMBDA
 RAIN_TRAIN_BEFORE = date(2026, 10, 30)             # rain.expanding_predictions' November model
 OBS_LAG = timedelta(minutes=10)
 
@@ -380,17 +382,6 @@ def asos_multi(text: str) -> pl.DataFrame:
     return pl.DataFrame(rows, schema=schema)
 
 
-def om_multi(payload: Any, codes: list[str]) -> pl.DataFrame:
-    """Open-Meteo answers several coordinates with a list of per-location payloads (in request
-    order) and one coordinate with a single payload."""
-    from albert.research import rain
-
-    items = payload if isinstance(payload, list) else [payload]
-    if len(items) != len(codes):
-        raise ValueError(f"open-meteo returned {len(items)} locations for {len(codes)} stations")
-    return pl.concat([rain.om_frame(p, c_) for p, c_ in zip(items, codes, strict=True)])
-
-
 def rain_windows(codes: list[str], day: date, t: datetime) -> pl.DataFrame:
     from albert.research import rain
 
@@ -400,14 +391,6 @@ def rain_windows(codes: list[str], day: date, t: datetime) -> pl.DataFrame:
         rows.append({"code": code, "day": day, "slot": RAIN_SLOT, "t": t, "lo": lo, "hi": hi})
     return pl.DataFrame(rows, schema={"code": pl.String, "day": pl.Date, "slot": pl.String, "t": pl.Datetime("us", "UTC"),
                                       "lo": pl.Datetime("us", "UTC"), "hi": pl.Datetime("us", "UTC")})
-
-
-def station_coords(s) -> dict[str, tuple[float, float]]:
-    """Station coordinates from round 1's cached ASOS rows (what its Open-Meteo requests used)."""
-    from albert.research import rain
-
-    o = rain.load(s, "obs").drop_nulls(["lat", "lon"]).group_by("code").agg(pl.col("lat").first(), pl.col("lon").first())
-    return {r["code"]: (r["lat"], r["lon"]) for r in o.iter_rows(named=True)}
 
 
 def fetch_asos(s, codes: list[str], lo: datetime, hi: datetime, *, now: datetime, transport=None) -> pl.DataFrame:
@@ -423,18 +406,17 @@ def fetch_asos(s, codes: list[str], lo: datetime, hi: datetime, *, now: datetime
 
 
 def rain_inputs(s, codes: list[str], day: date, t: datetime, *, transport=None, log=print) -> pl.DataFrame:
-    """Round 1's station-day features for ``codes`` at decision time ``t`` (``rain.build_features``
-    on live IEM / Open-Meteo data; every lag and as-of rule is round 1's). A station whose request
-    failed gets no row."""
+    """The study's station-day features for ``codes`` at decision time ``t`` (``rain.build_features``
+    on live IEM data; every lag and as-of rule is the study's). A station whose request failed gets
+    no row."""
     from albert.http import HttpError
     from albert.research import rain
 
     win = rain_windows(codes, day, t)
-    coords = station_coords(s)
-    win = win.filter(pl.col("code").is_in(_strs([c_ for c_ in codes if c_ in coords])))
     if not win.height:
         return win
-    obs = fetch_asos(s, win["code"].to_list(), win["lo"].min() - timedelta(hours=1), t, now=t, transport=transport)
+    sts = min(win["lo"].min() - timedelta(hours=1), t - rain.OBS_LAG - rain.RECENT - rain.RECENT_STALE)
+    obs = fetch_asos(s, win["code"].to_list(), sts, t, now=t, transport=transport)
     iem = client(s, "iem", s.iem_base, min_interval=1.5, transport=transport)
     mos_rows: list[dict[str, Any]] = []
     failed: set[str] = set()
@@ -455,51 +437,63 @@ def rain_inputs(s, codes: list[str], day: date, t: datetime, *, transport=None, 
                 if got:
                     break
             mos_rows.extend(got)
-    codes_ok = win["code"].to_list()
-    om = client(s, "openmeteo", rain.OM_BASE, min_interval=15.0, transport=transport)
-    page = om.get("/v1/forecast", {
-        "latitude": ",".join(str(round(coords[c_][0], 4)) for c_ in codes_ok),
-        "longitude": ",".join(str(round(coords[c_][1], 4)) for c_ in codes_ok),
-        "hourly": ",".join(f"precipitation_previous_day{n}" for n in (1, 2)), "models": ",".join(rain.OM_MODELS),
-        "start_date": win["lo"].min().date().isoformat(), "end_date": win["hi"].max().date().isoformat(),
-        "timezone": "GMT"}, cache=False)
-    om_df = om_multi(page.payload, codes_ok)
     mos = pl.DataFrame(mos_rows, schema={"code": pl.String, "model": pl.String, "runtime": pl.Datetime("us", "UTC"),
                                          "ftime": pl.Datetime("us", "UTC"), "p06": pl.Float64, "p12": pl.Float64,
                                          "q06": pl.Float64, "q12": pl.Float64})
     clim = rain.climatology(rain.load(s, "cli"), False)
-    f = rain.build_features(win.filter(~pl.col("code").is_in(_strs(failed))), obs, om_df, mos, clim)
+    f = rain.build_features(win.filter(~pl.col("code").is_in(_strs(failed))), obs, mos, clim)
     return f.with_columns((pl.col("seen") >= 0.01).alias("decided"))
 
 
 def rain_model(s):
-    """Round 1's ``ens`` ridge logit for slot d 12z, trained once on the cached station-day
-    features before RAIN_TRAIN_BEFORE (the model ``rain.expanding_predictions`` would use for
-    November) and frozen to rain/frozen_model.json."""
+    """The IEM-only ridge logit (RAIN_VARIANT, RAIN_LAMBDA) for slot d 12z, trained once on the
+    cached station-day features before RAIN_TRAIN_BEFORE (the model ``rain.expanding_predictions``
+    would use for November) and frozen to rain/frozen_model.json. A frozen file for another
+    variant, lambda or feature list (e.g. the removed Open-Meteo model) is refused, not reused."""
     from albert.research import rain
 
     path = lead_dir(s, "rain") / "frozen_model.json"
     if path.exists():
         d = json.loads(path.read_text())
+        want = rain.design(rain_feature_stub(), rain.VARIANTS[RAIN_VARIANT], d.get("cities") or [])[1]
+        if (d.get("variant"), d.get("lam"), d.get("features")) != (RAIN_VARIANT, RAIN_LAMBDA, want):
+            raise RuntimeError(f"{path} is for {d.get('variant')} / {d.get('lam')}, not {RAIN_VARIANT} / "
+                               f"{RAIN_LAMBDA} with features {want}; move it away to re-freeze")
         m = rain.Logit(lam=d["lam"])
         m.beta, m.mu, m.sd = (np.array(d[x]) for x in ("beta", "mu", "sd"))
+        m.cities = d.get("cities") or []
         return m
-    feats = pl.read_parquet(rain._table(s, "features_001"))
+    feats = pl.read_parquet(rain._table(s, "features_iem_001"))
     fs = feats.filter((pl.col("slot") == RAIN_SLOT) & ~pl.col("decided") & pl.col("wet").is_not_null()
                       & (pl.col("day") < RAIN_TRAIN_BEFORE))
-    X, names = rain.design(fs, rain.VARIANTS[RAIN_VARIANT], sorted(feats["code"].unique().to_list()))
+    parts = rain.VARIANTS[RAIN_VARIANT]
+    cities = sorted(feats["code"].unique().to_list()) if "city" in parts else []
+    X, names = rain.design(fs, parts, cities)
     m = rain.Logit(lam=RAIN_LAMBDA).fit(X, fs["wet"].to_numpy().astype(float))
-    path.write_text(json.dumps({"variant": RAIN_VARIANT, "slot": RAIN_SLOT, "lam": RAIN_LAMBDA, "features": names,
-                                "trained_days": [str(fs["day"].min()), str(fs["day"].max())], "rows": fs.height,
-                                "frozen_at": datetime.now(UTC).isoformat(), "beta": m.beta.tolist(),
-                                "mu": m.mu.tolist(), "sd": m.sd.tolist()}, indent=1))
+    m.cities = cities
+    write_json = {"variant": RAIN_VARIANT, "slot": RAIN_SLOT, "lam": RAIN_LAMBDA, "features": names, "cities": cities,
+                  "inputs": "IEM only (CLI climatology, ASOS p01i, NBS + GFS MOS)",
+                  "trained_days": [str(fs["day"].min()), str(fs["day"].max())], "rows": fs.height,
+                  "frozen_at": datetime.now(UTC).isoformat(), "beta": m.beta.tolist(), "mu": m.mu.tolist(),
+                  "sd": m.sd.tolist()}
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(write_json, indent=1))
+    tmp.replace(path)
     return m
+
+
+def rain_feature_stub() -> pl.DataFrame:
+    """One all-missing feature row: enough for ``rain.design`` to list a variant's feature names."""
+    return pl.DataFrame({"code": ["X"], "clim": [None], "left": [1.0], "seen": [0.0], "pre_max": [None],
+                         **{f"{m}_{k}": [None] for m in ("nbs", "gfs") for k in ("pany", "pmax", "q")}},
+                        schema_overrides={"clim": pl.Float64, "pre_max": pl.Float64,
+                                          **{f"{m}_{k}": pl.Float64 for m in ("nbs", "gfs") for k in ("pany", "pmax", "q")}})
 
 
 def rain_predict(model, feats: pl.DataFrame) -> np.ndarray:
     from albert.research import rain
 
-    X, _ = rain.design(feats, rain.VARIANTS[RAIN_VARIANT], [])
+    X, _ = rain.design(feats, rain.VARIANTS[RAIN_VARIANT], getattr(model, "cities", []))
     return model.predict(X)
 
 
@@ -544,7 +538,7 @@ def _snap_rain(s, now: datetime, force: bool, done: set[str], *, transport=None,
     feats = rain_inputs(s, codes, day, t, transport=transport, log=log) if codes else pl.DataFrame()
     if feats.height:
         feats = feats.with_columns(pl.Series("p_model", rain_predict(rain_model(s), feats)))
-        keep = ["code", "p_model", "decided", "seen", "left", "clim", "nbs_pany", "gfs_pany", "om_n", "om_wet01", "om_lq"]
+        keep = ["code", "p_model", "decided", "seen", "left", "clim", "nbs_pany", "gfs_pany", "nbs_q", "pre_max", "pre_n"]
         rows = rows.join(feats.select(keep), on="code", how="left")
     else:
         rows = rows.with_columns(pl.lit(None, dtype=pl.Float64).alias("p_model"), pl.lit(None, dtype=pl.Boolean).alias("decided"))

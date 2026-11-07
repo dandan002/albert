@@ -36,7 +36,10 @@ the 1-minute candles. On the 261 rain markets whose exact trades were fetched, c
 with trade fills on 99.4-99.6% of orders and the pessimistic bound equals the exact-trade result;
 the taker-side rule changes one fill in ~270 (18 hourly markets: 98-100% agreement).
 
-Result (2026-11-06, report research-fundamental-weather_maker-*):
+Result (2026-11-06, report research-fundamental-weather_maker-*). The rain numbers were produced
+with round 1's Open-Meteo ``ens`` model; Open-Meteo has since been removed (its robots.txt
+disallows everything), :func:`rain_rows` now uses the IEM-only model (``rain.IEM_VARIANT``), and
+the IEM-only re-test of the rain lines is ``rain.run_iem`` (results in ``research/rain.py``):
 
 * **Rain, no.** Main test (quote at d 00z, requote at d 12z, cancel when rain is reported or the
   CLI day ends; dev-fitted per-slot blend; margin 8c chosen on dev): dev +4.2c per fill (t 7.3,
@@ -197,20 +200,23 @@ def first_rain(obs: pl.DataFrame, win: pl.DataFrame) -> pl.DataFrame:
     return win.join(j, on=["code", "key"], how="left")
 
 
-def rain_rows(s, *, log=print) -> pl.DataFrame:
-    """Round-1 rain model (variant ``ens``, ridge 30, expanding monthly fits; frozen) at the four
-    round-1 decision slots for KXRAIN and three for KXRAINWKND, joined to the quote at t, the
-    series fee, and the cancel time ``end`` = min(first reported rain + OBS_LAG, end of the CLI
-    window, market close). Rows already decided at t (rain seen) are dropped, as in round 1."""
+def rain_rows(s, *, variant: str | None = None, lam: float | None = None, log=print) -> pl.DataFrame:
+    """Rain model (``rain.IEM_VARIANT`` / ``rain.IEM_LAMBDA`` unless given; expanding monthly
+    fits) at the four round-1 decision slots for KXRAIN and three for KXRAINWKND, joined to the
+    quote at t, the series fee, and the cancel time ``end`` = min(first reported rain + OBS_LAG,
+    end of the CLI window, market close). Rows already decided at t (rain seen) are dropped, as in
+    round 1. (Round 2 ran this with round 1's Open-Meteo ``ens`` model, since removed.)"""
     from albert.research import fundamental as fu
     from albert.research import rain
 
+    variant = variant or rain.IEM_VARIANT
+    lam = rain.IEM_LAMBDA if lam is None else lam
     markets = fu.settled_markets(s, list(rain.SERIES))
     fees = markets.select("ticker", "fee_type", "fee_multiplier")
     legs = rain.market_legs(markets)
     codes = sorted(set(legs["code"].to_list()))
     feats = rain.station_day_features(s, codes, False)      # round 1: trace settles NO (203/203)
-    preds = rain.expanding_predictions(feats, "ens", [date(2026, m, 1) for m in (8, 9, 10)], lam=30.0)
+    preds = rain.expanding_predictions(feats, variant, [date(2026, m, 1) for m in (8, 9, 10)], lam=lam)
     candles = rain_candles(s)
     obs = rain.load(s, "obs")
     # KXRAIN
@@ -768,13 +774,14 @@ RAIN_FAIRS = ("f_mid", "f_model", "f_blend", "f_midrecal", "f_roll28", "f_roll28
 HOURLY_FAIRS = ("f_mid", "f_model", "f_blend", "f_midrecal", "f_roll7", "f_roll7mid")
 
 
-def prepare_rain(s, *, log=print) -> tuple[pl.DataFrame, dict[str, Any]]:
+def prepare_rain(s, *, variant: str | None = None, lam: float | None = None,
+                 log=print) -> tuple[pl.DataFrame, dict[str, Any]]:
     """Rain rows with every fair value. Groups: the four KXRAIN slots, and one weekend group.
     Static blends: dev out-of-fold over 5 contiguous blocks of dev days. Rolling: 28 days of rows
     whose markets had closed (+1 h) before the decision day."""
     from albert.research import rain
 
-    q = rain_rows(s, log=log)
+    q = rain_rows(s, variant=variant, lam=lam, log=log)
     # Split by the event's day (not by t): the d-1 12z decision for Oct 1 is made on Sep 30 but its
     # outcome belongs to the holdout, so it must not enter the dev fit.
     q = q.with_columns(pl.col("event").map_elements(rain.event_day, return_dtype=pl.Date).alias("event_day"))

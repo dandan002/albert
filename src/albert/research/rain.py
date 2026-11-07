@@ -12,21 +12,14 @@ trace ("T", < 0.01") counts as YES is decided from data (:func:`trace_rule`), no
 **Inputs and when each was knowable** (every feature is built only from data available at the
 decision time ``t``):
 
-* *Open-Meteo Previous Runs API* (archived NWP runs: ECMWF IFS, ECMWF AIFS, GFS, HRRR, NBM grid,
-  ICON, GEM, UKMO, JMA, ARPEGE). ``precipitation_previous_dayN`` at valid hour T comes from the run
-  initialised at floor_cycle(T) - 24·N h: checked hour by hour against the Single Runs API (NYC,
-  2026-09-02) for GFS, IFS, GEM, ICON, UKMO and ARPEGE (lead 24N..24N+11 h). Exception: the NBM
-  grid matches ceil6(T) - 24 h (lead 19-24 h); AIFS/JMA (6-hourly output) are ambiguous. Hour T
-  is used at ``t`` only if T - 24·N + ``OM_LAG`` <= t (``OM_LAG`` = 8 h), choosing the smallest
-  such N. A dev rerun with ``OM_LAG`` = 14 h and MOS lags +2/+3 h (covers the NBM offset with
-  ~9 h to spare) changed nothing material (blend c 0.60 -> 0.57, taker +8.1 -> +8.0c).
 * *IEM MOS archive*: NBM text (NBS) and GFS MOS (MAV) station guidance, 6/12-h probability of
   precipitation (PoP, >= 0.01") and QPF. A run is used only if runtime + lag <= t (NBS 2 h, GFS
   MOS 5 h; MOS text is out ~1 h / ~4 h after the cycle).
-* *IEM ASOS* METARs (routine + special), hourly precipitation ``p01i`` (trace = 0.0001): used only
-  for "rain so far", from reports valid at least ``OBS_LAG`` before t. A row where rain was already
-  reported in the CLI day before t is *decided* and is excluded from model fitting and scoring
-  (reported separately).
+* *IEM ASOS* METARs (routine + special), hourly precipitation ``p01i`` (trace = 0.0001), from
+  reports valid at least ``OBS_LAG`` before t: "rain so far" in the CLI day (a row where rain was
+  already reported before t is *decided* and is excluded from model fitting and scoring, reported
+  separately; a trace so far is a feature) and recent rain whatever the day (the wettest hour in
+  the 6 h before the last report, :func:`recent_rain`).
 * *IEM CLI archive* (json/cli.py): settlement labels (training) and climatology (2016-2025).
 
 Decision slots (UTC): ``d-1 12z`` (the market opens ~09:10 UTC the day before), ``d 00z`` (previous
@@ -38,15 +31,31 @@ public by the month's first decision).
 
 Result (2026-11-05, ``run()``; report data/reports/research-fundamental-rain-20261105T230143Z):
 trace = NO (203/203 trace days settled NO; CLI label = Kalshi result on all 2,044 KXRAIN legs).
-Chosen on dev: "ens" (NBM + GFS MOS PoP + 10-model ensemble summary), ridge 30. Dev: the model
+Chosen on dev: "ens" (NBM + GFS MOS PoP + a 10-model Open-Meteo ensemble summary; that source
+and its feature groups were removed on 2026-11-06 because the Open-Meteo API hosts' robots.txt is
+``Disallow: /``), ridge 30. Dev: the model
 adds information (blend c 0.61, t 8.1) and the taker earns +8.1c at theta 0.12 (t 2.9). October
 holdout: market Brier 0.0490 vs model 0.0517, dev blend 0.0504 (worse than the mid), taker
 +0.4c (t 0.1, 186 trades), blend taker and maker negative. About half the dev edge was the
 market over-pricing YES in Aug-Sep (a mid-only recalibration made +1.4c on dev, -1.4c in
 October); the market was calibrated in October. No tradable edge.
 
-Rerun: ``rain.fetch_iem`` / ``rain.fetch_openmeteo`` (cached), ``fundamental.fetch_candles`` for
-pre-cutoff markets + :func:`fetch_candles_batch`, then ``rain.run(settings())``.
+IEM-only rebuild (2026-11-07, :func:`run_iem`; report
+data/reports/research-fundamental-rain-iem-20261107T010544Z). Same splits, as-of rules and
+expanding fits. Dev choice: "mos_obs" (NBS + GFS MOS + recent ASOS rain), ridge 1, station-day
+log loss 0.2636 (Open-Meteo "ens" was 0.2651, "mos" 0.2657). Blend c (dev fit / October refit,
+t by event): <= 3c books, all slots 0.55 (5.8) / 0.32 (2.0) (Open-Meteo: 0.59 / 0.36 (2.1));
+morning d 12z <= 3c 0.59 (3.5) / 0.58 (2.6) (Open-Meteo 0.67 / 0.68 (3.6)); evening d 00z
+October 0.07 (0.3). The dev-fitted blend does not beat the mid on October Brier (d 12z <= 3c
+0.0451 vs 0.0445); taker at the dev theta 0.12 +4.1c (t 0.6, 49 trades). Harness maker (exact trades, trade-through, d 12z until rain / day end, <= 3c,
+dev-chosen 8c): blend +4.9c dev (t 5.7, 510 fills), October +0.4c (t 0.2, 300 fills); plain-mid
+control -1.6c (t -1.3), mid-only recalibration -0.9c, model alone +1.0c (t 0.7). Round 2's
+candle requote check (d 00z -> d 12z, 8c, <= 3c): +1.6c (t 1.1) vs mid +0.4c (Open-Meteo +1.5c,
+t 1.3). The information survives without Open-Meteo; a significant maker edge does not.
+
+Rerun: ``rain.fetch_iem`` (cached), ``fundamental.fetch_candles`` for pre-cutoff markets +
+:func:`fetch_candles_batch`, then ``rain.run(settings())`` (round-1 report) and
+``rain.run_iem(settings())`` (the IEM-only harness check below).
 """
 
 import csv
@@ -65,12 +74,6 @@ import polars as pl
 NAME = "rain"
 SERIES = ("KXRAIN", "KXRAINWKND")
 IEM_BASE = "https://mesonet.agron.iastate.edu"
-OM_BASE = "https://previous-runs-api.open-meteo.com"
-OM_MODELS = ("ecmwf_ifs025", "ecmwf_aifs025_single", "ncep_gfs013", "ncep_hrrr_conus",
-             "ncep_nbm_conus", "icon_global", "gem_global", "ukmo_global_deterministic_10km",
-             "jma_gsm", "meteofrance_arpege_world")
-OM_DAYS = (1, 2, 3, 4)
-OM_LAG = timedelta(hours=8)
 MOS_LAG = {"NBS": timedelta(hours=2), "GFS": timedelta(hours=5)}
 OBS_LAG = timedelta(minutes=10)
 TRACE = 0.0001
@@ -127,7 +130,7 @@ def slot_time(day: date, slot: str) -> datetime:
     return datetime(d.year, d.month, d.day, hour, tzinfo=UTC)
 
 
-# ---- parsers (tested on recorded IEM / Open-Meteo payloads) ----------------------------------
+# ---- parsers (tested on recorded IEM payloads) ----------------------------------------------
 def _precip(v: Any) -> float | None:
     if v in (None, "", "M"):
         return None
@@ -186,42 +189,6 @@ def mos_rows(text: str, code: str) -> list[dict[str, Any]]:
                      "p06": _float(r.get("p06")), "p12": _float(r.get("p12")),
                      "q06": _float(r.get("q06")), "q12": _float(r.get("q12"))})
     return rows
-
-
-def openmeteo_rows(payload: dict[str, Any], code: str) -> list[dict[str, Any]]:
-    """Previous Runs API hourly payload -> long rows (code, model, n, ts, mm). ``ts`` is the end
-    of the hour (Open-Meteo precipitation is the preceding-hour sum); ``n`` the day offset."""
-    h = payload.get("hourly") or {}
-    times = [datetime.fromisoformat(x).replace(tzinfo=UTC) for x in h.get("time") or []]
-    rx = re.compile(r"^precipitation_previous_day(\d)_(.+)$")
-    rows = []
-    for key, vals in h.items():
-        m = rx.match(key)
-        if not m:
-            continue
-        n, model = int(m.group(1)), m.group(2)
-        for ts, v in zip(times, vals, strict=False):
-            if v is not None:
-                rows.append({"code": code, "model": model, "n": n, "ts": ts, "mm": float(v)})
-    return rows
-
-
-def om_frame(payload: dict[str, Any], code: str) -> pl.DataFrame:
-    """Columnar version of :func:`openmeteo_rows` (same rows, built without per-value dicts)."""
-    h = payload.get("hourly") or {}
-    times = pl.Series("ts", h.get("time") or []).str.strptime(pl.Datetime("us"), "%Y-%m-%dT%H:%M").dt.replace_time_zone("UTC")
-    rx = re.compile(r"^precipitation_previous_day(\d)_(.+)$")
-    parts = []
-    for key, vals in h.items():
-        m = rx.match(key)
-        if m:
-            parts.append(pl.DataFrame({"ts": times, "mm": pl.Series(vals, dtype=pl.Float64)})
-                         .with_columns(pl.lit(code).alias("code"), pl.lit(m.group(2)).alias("model"),
-                                       pl.lit(int(m.group(1)), dtype=pl.Int64).alias("n")))
-    if not parts:
-        return pl.DataFrame(schema={"code": pl.String, "model": pl.String, "n": pl.Int64,
-                                    "ts": pl.Datetime("us", "UTC"), "mm": pl.Float64})
-    return pl.concat(parts).drop_nulls("mm").select("code", "model", "n", "ts", "mm")
 
 
 # ---- fetching (cached under data/cache/rain/) ------------------------------------------------
@@ -302,30 +269,6 @@ def fetch_iem(s, codes: list[str], *, log=print) -> None:
            _table(s, "mos"))
 
 
-def fetch_openmeteo(s, coords: dict[str, tuple[float, float]], *, log=print) -> None:
-    """Previous-runs hourly precipitation (day1..day4) for every model, WX_START..WX_END."""
-    from albert.http import CachedClient, HttpError
-
-    om = CachedClient("openmeteo", OM_BASE, _cache_dir(s), min_interval=15.0, max_retries=6)
-    hourly = ",".join(f"precipitation_previous_day{n}" for n in OM_DAYS)
-    frames: list[pl.DataFrame] = []
-    for code, (lat, lon) in sorted(coords.items()):
-        # Two half-period requests per station keep each call's weight moderate.
-        mid = date(2026, 4, 1)
-        for lo, hi in ((WX_START, mid - timedelta(days=1)), (mid, WX_END)):
-            try:
-                page = om.get("/v1/forecast", {
-                    "latitude": round(lat, 4), "longitude": round(lon, 4), "hourly": hourly,
-                    "models": ",".join(OM_MODELS), "start_date": lo.isoformat(),
-                    "end_date": hi.isoformat(), "timezone": "GMT"})
-            except HttpError as e:
-                log(f"openmeteo {code} {lo}: {str(e)[:160]}")
-                continue
-            frames.append(om_frame(page.payload, code))
-        log(f"openmeteo {code}: {sum(f.height for f in frames)} rows")
-    _write(pl.concat(frames).unique(["code", "model", "n", "ts"]), _table(s, "om"))
-
-
 def load(s, name: str) -> pl.DataFrame:
     return pl.read_parquet(_table(s, name))
 
@@ -402,37 +345,6 @@ def rain_so_far(win: pl.DataFrame, obs: pl.DataFrame) -> pl.DataFrame:
 
 
 # ---- forecast features (as of t) ---------------------------------------------------------------
-def om_features(win: pl.DataFrame, om: pl.DataFrame) -> pl.DataFrame:
-    """Per window row and Open-Meteo model: QPF (mm) over the rest of the day (ws, hi], each hour
-    taken from the most recent run that was public at t: the smallest N with
-    T - 24N h + OM_LAG <= t (the run behind previous_dayN at T started at or before T - 24N h)."""
-    hours = (win.select("code", "day", "slot", "t", "lo", "hi")
-             .with_columns(pl.max_horizontal("lo", "t").dt.truncate("1h").alias("ws"))
-             .with_columns(pl.datetime_ranges(pl.col("ws") + timedelta(hours=1), pl.col("hi"), "1h").alias("ts"))
-             .explode("ts").drop_nulls("ts")
-             .with_columns(((pl.col("ts") - pl.col("t") + OM_LAG).dt.total_seconds() / 86400.0)
-                           .ceil().cast(pl.Int64).clip(lower_bound=1).alias("n")))
-    j = hours.join(om, on=["code", "ts", "n"], how="inner")
-    per = (j.group_by("code", "day", "slot", "model")
-           .agg(pl.col("mm").clip(lower_bound=0.0).sum().alias("qpf"), pl.len().alias("hrs"), pl.col("n").max().alias("nmax")))
-    need = hours.group_by("code", "day", "slot").agg(pl.len().alias("need"))
-    per = per.join(need, on=["code", "day", "slot"]).filter(pl.col("hrs") >= pl.col("need") * 0.9)
-    wide = per.pivot(on="model", index=["code", "day", "slot"], values="qpf")
-    for m in OM_MODELS:
-        if m not in wide.columns:
-            wide = wide.with_columns(pl.lit(None, dtype=pl.Float64).alias(m))
-    q = [pl.col(m) for m in OM_MODELS]
-    ok = pl.sum_horizontal([c.is_not_null().cast(pl.Int32) for c in q])
-    return wide.select(
-        "code", "day", "slot", *[pl.col(m).alias(f"q_{m}") for m in OM_MODELS],
-        ok.alias("om_n"),
-        (pl.sum_horizontal([(c >= 0.1).cast(pl.Float64) for c in q]) / ok).alias("om_wet01"),
-        (pl.sum_horizontal([(c >= 1.0).cast(pl.Float64) for c in q]) / ok).alias("om_wet1"),
-        (pl.sum_horizontal([(c >= 5.0).cast(pl.Float64) for c in q]) / ok).alias("om_wet5"),
-        (pl.sum_horizontal([(c + 0.1).log() for c in q]) / ok).alias("om_lq"),
-    )
-
-
 def mos_features(win: pl.DataFrame, mos: pl.DataFrame, model: str) -> pl.DataFrame:
     """Latest MOS run public at t (runtime + lag <= t); the probability of no precipitation over
     the rest of the day (ws, hi] from 6-h PoPs, each block weighted by its overlap with the window
@@ -462,10 +374,35 @@ def mos_features(win: pl.DataFrame, mos: pl.DataFrame, model: str) -> pl.DataFra
             .with_columns((pl.col(f"{pre}_cov") / pl.col("need")).clip(0, 1).alias(f"{pre}_cov")).drop("need"))
 
 
-def build_features(win: pl.DataFrame, obs: pl.DataFrame, om: pl.DataFrame, mos: pl.DataFrame,
-                   clim: pl.DataFrame) -> pl.DataFrame:
+RECENT = timedelta(hours=6)
+RECENT_STALE = timedelta(hours=2)
+
+
+def recent_rain(win: pl.DataFrame, obs: pl.DataFrame) -> pl.DataFrame:
+    """ASOS precipitation in the ``RECENT`` hours before t - OBS_LAG, whatever the CLI day (rain
+    that is falling or just fell, e.g. the evening before): ``pre_max`` = the largest ``p01i``
+    among reports in (u - 6 h, u] where u is the last report valid by t - OBS_LAG (``p01i`` sums
+    since the last routine METAR, so this is the wettest hour), ``pre_n`` = reports in that span.
+    Null when the last report is more than ``RECENT_STALE`` older than t - OBS_LAG."""
+    span = f"{int(RECENT.total_seconds())}s"
+    o = (obs.filter(pl.col("p01i").is_not_null()).select("code", "ts", "p01i").sort("code", "ts")
+         .with_columns(pl.col("p01i").rolling_max_by("ts", window_size=span).over("code").alias("pre_max"),
+                       pl.col("p01i").is_not_null().cast(pl.Int64).rolling_sum_by("ts", window_size=span)
+                       .over("code").alias("pre_n")))
+    w = (win.select("code", "day", "slot", "t").with_columns((pl.col("t") - OBS_LAG).alias("u"))
+         .sort("code", "u"))
+    j = w.join_asof(o.select("code", "ts", "pre_max", "pre_n"), left_on="u", right_on="ts", by="code",
+                    strategy="backward", check_sortedness=False)
+    fresh = pl.col("ts").is_not_null() & (pl.col("ts") >= pl.col("u") - RECENT_STALE)
+    return j.select("code", "day", "slot", pl.when(fresh).then(pl.col("pre_max")).alias("pre_max"),
+                    pl.when(fresh).then(pl.col("pre_n")).otherwise(0).alias("pre_n"))
+
+
+def build_features(win: pl.DataFrame, obs: pl.DataFrame, mos: pl.DataFrame, clim: pl.DataFrame) -> pl.DataFrame:
+    """IEM-only station-day features at t: rain so far in the CLI day, recent ASOS rain, NBS and
+    GFS MOS PoP / QPF from the latest run public at t, climatology and the share of the day left."""
     f = rain_so_far(win, obs)
-    f = f.join(om_features(win, om), on=["code", "day", "slot"], how="left")
+    f = f.join(recent_rain(win, obs), on=["code", "day", "slot"], how="left")
     for model in ("NBS", "GFS"):
         f = f.join(mos_features(win, mos, model), on=["code", "day", "slot"], how="left")
     f = f.with_columns(pl.col("day").dt.month().alias("month")).join(clim, on=["code", "month"], how="left")
@@ -474,21 +411,25 @@ def build_features(win: pl.DataFrame, obs: pl.DataFrame, om: pl.DataFrame, mos: 
 
 
 # ---- model -----------------------------------------------------------------------------------
+IEM_VARIANT, IEM_LAMBDA = "mos_obs", 1.0      # select_variant on dev station-days, 2026-11-06 (see run_iem)
+
+
 def _lg(x: np.ndarray, eps: float = 0.005) -> np.ndarray:
     x = np.clip(x, eps, 1 - eps)
     return np.log(x / (1 - x))
 
 
-# Feature groups: clim = logit climatology + share of the day left; nbs / gfs = MOS PoP (any rain
-# in the rest of the day, max block PoP, QPF, missing flag); ens = Open-Meteo multi-model ensemble
-# summary (share of the 10 models with >= 0.1 / 1 / 5 mm, mean log QPF); om = ens + each model's
-# own log QPF; city = station intercepts (ridge-shrunk).
+# Feature groups (IEM only since 2026-11-06): clim = logit climatology + share of the day left;
+# nbs / gfs = MOS PoP (any rain in the rest of the day, max block PoP, QPF, missing flag); obs =
+# recent ASOS rain (wettest hour in the last 6 h, any-rain flag, missing flag) and a trace already
+# reported in the CLI day; city = station intercepts (ridge-shrunk). Round 1's "ens" / "om" groups
+# (Open-Meteo NWP runs) were removed with that data source (robots.txt ``Disallow: /``).
 VARIANTS: dict[str, tuple[str, ...]] = {
     "climo": ("clim",),
     "nbm": ("clim", "nbs"),
     "mos": ("clim", "nbs", "gfs"),
-    "ens": ("clim", "nbs", "gfs", "ens"),
-    "full": ("clim", "nbs", "gfs", "om", "city"),
+    "mos_obs": ("clim", "nbs", "gfs", "obs"),
+    "full": ("clim", "nbs", "gfs", "obs", "city"),
 }
 LAMBDAS = (1.0, 30.0, 300.0)
 
@@ -517,18 +458,14 @@ def design(f: pl.DataFrame, parts: tuple[str, ...], cities: list[str]) -> tuple[
                 f"logit_{src}_pmax")
             add(np.log1p(np.nan_to_num(f[f"{src}_q"].to_numpy().astype(float), nan=0.0)), f"log_{src}_q")
             add(miss.astype(float), f"{src}_missing")
-    if "ens" in parts or "om" in parts:
-        n = f["om_n"].fill_null(0).to_numpy()
-        miss = n < 3
-        for k in ("om_wet01", "om_wet1", "om_wet5"):
-            add(np.where(miss, 0.0, np.nan_to_num(f[k].to_numpy().astype(float))), k)
-        add(np.where(miss, math.log(0.1), np.nan_to_num(f["om_lq"].to_numpy().astype(float), nan=math.log(0.1))), "om_lq")
-        add(miss.astype(float), "om_missing")
-    if "om" in parts:
-        for m in OM_MODELS:
-            q = f[f"q_{m}"].to_numpy().astype(float)
-            add(np.log(np.nan_to_num(q, nan=0.0) + 0.1) * ~np.isnan(q), f"lq_{m}")
-            add(np.isnan(q).astype(float), f"miss_{m}")
+    if "obs" in parts:
+        pm = f["pre_max"].to_numpy().astype(float)
+        miss = np.isnan(pm)
+        pm = np.nan_to_num(pm, nan=0.0)
+        add(np.log1p(100 * pm), "log_pre_max")
+        add((pm >= 0.01).astype(float), "pre_wet")
+        add(miss.astype(float), "pre_missing")
+        add((f["seen"].fill_null(0.0).to_numpy() > 0).astype(float), "trace_today")
     if "city" in parts:
         dummies = (f["code"].to_numpy()[:, None] == np.array(cities)[None, :]).astype(float)
         for i, c in enumerate(cities):
@@ -757,21 +694,43 @@ def calibration_table(df: pl.DataFrame, col: str) -> pl.DataFrame:
 # ---- driver ------------------------------------------------------------------------------------
 def station_day_features(s, codes: list[str], trace_counts: bool) -> pl.DataFrame:
     """Features + labels for every station, day (WX_START+1 .. 2026-10-31) and slot; cached."""
-    path = _table(s, f"features_{'T' if trace_counts else '001'}")
+    path = _table(s, f"features_iem_{'T' if trace_counts else '001'}")
     if path.exists():
         return pl.read_parquet(path)
     cli, obs = load(s, "cli"), load(s, "obs")
     clim = climatology(cli, trace_counts)
     parts = []
     for code in codes:  # one station at a time keeps memory well under 1 GB
-        om = pl.scan_parquet(_table(s, "om")).filter(pl.col("code") == code).collect()
         mos = pl.scan_parquet(_table(s, "mos")).filter(pl.col("code") == code).collect()
         o = obs.filter(pl.col("code") == code)
         win = all_windows([code], WX_START + timedelta(days=3), date(2026, 10, 31))
-        parts.append(build_features(win, o, om, mos, clim))
+        parts.append(build_features(win, o, mos, clim))
     f = label_frame(pl.concat(parts, how="diagonal_relaxed"), cli, trace_counts)
     _write(f, path)
     return f
+
+
+DEV_MONTHS = tuple(date(2026, m, 1) for m in range(3, 10))
+
+
+def select_variant(feats: pl.DataFrame, *, slots: tuple[str, ...] = MARKET_SLOTS
+                   ) -> tuple[pl.DataFrame, pl.DataFrame, tuple[str, float]]:
+    """Round 1's model selection, on station-days only (CLI labels, no market data): expanding
+    out-of-sample fits for March-September 2026 for every variant and ridge lambda, scored on the
+    market slots; the lowest log loss wins. Returns the overall table, the per-slot table (each
+    variant at its best lambda) and (variant, lambda)."""
+    sel = pl.concat([expanding_predictions(feats, v, list(DEV_MONTHS), lam=lam).with_columns(pl.lit(lam).alias("lam"))
+                     for v in VARIANTS for lam in LAMBDAS])
+    sel = sel.filter(pl.col("slot").is_in(list(slots)))
+    overall = (sel.group_by("variant", "lam")
+               .agg(pl.len().alias("n"), ((pl.col("p") - pl.col("wet")) ** 2).mean().alias("brier"),
+                    (-(pl.col("wet") * pl.col("p").clip(0.005, 0.995).log()
+                       + (1 - pl.col("wet")) * (1 - pl.col("p").clip(0.005, 0.995)).log())).mean().alias("logloss"),
+                    pl.col("p").mean().alias("mean_p"), pl.col("wet").mean().alias("mean_y"))
+               .sort("logloss", "variant", "lam"))
+    best_lam = overall.unique("variant", keep="first", maintain_order=True)
+    vt = variant_table(sel.join(best_lam.select("variant", "lam"), on=["variant", "lam"]))
+    return overall, vt, (overall["variant"][0], float(overall["lam"][0]))
 
 
 def variant_table(preds: pl.DataFrame) -> pl.DataFrame:
@@ -864,21 +823,10 @@ def run(s=None, *, variant: str | None = None, dev_only: bool = False, log=print
     trace_counts = bool(trow.height and trow["yes_rate"][0] > 0.5)
     feats = station_day_features(s, codes, trace_counts)
     log(f"features {feats.shape}")
-    # Model selection on dev (OOS months up to September 2026), then the chosen variant only.
-    dev_months = [date(2026, m, 1) for m in range(3, 10)]
-    sel = pl.concat([expanding_predictions(feats, v, dev_months, lam=lam).with_columns(pl.lit(lam).alias("lam"))
-                     for v in VARIANTS for lam in LAMBDAS])
-    sel = sel.filter(pl.col("slot").is_in(list(MARKET_SLOTS)))
-    overall = (sel.group_by("variant", "lam")
-               .agg(pl.len().alias("n"), ((pl.col("p") - pl.col("wet")) ** 2).mean().alias("brier"),
-                    (-(pl.col("wet") * pl.col("p").clip(0.005, 0.995).log()
-                       + (1 - pl.col("wet")) * (1 - pl.col("p").clip(0.005, 0.995)).log())).mean().alias("logloss"),
-                    pl.col("p").mean().alias("mean_p"), pl.col("wet").mean().alias("mean_y"))
-               .sort("logloss"))
+    overall, vt, (chosen, lam) = select_variant(feats)
     log(overall)
-    chosen, lam = (variant, LAMBDAS[1]) if variant else (overall["variant"][0], float(overall["lam"][0]))
-    best_lam = overall.sort("logloss").unique("variant", keep="first", maintain_order=True)
-    vt = variant_table(sel.join(best_lam.select("variant", "lam"), on=["variant", "lam"]))
+    if variant:
+        chosen, lam = variant, LAMBDAS[1]
     preds = expanding_predictions(feats, chosen, [date(2026, m, 1) for m in (8, 9, 10)], lam=lam)
     # Station-day scores of the frozen model on October (all stations, not only market legs).
     oct_sd = preds.filter(pl.col("day") >= HOLDOUT_FROM.date())
@@ -1051,5 +999,123 @@ def run(s=None, *, variant: str | None = None, dev_only: bool = False, log=print
             fh.write(f"\nKXRAINWKND blend: {wk_res.get('blend')}\n")
             sec("KXRAINWKND taker", pl.DataFrame(wk_res["taker"], infer_schema_length=None))
     live.write_parquet(path.parent / "rows.parquet")
+    log(f"report: {path}")
+    return path
+
+
+# ---- IEM-only rebuild (2026-11-06): the harness at the morning decision, by quoted spread --------
+IEM_SLOT = "d 12z"
+SPREADS = ("<=3c", "4-6c", ">6c")
+
+
+def spread3(bid: pl.Expr, ask: pl.Expr) -> pl.Expr:
+    """Quoted spread at t in whole cents: <= 3c, 4-6c, > 6c."""
+    sp = ((ask - bid) * 100).round(0)
+    return pl.when(sp <= 3).then(pl.lit(SPREADS[0])).when(sp <= 6).then(pl.lit(SPREADS[1])).otherwise(pl.lit(SPREADS[2]))
+
+
+def morning_trades(s, rows: pl.DataFrame, *, log=print) -> pl.DataFrame:
+    """Every public print of each row's market in [t, end]: complete trade-page chains that round 2
+    cached for whole market lives (no requests) plus ``weather_maker.fetch_trades`` (2 threads,
+    raw pages under data/cache/weather_maker/kalshi) for the other windows."""
+    from albert.research import weather_maker as wm
+
+    have = wm.cached_trades(s, "KXRAIN")
+    todo = rows.filter(~pl.col("ticker").is_in(have["ticker"].unique().implode()))
+    log(f"trades: {rows['ticker'].n_unique() - todo['ticker'].n_unique()} markets cached, {todo.height} windows to fetch")
+    new = wm.fetch_trades(s, todo.select("ticker", pl.col("t").alias("t_from"), pl.col("end").alias("t_to")),
+                          "rain_iem_d12z", workers=2, log=log)
+    return pl.concat([have, new.select(have.columns)]).unique("trade_id")
+
+
+def run_iem(s=None, *, log=print) -> Path:
+    """IEM-only rebuild of the rain model (Open-Meteo removed): dev variant selection on
+    station-days, the expanding monthly fits, round 2's market rows and fair values
+    (``weather_maker.prepare_rain``: dev out-of-fold blend per slot, mid-only recalibration), then
+    the harness on the morning decision (d 12z, quote until rain is reported / the CLI day ends /
+    close): ``fundamental.evaluate`` and ``fundamental.evaluate_maker`` (exact trades,
+    trade-through fills, margin chosen on dev) overall and by quoted spread (<= 3c, 4-6c, > 6c),
+    with the plain mid and the mid-only recalibration as maker controls. Also round 2's blend test
+    by spread for every slot and its candle-fill requote check (d 00z -> d 12z, 8c) for
+    comparison with the Open-Meteo numbers. Writes a report; returns its path."""
+    from albert.config import settings
+    from albert.reports import Report
+    from albert.research import fundamental as fu
+    from albert.research import weather_maker as wm
+
+    s = s or settings()
+    legs = market_legs(fu.settled_markets(s, list(SERIES)))
+    feats = station_day_features(s, sorted(set(legs["code"].to_list())), False)
+    overall, vt, (variant, lam) = select_variant(feats)
+    log(f"dev choice: {variant} lambda {lam}")
+    q, meta = wm.prepare_rain(s, variant=variant, lam=lam, log=log)
+    q = q.with_columns(spread3(pl.col("bid"), pl.col("ask")).alias("spread"))
+    daily = q.filter(pl.col("series") == "KXRAIN")
+    morning = daily.filter(pl.col("slot") == IEM_SLOT)
+    # information: round 2's blend test (dev fit, October refit) per spread bucket and slot
+    info = pl.concat([wm.blend_by(daily, "spread").with_columns(pl.lit("all slots").alias("slot"))]
+                     + [wm.blend_by(daily.filter(pl.col("slot") == sl), "spread").with_columns(pl.lit(sl).alias("slot"))
+                        for sl in MARKET_SLOTS], how="diagonal_relaxed")
+    mix = daily.group_by("holdout", "slot", "spread").agg(pl.len().alias("rows")).sort("holdout", "slot", "spread")
+    # harness: evaluate (scores, dev blend, taker) on the morning rows, overall and per bucket
+    cols = ["ticker", "event", "t", "p", "y", "bid", "ask", "fee_multiplier"]
+    parts = {"all": morning, **{b: morning.filter(pl.col("spread") == b) for b in SPREADS}}
+    ev = {b: fu.evaluate(g.select(cols), HOLDOUT_FROM) for b, g in parts.items() if g.height}
+    ev_scores = pl.concat([pl.DataFrame(r["scores"]).with_columns(pl.lit(b).alias("spread")) for b, r in ev.items()],
+                          how="diagonal_relaxed")
+    ev_blend = pl.DataFrame([{"spread": b, **r.get("blend", {})} for b, r in ev.items()], infer_schema_length=None)
+    ev_taker = pl.concat([pl.DataFrame(r["taker"], infer_schema_length=None).with_columns(
+        pl.lit(b).alias("spread"), pl.lit(r["theta_chosen_on_dev"]).alias("theta_dev")) for b, r in ev.items()],
+        how="diagonal_relaxed")
+    # harness maker on exact trades: the blend (forward rule's fair), the model alone, and controls
+    trades = morning_trades(s, morning, log=log)
+    mk, chosen = [], []
+    for fair in ("f_blend", "f_mid", "f_midrecal", "p"):
+        for b, g in parts.items():
+            g = g.filter(pl.col(fair).is_not_null() & pl.col(fair).is_not_nan())
+            if not g.height:
+                continue
+            r = fu.evaluate_maker(g.select("ticker", "event", "t", "end", pl.col(fair).alias("p"), "bid", "ask", "y",
+                                           "fee_type", "fee_multiplier"), trades, HOLDOUT_FROM)
+            m0 = r["margin_chosen_on_dev"]
+            for row in r["maker"]:
+                mk.append({"fair": fair, "spread": b, **row})
+                if row["margin"] in (m0, 0.08):
+                    chosen.append({"fair": fair, "spread": b, "which": "dev choice" if row["margin"] == m0 else "8c rule",
+                                   **row})
+            log(f"  maker {fair} {b} done")
+    mk_df = pl.DataFrame(mk, infer_schema_length=None)
+    ch_df = pl.DataFrame(chosen, infer_schema_length=None).sort("which", "spread", "fair", "split")
+    # round 2's candle-fill requote check (d 00z -> d 12z, 8c, pessimistic) by spread, for comparison
+    rq = wm.rain_requote_end(q, ("d 00z", "d 12z")).select("ticker", "t", pl.col("end_rq").alias("end_rq2"))
+    two = daily.filter(pl.col("slot").is_in(["d 00z", IEM_SLOT])).join(rq, on=["ticker", "t"], how="left")
+    cp = wm._shift_pessimistic(wm.rain_candle_prints(s, q))
+    weeks = wm.split_weeks(daily)
+    # (weather_maker.orders keeps a fixed column set: the 3-way bucket travels as ``sbucket``)
+    two, m3 = (x.with_columns(pl.col("spread").alias("sbucket")) for x in (two, morning))
+    cand = pl.concat([wm.segments(two, cp, pl.col("end_rq2"), f, 0.08, weeks, ["sbucket"], replace=True)
+                      .with_columns(pl.lit(f).alias("fair"), pl.lit("requote d 00z -> d 12z").alias("test"))
+                      for f in ("f_blend", "f_mid")]
+                     + [wm.segments(m3, cp, pl.col("end"), f, 0.08, weeks, ["sbucket"])
+                        .with_columns(pl.lit(f).alias("fair"), pl.lit("d 12z -> observable").alias("test"))
+                        for f in ("f_blend", "f_mid")], how="diagonal_relaxed").rename({"sbucket": "spread"})
+    rep = Report(s.reports_dir, f"research-fundamental-{NAME}-iem")
+    rep.json("Run", {"variant": variant, "lambda": lam, "inputs": "IEM only: CLI, ASOS p01i, NBS + GFS MOS",
+                     "morning_rows": morning.height, "trade_markets": trades["ticker"].n_unique(),
+                     "weeks": weeks, **meta})
+    rep.table("Variant selection on dev (expanding OOS fits, station-days Mar-Sep 2026, market slots)", overall)
+    rep.table("Variant selection by slot (each variant at its best lambda)", vt)
+    rep.table("Blend logit P = a + b·logit(mid) + c·logit(model) by quoted spread at t and slot (dev fit; "
+              "October refit)", info, max_rows=60)
+    rep.table("Rows by split, slot and spread", mix, max_rows=40)
+    rep.table(f"Harness evaluate, {IEM_SLOT}: scores by spread", ev_scores)
+    rep.table(f"Harness evaluate, {IEM_SLOT}: dev blend and October refit by spread", ev_blend)
+    rep.table(f"Harness evaluate, {IEM_SLOT}: taker by spread (theta chosen on dev per bucket)", ev_taker, max_rows=80)
+    rep.table(f"Harness evaluate_maker, {IEM_SLOT} -> observable (exact trades, trade-through): dev-chosen margin "
+              "and the forward rule's 8c", ch_df, max_rows=80)
+    rep.table("Round 2's candle check (pessimistic hourly fills, 8c) by spread", cand, max_rows=60)
+    rep.table(f"Harness evaluate_maker, {IEM_SLOT}: full margin grid", mk_df, save_as="maker_grid", max_rows=200)
+    path = rep.save()
+    morning.write_parquet(path.parent / "morning_rows.parquet")
     log(f"report: {path}")
     return path
