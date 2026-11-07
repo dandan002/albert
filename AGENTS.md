@@ -7,11 +7,13 @@ signals and on high-performing accounts, then runs systematic small-stake bets.
 - **Bankroll:** $100 to start. The objective (changed 2026-11-03) is **consistent, positive
   returns**, not maximum growth: prefer many small, repeatable bets with stable month-to-month
   results. Low-liquidity markets are fine (we trade small). Ruin avoidance is a hard constraint.
-- **Execution venues:** **Kalshi** (RSA-PSS signed API) and **Polymarket US** (the CFTC-regulated
-  US exchange at docs.polymarket.us; Ed25519-signed API). The bankroll is split across both.
-- **Data-only venue:** **Polymarket international** (polymarket.com) supplies on-chain wallet trades,
-  positions, the leaderboard, and prices. The user is a US resident, so never place orders there and
-  never build geoblock workarounds (VPNs, proxies, third-party wallets).
+- **Execution venue:** **Kalshi** only (RSA-PSS signed API); the whole bankroll sits there
+  (decided 2026-11-07).
+- **Data-only venues:** **Polymarket international** (polymarket.com) supplies on-chain wallet
+  trades, positions, the leaderboard, and prices. The user is a US resident, so never place orders
+  there and never build geoblock workarounds (VPNs, proxies, third-party wallets).
+  **Polymarket US** (docs.polymarket.us) public market data may be used as a reference price or
+  signal; trading there is on hold, so build no Polymarket US order client.
 - **Non-financial:** exclude crypto, financial-index, rates, and economics-release contracts. The
   exact category list is decided from real Kalshi `category` / Polymarket tag values, not guessed.
 
@@ -29,9 +31,8 @@ See `.planning/PROJECT.md` and `.planning/ROADMAP.md`.
 4. **No look-ahead.** Research and backtests may only use data timestamped before the simulated
    decision time.
 5. **Realistic execution.** Fill at the executable bid/ask, apply each venue's own fee schedule
-   (Kalshi rounds fees up per order; Polymarket US uses banker's rounding to the cent and pays
-   maker rebates by tier), and respect displayed size. Re-check the official fee pages before any
-   live run, because both venues change their fees.
+   (Kalshi rounds fees up per order), and respect displayed size. Re-check Kalshi's official fee page before any
+   live run, because it changes.
 6. **Win rate is not edge.** Rank accounts and strategies by PnL per dollar risked and by edge
    versus entry price, with out-of-sample persistence. Never rank by hit rate alone.
 7. **Public information only.** Following public wallet flow is fine. Never build anything that

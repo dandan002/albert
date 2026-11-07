@@ -13,15 +13,15 @@ small drawdowns), not exponential growth. Market volume does not matter: thin, m
 are in scope because our size is small. Current focus is sports, after major leagues, weather,
 wallets and cross-venue arbitrage all tested efficient (README "Results so far").
 
-## Venues (decided 2026-11-03)
+## Venues (decided 2026-11-03; Kalshi-only execution since 2026-11-07)
 
 | Venue | Role | Auth | Notes |
 |---|---|---|---|
 | Kalshi | trade | RSA-PSS | broad non-financial coverage; `category` on events |
-| Polymarket US | trade | Ed25519: `X-PM-Access-Key`, `X-PM-Timestamp`, `X-PM-Signature` over `{ts_ms}{METHOD}{path}` | public data at `gateway.polymarket.us/v1`, trading at `api.polymarket.us`; keys at polymarket.us/developer after KYC; 24/7 except Thu 06:00-08:00 ET maintenance |
+| Polymarket US | data only (trading on hold since 2026-11-07) | Ed25519: `X-PM-Access-Key`, `X-PM-Timestamp`, `X-PM-Signature` over `{ts_ms}{METHOD}{path}` | public data at `gateway.polymarket.us/v1`, trading at `api.polymarket.us`; keys at polymarket.us/developer after KYC; 24/7 except Thu 06:00-08:00 ET maintenance |
 | Polymarket intl | data only | none | on-chain wallet signals; US geoblocked for trading |
 
-Bankroll: about $50 on each trading venue.
+Bankroll: all on Kalshi. Polymarket (US and intl) is used only as data: prices, signals, wallets.
 
 Polymarket US active markets sampled on 2026-11-03: 416 sports, 45 politics, 27 finance, 12
 culture (out of 500). It is mostly sports, so wallet signals from Polymarket intl must be matched
