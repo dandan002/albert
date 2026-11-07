@@ -308,3 +308,16 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
   - *Forward paper test* (`forward.py`, `deploy/forward-loop.sh`, running for mentions + FCS):
     records the frozen rules' hypothetical bids each hour; `python3 -m albert.research.forward
     score all`.
+- **Paper maker: settlement, cooldown and inventory skew (2026-11-07 ~19–23 UTC).**
+  - The gross cap counted settled markets, so each 24 h run stopped quoting after ~1 h
+    (fixed de25b48: held markets polled every 5 min, settled ones leave gross).
+  - Only 8–14% of paper contracts were in YES+NO pairs (a pair pays exactly $1); pairs earned
+    +2.8c/pair liquid, +16c illiquid, the unpaired rest was noise.
+  - Follow-on fills (replay without cooldown): not worse than first fills, except same side
+    within 60 s (−1.5c at 300 s). The market-wide 300 s cooldown mostly blocked pairing fills.
+  - Replays of the 02:26–16:56 liquid paper stream (no gross cap, unsettled marked at mid):
+    cooldown 300 s both sides: 51% paired, $1.20; none: 68%, $6.15; 5 s one-sided: 66%, $4.72.
+    Skew 1c / 2c at 5 s: $2.95 / $1.70, per-event std $0.52 → $0.44 / $0.33 (worse PnL per unit
+    of std). Illiquid 3 h: 5 s ≈ no cooldown ($7.66); skew roughly neutral per unit of std.
+  - Decision (user): cooldown capped at 5 s, one-sided (8de5bd7). Skew off; `--skew` stays for
+    replays. One day of data; settled contracts per config ≈ 100 liquid, ≈ 30 illiquid.
