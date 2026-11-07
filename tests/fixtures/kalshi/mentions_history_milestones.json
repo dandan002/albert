@@ -1,0 +1,25 @@
+{
+ "milestones": [
+  {
+   "category": "Mentions",
+   "details": {},
+   "end_date": "2025-09-18T02:00:38Z",
+   "id": "e62103dc-3ba6-43d2-9538-03968daab435",
+   "last_updated_ts": "2026-08-17T20:43:55.275246Z",
+   "notification_message": "What Will He Say?",
+   "primary_event_tickers": [
+    "KXTRUMPMENTION-25SEP17",
+    "KXTRUMPMENTIONDURATION-SEP1925"
+   ],
+   "related_event_tickers": [
+    "KXTRUMPMENTION-25SEP17",
+    "KXTRUMPMENTIONDURATION-SEP1925"
+   ],
+   "source_ids": {},
+   "start_date": "2025-09-17T14:00:29Z",
+   "title": "Trump Delivers Remarks at Windsor Castle",
+   "type": "one_off_milestone"
+  }
+ ],
+ "cursor": ""
+}

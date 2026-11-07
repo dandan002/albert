@@ -1,0 +1,103 @@
+{
+ "people": [
+  {
+   "id": 669199,
+   "fullName": "Lake Bachar",
+   "link": "/api/v1/people/669199",
+   "firstName": "Lake",
+   "lastName": "Bachar",
+   "primaryNumber": "71",
+   "birthDate": "1995-06-03",
+   "currentAge": 31,
+   "birthCity": "Winfield",
+   "birthStateProvince": "IL",
+   "birthCountry": "USA",
+   "height": "6' 2\"",
+   "weight": 219,
+   "active": true,
+   "primaryPosition": {
+    "code": "1",
+    "name": "Pitcher",
+    "type": "Pitcher",
+    "abbreviation": "P"
+   },
+   "useName": "Lake",
+   "useLastName": "Bachar",
+   "middleName": "David",
+   "boxscoreName": "Bachar",
+   "gender": "M",
+   "isPlayer": true,
+   "isVerified": false,
+   "draftYear": 2016,
+   "pronunciation": "BAHK-er; like soccer",
+   "mlbDebutDate": "2024-09-08",
+   "batSide": {
+    "code": "R",
+    "description": "Right"
+   },
+   "pitchHand": {
+    "code": "R",
+    "description": "Right"
+   },
+   "nameFirstLast": "Lake Bachar",
+   "nameSlug": "lake-bachar-669199",
+   "firstLastName": "Lake Bachar",
+   "lastFirstName": "Bachar, Lake",
+   "lastInitName": "Bachar, L",
+   "initLastName": "L Bachar",
+   "fullFMLName": "Lake David Bachar",
+   "fullLFMName": "Bachar, Lake David",
+   "strikeZoneTop": 3.299,
+   "strikeZoneBottom": 1.665
+  },
+  {
+   "id": 694918,
+   "fullName": "Blade Tidwell",
+   "link": "/api/v1/people/694918",
+   "firstName": "Janzen",
+   "lastName": "Tidwell",
+   "primaryNumber": "46",
+   "birthDate": "2001-06-08",
+   "currentAge": 25,
+   "birthCity": "Columbia",
+   "birthStateProvince": "TN",
+   "birthCountry": "USA",
+   "height": "6' 3\"",
+   "weight": 244,
+   "active": true,
+   "primaryPosition": {
+    "code": "1",
+    "name": "Pitcher",
+    "type": "Pitcher",
+    "abbreviation": "P"
+   },
+   "useName": "Blade",
+   "useLastName": "Tidwell",
+   "middleName": "Blade",
+   "boxscoreName": "Tidwell",
+   "gender": "M",
+   "isPlayer": true,
+   "isVerified": true,
+   "draftYear": 2022,
+   "mlbDebutDate": "2025-05-04",
+   "batSide": {
+    "code": "R",
+    "description": "Right"
+   },
+   "pitchHand": {
+    "code": "R",
+    "description": "Right"
+   },
+   "nameFirstLast": "Blade Tidwell",
+   "nameSlug": "blade-tidwell-694918",
+   "firstLastName": "Blade Tidwell",
+   "lastFirstName": "Tidwell, Blade",
+   "lastInitName": "Tidwell, B",
+   "initLastName": "B Tidwell",
+   "fullFMLName": "Janzen Blade Tidwell",
+   "fullLFMName": "Tidwell, Janzen Blade",
+   "strikeZoneTop": 3.344,
+   "strikeZoneBottom": 1.688
+  }
+ ]
+}

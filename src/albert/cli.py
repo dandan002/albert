@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from datetime import UTC, date, datetime, time
 
 import typer
@@ -338,6 +340,20 @@ def research_literature() -> None:
     typer.echo(run(settings()))
 
 
+@research_app.command("lead-lag")
+def research_lead_lag(
+    start: str = typer.Option(None, help="First hour, YYYY-MM-DDTHH (UTC)"),
+    end: str = typer.Option(None, help="End hour (exclusive), YYYY-MM-DDTHH (UTC)"),
+    move: float = typer.Option(0.02, help="Mid change that counts as a move"),
+    window_s: float = typer.Option(5.0, help="...within this many seconds"),
+    gap_s: float = typer.Option(30.0, help="At most one move per market per this many seconds"),
+) -> None:
+    """Paired game moneylines: does Kalshi follow Polymarket intl moves, or the reverse?"""
+    from albert.research.leadlag import lead_lag
+
+    typer.echo(lead_lag(settings(), start=start, end=end, move=move, window_s=window_s, gap_s=gap_s))
+
+
 @backtest_app.command("weather")
 def backtest_weather(
     split: str = typer.Option("2026-10-01", help="YYYY-MM-DD: fit before, trade from this day"),
@@ -417,6 +433,86 @@ paper_app = typer.Typer(help="Paper trading on live quotes (no real orders).", n
 app.add_typer(paper_app, name="paper")
 
 
+@paper_app.command("l2")
+def paper_l2(
+    minutes: float = typer.Option(1440.0, help="How long to run"),
+    kalshi: int = typer.Option(150, help="Kalshi markets (sampled like `albert record`)"),
+    days: float = typer.Option(7.0, help="Kalshi: markets closing within N days"),
+    paired_days: float = typer.Option(3.0, help="Also game moneylines played within N days, with "
+                                      "their Polymarket intl price as a signal (0 = off)"),
+    seed: int = typer.Option(1, help="Seed for the Kalshi market sample"),
+    latency_ms: float = typer.Option(100.0),
+    writes_per_s: float = typer.Option(10.0),
+    holdback_ms: float = typer.Option(500.0, help="Bookkeeping delay to pair trades with deltas"),
+    min_spread: float = typer.Option(0.05),
+    improve: bool = typer.Option(True),
+    cooldown_s: float = typer.Option(300.0),
+    max_pos: float = typer.Option(3.0, help="Max net contracts per market"),
+    max_gross: float = typer.Option(30.0, help="Stop adding exposure above this many contracts"),
+    max_loss: float = typer.Option(5.0, help="Halt when run PnL (marked to mid) < -$X"),
+    pm_band: float = typer.Option(None, help="Keep bids this far inside the Polymarket fair value"),
+    pm_pull: float = typer.Option(0.0, help="Pull quotes when Polymarket moved this much"),
+) -> None:
+    """Live paper maker: the backtest's Quoter and queue model on live WebSocket books.
+    No orders are sent. Stop with `touch data/paper_l2/STOP` or SIGTERM."""
+    import asyncio
+    import signal
+
+    from albert.backtest.l2 import Quoter, SimConfig
+    from albert.ingest import kalshi_series
+    from albert.paper_l2 import Guards, PaperMaker
+    from albert.stream import select_kalshi, select_paired
+    from albert.venues.kalshi_auth import KalshiSigner
+
+    s, c = _clients()
+    series = kalshi_series(s, c)
+    k_rows = select_kalshi(series, kalshi, days=days, seed=seed) if kalshi else []
+    pairs = select_paired(paired_days) if paired_days else []
+    tickers = [m["ticker"] for m in k_rows]
+    tickers += [p["kalshi_ticker"] for p in pairs if p["kalshi_ticker"] not in set(tickers)]
+    tokens = sorted({p["token_id"] for p in pairs})
+    run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    root = s.data_dir / "paper_l2"
+    run_dir = root / run_id
+    (run_dir / "stream" / "pairs").mkdir(parents=True)
+    (run_dir / "stream" / "pairs" / f"{run_id}.json").write_text(json.dumps(pairs, indent=1))
+    params = {"min_spread": min_spread, "improve": improve, "cooldown_s": cooldown_s,
+              "max_pos": max_pos, "pm_band": pm_band, "pm_pull": pm_pull}
+    strat = Quoter(category_of={k: v.get("category") for k, v in series.items()}, **params)
+    cfg = SimConfig(latency_ms=latency_ms, fee_info=series, writes_per_s=writes_per_s or None)
+    guards = Guards(max_gross=max_gross, max_loss=max_loss)
+    pm = PaperMaker(run_dir, KalshiSigner.from_env(), strategy=strat, cfg=cfg, pairs=pairs,
+                    guards=guards, holdback_ms=holdback_ms, stop_file=root / "STOP")
+    pm.write("start", {"run_id": run_id, "minutes": minutes, "params": params,
+                       "latency_ms": latency_ms, "writes_per_s": writes_per_s,
+                       "holdback_ms": holdback_ms, "guards": vars(guards), "seed": seed,
+                       "kalshi_markets": tickers, "pm_tokens": tokens, "pairs": len(pairs)})
+    typer.echo(f"paper l2 {run_id}: {len(tickers)} Kalshi markets, {len(tokens)} Polymarket tokens")
+
+    async def main():
+        loop = asyncio.get_running_loop()
+        def on_signal(name: str) -> None:
+            pm.rec.stopped_reason = f"signal {name}"
+            pm.rec.stop.set()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, on_signal, sig.name)
+        await pm.run(minutes=minutes, kalshi=tickers, pm_tokens=tokens)
+
+    asyncio.run(main())
+    end = pm.close()
+    typer.echo(f"{end['stopped_reason']}: {end['fills']} fills, {end['orders']} orders, "
+               f"equity {end['equity']:+.2f}, halted={end['halted']}  ({run_dir})")
+
+
+@paper_app.command("l2-report")
+def paper_l2_report(run: str = typer.Option(None, help="Run id under data/paper_l2 (default: all)")) -> None:
+    """Score live paper maker runs: markouts, mark-to-mid and settlement PnL."""
+    from albert.paper_l2 import report
+
+    s, c = _clients()
+    typer.echo(report(s, c, run))
+
+
 @paper_app.command("reset")
 def paper_reset(kalshi_cash: float = typer.Option(50.0), pmus_cash: float = typer.Option(50.0),
                 yes: bool = typer.Option(False, "--yes", help="Confirm wiping the paper account")) -> None:
@@ -476,6 +572,212 @@ def paper_status() -> None:
     typer.echo(status(settings()))
 
 
+live_app = typer.Typer(help="Real Kalshi orders (demo or prod). Prod needs KALSHI_LIVE_ENABLED=1 "
+                       "in .env and --live on every run.", no_args_is_help=True)
+app.add_typer(live_app, name="live")
+ENV_OPT = typer.Option("demo", "--env", help="demo | prod")
+
+
+@live_app.command("check")
+def live_check(env: str = ENV_OPT) -> None:
+    """Read-only account check: key environment, balance, limits, bot vs manual orders, positions."""
+    import asyncio
+
+    from albert.live_l2 import BOT_PREFIX
+    from albert.venues.kalshi_trade import KalshiTrader, signer_for
+
+    async def main():
+        t = KalshiTrader(env, signer_for(env))
+        try:
+            limits = await t.get("/account/limits")
+            bal = await t.balance()
+            resting = await t.orders("resting")
+            pos = await t.positions()
+        finally:
+            await t.aclose()
+        bot = [o for o in resting if o.client_order_id.startswith(BOT_PREFIX)]
+        typer.echo(f"{env}: balance ${bal:.2f}  tier {limits.get('usage_tier')}  "
+                   f"write {limits.get('write')}  writable={t.writable}")
+        typer.echo(f"resting orders: {len(resting)} ({len(bot)} bot)")
+        for o in resting:
+            who = "BOT" if o in bot else "manual"
+            typer.echo(f"  {who:6} {o.ticker} {o.side} @{o.price:.4f} x{o.remaining:g}")
+        typer.echo(f"positions: {pos or 'none'}")
+
+    asyncio.run(main())
+
+
+@live_app.command("cancel-own")
+def live_cancel_own(env: str = ENV_OPT, live: bool = typer.Option(False, "--live")) -> None:
+    """Cancel every resting bot order (client_order_id prefix) and nothing else."""
+    import asyncio
+
+    from albert.live_l2 import BOT_PREFIX
+    from albert.venues.kalshi_trade import KalshiTrader, signer_for
+
+    async def main():
+        t = KalshiTrader(env, signer_for(env), allow_prod=live)
+        try:
+            return await t.cancel_own(BOT_PREFIX)
+        finally:
+            await t.aclose()
+
+    typer.echo(f"cancelled {asyncio.run(main())}")
+
+
+@live_app.command("plumbing")
+def live_plumbing(market: str = typer.Option(None, help="Demo market (default: pick one)")) -> None:
+    """Demo plumbing test: resting order, queue position, cancel, post-only reject, expiry, one
+    taker fill, order-group trigger, cancel-own sweep. Saves every response for fixtures."""
+    import asyncio
+
+    from albert.live_l2 import plumbing
+    from albert.venues.kalshi_trade import KalshiTrader, signer_for
+
+    s = settings()
+    out = s.data_dir / "live" / "plumbing" / datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+
+    async def main():
+        signer = signer_for("demo")
+        t = KalshiTrader("demo", signer)
+        try:
+            return await plumbing(t, signer, out, market=market)
+        finally:
+            await t.aclose()
+
+    steps = asyncio.run(main())
+    for st in steps:
+        typer.echo(f"{'PASS' if st.ok else 'FAIL'}  {st.name}  {json.dumps(st.detail, default=str)[:200]}")
+    typer.echo(f"{sum(st.ok for st in steps)}/{len(steps)} passed  ({out})")
+    if not all(st.ok for st in steps):
+        raise typer.Exit(1)
+
+
+@live_app.command("mentions")
+def live_mentions(
+    env: str = ENV_OPT,
+    live: bool = typer.Option(False, "--live", help="Required for prod (with KALSHI_LIVE_ENABLED=1)"),
+    minutes: float = typer.Option(1440.0),
+    margin: float = typer.Option(0.12, help="NO bid at floor(1 - fair - margin)"),
+    max_collateral: float = typer.Option(20.0, help="$ cap: resting NO bids + today's fill cost"),
+    max_daily_loss: float = typer.Option(10.0, help="$: no new events once today's fill cost reaches this"),
+    max_events: int = typer.Option(3),
+    group_limit: int = typer.Option(5, help="Exchange-side: contracts matched per rolling 15 s per event"),
+    poll_s: float = typer.Option(60.0),
+    force_event: str = typer.Option(None, help="Demo only: post this event now (orders expire in 15 min)"),
+) -> None:
+    """Pre-speech NO bids on Kalshi mention markets (research/mentions_history). Stop with
+    `touch data/live/mentions/STOP` or SIGTERM; every bot order carries an expiration_time."""
+    import asyncio
+    import signal
+
+    from albert.live_mentions import MentionLimits, MentionsBot
+    from albert.venues.kalshi_trade import ENVS, KalshiTrader, signer_for
+
+    if force_event and env != "demo":
+        raise typer.BadParameter("--force-event is demo-only")
+    s = settings()
+    trader = KalshiTrader(env, signer_for(env), allow_prod=live)
+    if not trader.writable:
+        raise typer.BadParameter(f"{env} is not enabled for orders (prod needs KALSHI_LIVE_ENABLED=1 and --live)")
+    root = s.data_dir / "live" / "mentions"
+    run_dir = root / env / datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    limits = MentionLimits(margin=margin, max_collateral=max_collateral, max_daily_loss=max_daily_loss,
+                           max_events=max_events, group_limit=group_limit)
+    bot = MentionsBot(s, env, trader, run_dir, limits=limits, base=ENVS[env]["rest"], stop_file=root / "STOP",
+                      log=typer.echo)
+
+    async def main():
+        task = asyncio.current_task()
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, task.cancel)
+        bot.write("start", {"env": env, "limits": vars(limits), "minutes": minutes, "force_event": force_event})
+        typer.echo(f"live mentions {env}: margin {margin:.2f}, collateral cap ${max_collateral:.2f} ({run_dir})")
+        try:
+            await bot.run(minutes, poll_s, force_events=[force_event] if force_event else None)
+        except asyncio.CancelledError:
+            pass
+        finally:
+            await trader.aclose()
+
+    asyncio.run(main())
+
+
+@live_app.command("l2")
+def live_l2(
+    env: str = ENV_OPT,
+    live: bool = typer.Option(False, "--live", help="Required for prod (with KALSHI_LIVE_ENABLED=1)"),
+    minutes: float = typer.Option(60.0),
+    kalshi: int = typer.Option(20, help="Markets to quote (sampled like `albert record`)"),
+    markets: str = typer.Option(None, help="Comma-separated tickers instead of sampling"),
+    days: float = typer.Option(7.0),
+    seed: int = typer.Option(1),
+    min_spread: float = typer.Option(0.05),
+    improve: bool = typer.Option(True),
+    cooldown_s: float = typer.Option(300.0),
+    max_pos: float = typer.Option(1.0, help="Max net contracts per market"),
+    max_gross: float = typer.Option(10.0),
+    max_loss: float = typer.Option(10.0, help="Halt when run PnL (marked to mid) < -$X"),
+    group_limit: int = typer.Option(5, help="Exchange-side: contracts matched per rolling 15 s"),
+    expiry_s: float = typer.Option(900.0, help="expiration_time on every order"),
+) -> None:
+    """Live maker with real orders: the paper maker's Quoter, own orders netted from the book,
+    guards and exchange-side backstops. Stop with `touch data/live/STOP` or SIGTERM."""
+    import asyncio
+    import signal
+
+    from albert.backtest.l2 import Quoter, SimConfig
+    from albert.ingest import kalshi_series
+    from albert.live_l2 import LiveGuards, LiveMaker
+    from albert.stream import select_kalshi
+    from albert.venues.kalshi_trade import ENVS, KalshiTrader, signer_for
+
+    s, c = _clients()
+    series = kalshi_series(s, c)
+    signer = signer_for(env)
+    trader = KalshiTrader(env, signer, allow_prod=live)
+    if not trader.writable:
+        raise typer.BadParameter(f"{env} is not enabled for orders (prod needs KALSHI_LIVE_ENABLED=1 and --live)")
+    tickers = ([t.strip() for t in markets.split(",") if t.strip()] if markets else
+               [m["ticker"] for m in select_kalshi(series, kalshi, days=days, seed=seed,
+                                                   rest=ENVS[env]["rest"])])
+    run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    root = s.data_dir / "live"
+    run_dir = root / env / run_id
+    run_dir.mkdir(parents=True)
+    params = {"min_spread": min_spread, "improve": improve, "cooldown_s": cooldown_s, "max_pos": max_pos}
+    strat = Quoter(category_of={k: v.get("category") for k, v in series.items()}, **params)
+    guards = LiveGuards(max_gross=max_gross, max_loss=max_loss, group_contracts_limit=group_limit,
+                        order_expiry_s=expiry_s)
+    lm = LiveMaker(run_dir, env, signer, trader, run_id=run_id, strategy=strat,
+                   cfg=SimConfig(fee_info=series, writes_per_s=10.0), guards=guards, pairs=[],
+                   stop_file=root / "STOP")
+
+    async def main():
+        loop = asyncio.get_running_loop()
+
+        def on_signal(name: str) -> None:
+            lm.rec.stopped_reason = f"signal {name}"
+            lm.rec.stop.set()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, on_signal, sig.name)
+        try:
+            ok = await lm.prepare(tickers)
+            lm.write("start", {"run_id": run_id, "env": env, "minutes": minutes, "params": params,
+                               "guards": vars(guards), "markets": ok, "seed": seed})
+            typer.echo(f"live l2 {env} {run_id}: {len(ok)} markets ({len(tickers) - len(ok)} blocked)")
+            await lm.run(minutes=minutes, kalshi=ok, pm_tokens=[])
+        finally:
+            end = await lm.shutdown()
+            await trader.aclose()
+        return end
+
+    end = asyncio.run(main())
+    typer.echo(f"{end['stopped_reason']}: {end['fills']} fills, {end['orders']} orders, "
+               f"equity {end['equity']:+.2f}, halted={end['halted']}  ({run_dir})")
+
+
 @app.command("compact-raw")
 def compact_raw_cmd(min_age: float = typer.Option(60.0, help="Skip files younger than N seconds")) -> None:
     """Compress legacy plain-JSON raw files to .json.zst (lossless, verified, in place)."""
@@ -495,3 +797,123 @@ def capture(out: str = typer.Option("tests/fixtures", help="Fixture root directo
     s, c = _clients()
     for path in run(s, c, Path(out)):
         typer.echo(path)
+
+
+@app.command("record")
+def record_cmd(
+    minutes: float = typer.Option(60.0, help="How long to record"),
+    kalshi: int = typer.Option(300, help="Kalshi markets to record (0 = none)"),
+    pm: int = typer.Option(60, help="Polymarket intl YES tokens to record (0 = none)"),
+    days: float = typer.Option(7.0, help="Kalshi: only markets closing within N days"),
+    chunk: int = typer.Option(100, help="Markets per WebSocket connection"),
+    check_every: float = typer.Option(600.0, help="Seconds between REST book cross-checks"),
+    check_sample: int = typer.Option(5, help="Markets per REST cross-check (0 = off)"),
+    seed: int = typer.Option(0, help="Seed for the Kalshi market sample"),
+    min_free_gb: float = typer.Option(10.0, help="Stop when free disk space drops below this"),
+    paired_days: float = typer.Option(0.0, help="Also record Kalshi game moneylines played within "
+                                      "N days and their Polymarket intl moneyline (0 = off)"),
+) -> None:
+    """Record live order books and trades over WebSocket into data/raw/stream (append-only)."""
+    import asyncio
+    import signal
+    from dataclasses import asdict
+
+    from albert.ingest import kalshi_series
+    from albert.store import write_manifest
+    from pathlib import Path
+
+    from albert.stream import Recorder, record, select_kalshi, select_paired, select_pm
+    from albert.venues.kalshi_auth import KalshiSigner
+
+    s, c = _clients()
+    k_rows = select_kalshi(kalshi_series(s, c), kalshi, days=days, seed=seed) if kalshi else []
+    pm_rows = select_pm(pm) if pm else []
+    pairs = select_paired(paired_days) if paired_days else []
+    have_k, have_pm = {m["ticker"] for m in k_rows}, {m["token_id"] for m in pm_rows}
+    k_rows += [{"ticker": p["kalshi_ticker"], "event_ticker": p["kalshi_ticker"].rsplit("-", 1)[0],
+                "category": "Sports"} for p in pairs if p["kalshi_ticker"] not in have_k]
+    for p in pairs:
+        if p["token_id"] not in have_pm:
+            have_pm.add(p["token_id"])
+            pm_rows.append({"token_id": p["token_id"], "question": p["question"], "pm_slug": p["pm_slug"]})
+    typer.echo(f"recording {len(k_rows)} Kalshi markets and {len(pm_rows)} Polymarket tokens "
+               f"for {minutes:g} min")
+    if kalshi and not k_rows:
+        raise typer.Exit("no eligible Kalshi markets")
+
+    started = datetime.now(UTC)
+    if pairs:   # written up front: replays of a still-running recording need the pairing
+        pairs_dir = s.raw_dir / "stream" / "pairs"
+        pairs_dir.mkdir(parents=True, exist_ok=True)
+        (pairs_dir / f"{started:%Y%m%dT%H%M%SZ}.json").write_text(json.dumps(pairs, indent=1))
+
+    rec = Recorder(s.raw_dir / "stream", KalshiSigner.from_env() if k_rows else None)
+
+    async def main():
+        loop = asyncio.get_running_loop()
+        def on_signal(name: str) -> None:
+            rec.stopped_reason = f"signal {name}"
+            rec.stop.set()
+
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, on_signal, sig.name)
+        await record(rec, minutes=minutes, kalshi_markets=[m["ticker"] for m in k_rows],
+                     pm_tokens=[m["token_id"] for m in pm_rows], chunk=chunk,
+                     check_every=check_every, check_sample=check_sample)
+
+    asyncio.run(main())
+    files = rec.close()
+    stats = {conn: st.as_dict() for conn, st in rec.stats.items()}
+    checks = rec.checks
+    path = write_manifest(s.data_dir, "record", {
+        "minutes": minutes, "days": days, "min_free_gb": min_free_gb, "chunk": chunk, "seed": seed, "started_at": started,
+        "kalshi_markets": [{k: m[k] for k in ("ticker", "event_ticker", "category")} for m in k_rows],
+        "pm_tokens": pm_rows, "pairs": pairs,
+    }, {"files": [asdict(f) for f in files], "stats": stats, "book_checks": checks,
+        "stopped_reason": rec.stopped_reason},
+        [Path(f.path) for f in files])
+    total = sum(f.bytes for f in files)
+    gaps = sum(len(st["gaps"]) for st in stats.values())
+    matched = sum(ch["match"] for ch in checks)
+    typer.echo(f"{len(files)} files, {total / 1e6:.1f} MB compressed, "
+               f"{sum(st['frames'] for st in stats.values())} frames, {gaps} seq gaps, "
+               f"book checks {matched}/{len(checks)} matched")
+    typer.echo(f"manifest: {path}")
+
+
+@backtest_app.command("l2")
+def backtest_l2_cmd(
+    start: str = typer.Option(None, help="First hour, YYYY-MM-DDTHH (UTC)"),
+    end: str = typer.Option(None, help="End hour (exclusive), YYYY-MM-DDTHH (UTC)"),
+    strategy: str = typer.Option("quote", help="Strategy name: quote | join"),
+    latency_ms: float = typer.Option(100.0, help="Decision-to-exchange latency for place and cancel"),
+    queue: str = typer.Option("risk_averse", help="risk_averse or optimistic cancel attribution"),
+    writes_per_s: float = typer.Option(10.0, help="Order write budget per second (0 = unlimited)"),
+    min_spread: float = typer.Option(0.05, help="Quote only when the spread is at least this"),
+    max_spread: float = typer.Option(1.0, help="quote: and at most this"),
+    max_pos: float = typer.Option(3.0, help="Max net contracts per market"),
+    improve: bool = typer.Option(True, help="quote: one tick inside the best instead of joining"),
+    cooldown_s: float = typer.Option(0.0, help="quote: pause a market this long after a fill"),
+    pull_frac: float = typer.Option(0.0, help="quote: cancel when the queue ahead shrinks by this"),
+    category: list[str] = typer.Option(None, help="quote: series categories to trade (repeatable)"),
+    pm_band: float = typer.Option(None, help="quote: keep bids this far inside the Polymarket "
+                                  "intl fair value on paired markets"),
+    pm_pull: float = typer.Option(0.0, help="quote: pull when Polymarket moved this much"),
+    pm_window_s: float = typer.Option(10.0, help="quote: ...within this many seconds"),
+    pm_only: bool = typer.Option(False, help="quote: trade only markets with a Polymarket price"),
+    root: str = typer.Option(None, help="Stream root to replay (default data/raw/stream; a paper "
+                             "run's data/paper_l2/<run>/stream reconciles that run)"),
+) -> None:
+    """Replay recorded Kalshi order books and simulate a maker strategy with queue position."""
+    from albert.backtest.l2 import backtest_l2
+
+    params: dict = {"min_spread": min_spread, "max_pos": max_pos}
+    if strategy == "quote":
+        params |= {"max_spread": max_spread, "improve": improve, "cooldown_s": cooldown_s,
+                   "pull_frac": pull_frac, "categories": set(category) if category else None,
+                   "pm_band": pm_band, "pm_pull": pm_pull, "pm_window_s": pm_window_s,
+                   "pm_only": pm_only}
+    s, c = _clients()
+    typer.echo(backtest_l2(s, c, start=start, end=end, strategy=strategy, latency_ms=latency_ms,
+                           queue=queue, writes_per_s=writes_per_s or None, params=params,
+                           root=Path(root) if root else None))

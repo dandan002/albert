@@ -1,0 +1,445 @@
+{
+ "_recorded": "GET /markets/candlesticks start_ts 1793907000 end_ts 1793917800 period 60 at 2026-11-06T02:44:31.622347+00:00, 6 legs",
+ "markets": [
+  {
+   "candlesticks": [
+    {
+     "end_period_ts": 1793908800,
+     "open_interest_fp": "194.22",
+     "price": {
+      "close_dollars": "0.5100",
+      "high_dollars": "0.5100",
+      "low_dollars": "0.5100",
+      "mean_dollars": "0.5100",
+      "open_dollars": "0.5100",
+      "previous_dollars": "0.3800"
+     },
+     "volume_fp": "5.00",
+     "yes_ask": {
+      "close_dollars": "0.5100",
+      "high_dollars": "0.5700",
+      "low_dollars": "0.4900",
+      "open_dollars": "0.5500"
+     },
+     "yes_bid": {
+      "close_dollars": "0.3700",
+      "high_dollars": "0.4100",
+      "low_dollars": "0.3100",
+      "open_dollars": "0.3500"
+     }
+    },
+    {
+     "end_period_ts": 1793912400,
+     "open_interest_fp": "287.30",
+     "price": {
+      "close_dollars": "0.5700",
+      "high_dollars": "0.5900",
+      "low_dollars": "0.5100",
+      "mean_dollars": "0.5277",
+      "open_dollars": "0.5100",
+      "previous_dollars": "0.5100"
+     },
+     "volume_fp": "93.09",
+     "yes_ask": {
+      "close_dollars": "0.5500",
+      "high_dollars": "0.6600",
+      "low_dollars": "0.5100",
+      "open_dollars": "0.5100"
+     },
+     "yes_bid": {
+      "close_dollars": "0.3700",
+      "high_dollars": "0.5000",
+      "low_dollars": "0.3600",
+      "open_dollars": "0.3900"
+     }
+    },
+    {
+     "end_period_ts": 1793916000,
+     "open_interest_fp": "306.36",
+     "price": {
+      "close_dollars": "0.5800",
+      "high_dollars": "0.5800",
+      "low_dollars": "0.5400",
+      "mean_dollars": "0.5587",
+      "open_dollars": "0.5500",
+      "previous_dollars": "0.5700"
+     },
+     "volume_fp": "19.06",
+     "yes_ask": {
+      "close_dollars": "0.5400",
+      "high_dollars": "0.5900",
+      "low_dollars": "0.5200",
+      "open_dollars": "0.5500"
+     },
+     "yes_bid": {
+      "close_dollars": "0.4100",
+      "high_dollars": "0.4700",
+      "low_dollars": "0.3600",
+      "open_dollars": "0.3700"
+     }
+    }
+   ],
+   "market_ticker": "KXTRUMPMENTION-26NOV06-STOC"
+  },
+  {
+   "candlesticks": [
+    {
+     "end_period_ts": 1793908800,
+     "open_interest_fp": "191.14",
+     "price": {
+      "close_dollars": "0.1200",
+      "high_dollars": "0.2200",
+      "low_dollars": "0.1000",
+      "mean_dollars": "0.1785",
+      "open_dollars": "0.2200",
+      "previous_dollars": "0.3200"
+     },
+     "volume_fp": "83.58",
+     "yes_ask": {
+      "close_dollars": "0.1200",
+      "high_dollars": "0.2200",
+      "low_dollars": "0.1200",
+      "open_dollars": "0.2200"
+     },
+     "yes_bid": {
+      "close_dollars": "0.1000",
+      "high_dollars": "0.2100",
+      "low_dollars": "0.1000",
+      "open_dollars": "0.2100"
+     }
+    },
+    {
+     "end_period_ts": 1793912400,
+     "open_interest_fp": "203.70",
+     "price": {
+      "close_dollars": "0.1700",
+      "high_dollars": "0.1700",
+      "low_dollars": "0.1200",
+      "mean_dollars": "0.1501",
+      "open_dollars": "0.1200",
+      "previous_dollars": "0.1200"
+     },
+     "volume_fp": "12.56",
+     "yes_ask": {
+      "close_dollars": "0.1200",
+      "high_dollars": "0.1700",
+      "low_dollars": "0.1100",
+      "open_dollars": "0.1200"
+     },
+     "yes_bid": {
+      "close_dollars": "0.1000",
+      "high_dollars": "0.1100",
+      "low_dollars": "0.0900",
+      "open_dollars": "0.1000"
+     }
+    },
+    {
+     "end_period_ts": 1793916000,
+     "open_interest_fp": "216.20",
+     "price": {
+      "close_dollars": "0.1700",
+      "high_dollars": "0.1800",
+      "low_dollars": "0.1200",
+      "mean_dollars": "0.1315",
+      "open_dollars": "0.1200",
+      "previous_dollars": "0.1700"
+     },
+     "volume_fp": "12.50",
+     "yes_ask": {
+      "close_dollars": "0.1600",
+      "high_dollars": "0.1800",
+      "low_dollars": "0.1200",
+      "open_dollars": "0.1200"
+     },
+     "yes_bid": {
+      "close_dollars": "0.1200",
+      "high_dollars": "0.1200",
+      "low_dollars": "0.1000",
+      "open_dollars": "0.1000"
+     }
+    }
+   ],
+   "market_ticker": "KXTRUMPMENTION-26NOV06-CHIP"
+  },
+  {
+   "candlesticks": [
+    {
+     "end_period_ts": 1793912400,
+     "open_interest_fp": "220.35",
+     "price": {
+      "previous_dollars": "0.2300"
+     },
+     "volume_fp": "0.00",
+     "yes_ask": {
+      "close_dollars": "0.2300",
+      "high_dollars": "0.2400",
+      "low_dollars": "0.2300",
+      "open_dollars": "0.2400"
+     },
+     "yes_bid": {
+      "close_dollars": "0.2200",
+      "high_dollars": "0.2200",
+      "low_dollars": "0.2200",
+      "open_dollars": "0.2200"
+     }
+    },
+    {
+     "end_period_ts": 1793916000,
+     "open_interest_fp": "220.35",
+     "price": {
+      "previous_dollars": "0.2300"
+     },
+     "volume_fp": "0.00",
+     "yes_ask": {
+      "close_dollars": "0.2300",
+      "high_dollars": "0.2300",
+      "low_dollars": "0.2300",
+      "open_dollars": "0.2300"
+     },
+     "yes_bid": {
+      "close_dollars": "0.2200",
+      "high_dollars": "0.2200",
+      "low_dollars": "0.2200",
+      "open_dollars": "0.2200"
+     }
+    }
+   ],
+   "market_ticker": "KXTRUMPMENTION-26NOV06-GOLDE"
+  },
+  {
+   "candlesticks": [
+    {
+     "end_period_ts": 1793908800,
+     "open_interest_fp": "415.48",
+     "price": {
+      "close_dollars": "0.9300",
+      "high_dollars": "0.9300",
+      "low_dollars": "0.8100",
+      "mean_dollars": "0.8790",
+      "open_dollars": "0.8200",
+      "previous_dollars": "0.6500"
+     },
+     "volume_fp": "11.07",
+     "yes_ask": {
+      "close_dollars": "0.9200",
+      "high_dollars": "0.9300",
+      "low_dollars": "0.7700",
+      "open_dollars": "0.8200"
+     },
+     "yes_bid": {
+      "close_dollars": "0.8200",
+      "high_dollars": "0.8200",
+      "low_dollars": "0.6600",
+      "open_dollars": "0.7100"
+     }
+    },
+    {
+     "end_period_ts": 1793912400,
+     "open_interest_fp": "416.99",
+     "price": {
+      "close_dollars": "0.7800",
+      "high_dollars": "0.8700",
+      "low_dollars": "0.7800",
+      "mean_dollars": "0.7930",
+      "open_dollars": "0.8700",
+      "previous_dollars": "0.9300"
+     },
+     "volume_fp": "17.21",
+     "yes_ask": {
+      "close_dollars": "0.7700",
+      "high_dollars": "0.9300",
+      "low_dollars": "0.7200",
+      "open_dollars": "0.9200"
+     },
+     "yes_bid": {
+      "close_dollars": "0.6800",
+      "high_dollars": "0.8700",
+      "low_dollars": "0.6700",
+      "open_dollars": "0.8200"
+     }
+    },
+    {
+     "end_period_ts": 1793916000,
+     "open_interest_fp": "442.48",
+     "price": {
+      "close_dollars": "0.6700",
+      "high_dollars": "0.8800",
+      "low_dollars": "0.6700",
+      "mean_dollars": "0.7491",
+      "open_dollars": "0.7300",
+      "previous_dollars": "0.7800"
+     },
+     "volume_fp": "34.24",
+     "yes_ask": {
+      "close_dollars": "0.7800",
+      "high_dollars": "0.9300",
+      "low_dollars": "0.7100",
+      "open_dollars": "0.7700"
+     },
+     "yes_bid": {
+      "close_dollars": "0.6700",
+      "high_dollars": "0.7700",
+      "low_dollars": "0.6700",
+      "open_dollars": "0.6800"
+     }
+    }
+   ],
+   "market_ticker": "KXTRUMPMENTION-26NOV06-NUCL"
+  },
+  {
+   "candlesticks": [
+    {
+     "end_period_ts": 1793908800,
+     "open_interest_fp": "404.92",
+     "price": {
+      "close_dollars": "0.2300",
+      "high_dollars": "0.2300",
+      "low_dollars": "0.2200",
+      "mean_dollars": "0.2264",
+      "open_dollars": "0.2300",
+      "previous_dollars": "0.2300"
+     },
+     "volume_fp": "41.31",
+     "yes_ask": {
+      "close_dollars": "0.2300",
+      "high_dollars": "0.2300",
+      "low_dollars": "0.2300",
+      "open_dollars": "0.2300"
+     },
+     "yes_bid": {
+      "close_dollars": "0.2200",
+      "high_dollars": "0.2200",
+      "low_dollars": "0.2200",
+      "open_dollars": "0.2200"
+     }
+    },
+    {
+     "end_period_ts": 1793912400,
+     "open_interest_fp": "411.92",
+     "price": {
+      "close_dollars": "0.2200",
+      "high_dollars": "0.2200",
+      "low_dollars": "0.2200",
+      "mean_dollars": "0.2200",
+      "open_dollars": "0.2200",
+      "previous_dollars": "0.2300"
+     },
+     "volume_fp": "7.00",
+     "yes_ask": {
+      "close_dollars": "0.1400",
+      "high_dollars": "0.2300",
+      "low_dollars": "0.1400",
+      "open_dollars": "0.2300"
+     },
+     "yes_bid": {
+      "close_dollars": "0.1200",
+      "high_dollars": "0.2200",
+      "low_dollars": "0.1200",
+      "open_dollars": "0.2200"
+     }
+    },
+    {
+     "end_period_ts": 1793916000,
+     "open_interest_fp": "497.01",
+     "price": {
+      "close_dollars": "0.2100",
+      "high_dollars": "0.2100",
+      "low_dollars": "0.1400",
+      "mean_dollars": "0.1915",
+      "open_dollars": "0.1400",
+      "previous_dollars": "0.2200"
+     },
+     "volume_fp": "85.09",
+     "yes_ask": {
+      "close_dollars": "0.1400",
+      "high_dollars": "0.2200",
+      "low_dollars": "0.1400",
+      "open_dollars": "0.1400"
+     },
+     "yes_bid": {
+      "close_dollars": "0.1300",
+      "high_dollars": "0.1400",
+      "low_dollars": "0.1200",
+      "open_dollars": "0.1200"
+     }
+    }
+   ],
+   "market_ticker": "KXTRUMPMENTION-26NOV06-TAIW"
+  },
+  {
+   "candlesticks": [
+    {
+     "end_period_ts": 1793908800,
+     "open_interest_fp": "305.36",
+     "price": {
+      "close_dollars": "0.3600",
+      "high_dollars": "0.3600",
+      "low_dollars": "0.2700",
+      "mean_dollars": "0.3480",
+      "open_dollars": "0.2700",
+      "previous_dollars": "0.3600"
+     },
+     "volume_fp": "79.00",
+     "yes_ask": {
+      "close_dollars": "0.3700",
+      "high_dollars": "0.3900",
+      "low_dollars": "0.2700",
+      "open_dollars": "0.2700"
+     },
+     "yes_bid": {
+      "close_dollars": "0.2700",
+      "high_dollars": "0.2800",
+      "low_dollars": "0.2500",
+      "open_dollars": "0.2500"
+     }
+    },
+    {
+     "end_period_ts": 1793912400,
+     "open_interest_fp": "315.36",
+     "price": {
+      "close_dollars": "0.3400",
+      "high_dollars": "0.3400",
+      "low_dollars": "0.3300",
+      "mean_dollars": "0.3350",
+      "open_dollars": "0.3300",
+      "previous_dollars": "0.3600"
+     },
+     "volume_fp": "10.00",
+     "yes_ask": {
+      "close_dollars": "0.3500",
+      "high_dollars": "0.3800",
+      "low_dollars": "0.3100",
+      "open_dollars": "0.3700"
+     },
+     "yes_bid": {
+      "close_dollars": "0.2700",
+      "high_dollars": "0.3100",
+      "low_dollars": "0.2600",
+      "open_dollars": "0.2700"
+     }
+    },
+    {
+     "end_period_ts": 1793916000,
+     "open_interest_fp": "315.36",
+     "price": {
+      "previous_dollars": "0.3400"
+     },
+     "volume_fp": "0.00",
+     "yes_ask": {
+      "close_dollars": "0.3500",
+      "high_dollars": "0.3500",
+      "low_dollars": "0.3200",
+      "open_dollars": "0.3500"
+     },
+     "yes_bid": {
+      "close_dollars": "0.2800",
+      "high_dollars": "0.3100",
+      "low_dollars": "0.2700",
+      "open_dollars": "0.2700"
+     }
+    }
+   ],
+   "market_ticker": "KXTRUMPMENTION-26NOV06-AUTO"
+  }
+ ]
+}

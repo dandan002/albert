@@ -1,0 +1,170 @@
+{
+ "token_id": "68701810657259368901741011918680416330056217664591524136972104440681840480130",
+ "kickoff": "2026-10-10T14:00:00+00:00",
+ "params": {
+  "token_id": "68701810657259368901741011918680416330056217664591524136972104440681840480130",
+  "start": 1791543600,
+  "end": 1791640800,
+  "bucket_seconds": 300
+ },
+ "response": {
+  "data": [
+   {
+    "timestamp": 1791632100,
+    "price": 0.335,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791632400,
+    "price": 0.345,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791632700,
+    "price": 0.345,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791633000,
+    "price": 0.345,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791633300,
+    "price": 0.345,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791633600,
+    "price": 0.345,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791633900,
+    "price": 0.345,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791634200,
+    "price": 0.345,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791634500,
+    "price": 0.345,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791634800,
+    "price": 0.345,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791635100,
+    "price": 0.345,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791635400,
+    "price": 0.345,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791635700,
+    "price": 0.345,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791636000,
+    "price": 0.345,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791636300,
+    "price": 0.345,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791636600,
+    "price": 0.345,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791636900,
+    "price": 0.355,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791637200,
+    "price": 0.355,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791637500,
+    "price": 0.355,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791637800,
+    "price": 0.355,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791638100,
+    "price": 0.355,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791638400,
+    "price": 0.355,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791638700,
+    "price": 0.365,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791639000,
+    "price": 0.365,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791639300,
+    "price": 0.365,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791639600,
+    "price": 0.365,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791639900,
+    "price": 0.365,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791640200,
+    "price": 0.365,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791640500,
+    "price": 0.365,
+    "resolution_seconds": 300
+   },
+   {
+    "timestamp": 1791640800,
+    "price": 0.0,
+    "resolution_seconds": 0
+   }
+  ],
+  "pagination": {
+   "limit": 10000,
+   "offset": 0,
+   "has_more": false,
+   "next_cursor": null
+  }
+ }
+}

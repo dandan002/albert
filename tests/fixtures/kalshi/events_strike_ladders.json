@@ -1,0 +1,1036 @@
+{
+ "KXTOKENUSE-26NOV09": {
+  "event": {
+   "event_ticker": "KXTOKENUSE-26NOV09",
+   "series_ticker": "KXTOKENUSE",
+   "mutually_exclusive": false,
+   "markets": [
+    {
+     "ticker": "KXTOKENUSE-26NOV09-T189",
+     "strike_type": "greater",
+     "floor_strike": 189,
+     "cap_strike": null,
+     "close_time": "2026-11-09T04:59:00Z",
+     "yes_sub_title": "Above 189T tokens",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXTOKENUSE-26NOV09-T196",
+     "strike_type": "greater",
+     "floor_strike": 196,
+     "cap_strike": null,
+     "close_time": "2026-11-09T04:59:00Z",
+     "yes_sub_title": "Above 196T tokens",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXTOKENUSE-26NOV09-T200",
+     "strike_type": "greater",
+     "floor_strike": 200,
+     "cap_strike": null,
+     "close_time": "2026-11-09T04:59:00Z",
+     "yes_sub_title": "Above 200T tokens",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXTOKENUSE-26NOV09-T203",
+     "strike_type": "greater",
+     "floor_strike": 203,
+     "cap_strike": null,
+     "close_time": "2026-11-09T04:59:00Z",
+     "yes_sub_title": "Above 203T tokens",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXTOKENUSE-26NOV09-T205",
+     "strike_type": "greater",
+     "floor_strike": 205,
+     "cap_strike": null,
+     "close_time": "2026-11-09T04:59:00Z",
+     "yes_sub_title": "Above 205T tokens",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXTOKENUSE-26NOV09-T207",
+     "strike_type": "greater",
+     "floor_strike": 207,
+     "cap_strike": null,
+     "close_time": "2026-11-09T04:59:00Z",
+     "yes_sub_title": "Above 207T tokens",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXTOKENUSE-26NOV09-T210",
+     "strike_type": "greater",
+     "floor_strike": 210,
+     "cap_strike": null,
+     "close_time": "2026-11-09T04:59:00Z",
+     "yes_sub_title": "Above 210T tokens",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXTOKENUSE-26NOV09-T214",
+     "strike_type": "greater",
+     "floor_strike": 214,
+     "cap_strike": null,
+     "close_time": "2026-11-09T04:59:00Z",
+     "yes_sub_title": "Above 214T tokens",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXTOKENUSE-26NOV09-T223",
+     "strike_type": "greater",
+     "floor_strike": 223,
+     "cap_strike": null,
+     "close_time": "2026-11-09T04:59:00Z",
+     "yes_sub_title": "Above 223T tokens",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXTOKENUSE-26NOV09-T224",
+     "strike_type": "greater",
+     "floor_strike": 224,
+     "cap_strike": null,
+     "close_time": "2026-11-09T04:59:00Z",
+     "yes_sub_title": "Above 224T tokens",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXTOKENUSE-26NOV09-T226",
+     "strike_type": "greater",
+     "floor_strike": 226,
+     "cap_strike": null,
+     "close_time": "2026-11-09T04:59:00Z",
+     "yes_sub_title": "Above 226T tokens",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXTOKENUSE-26NOV09-T228",
+     "strike_type": "greater",
+     "floor_strike": 228,
+     "cap_strike": null,
+     "close_time": "2026-11-09T04:59:00Z",
+     "yes_sub_title": "Above 228T tokens",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXTOKENUSE-26NOV09-T230",
+     "strike_type": "greater",
+     "floor_strike": 230,
+     "cap_strike": null,
+     "close_time": "2026-11-09T04:59:00Z",
+     "yes_sub_title": "Above 230T tokens",
+     "status": "active",
+     "result": ""
+    }
+   ]
+  }
+ },
+ "KXHIGHNY-26NOV05": {
+  "event": {
+   "event_ticker": "KXHIGHNY-26NOV05",
+   "series_ticker": "KXHIGHNY",
+   "mutually_exclusive": true,
+   "markets": [
+    {
+     "ticker": "KXHIGHNY-26NOV05-T70",
+     "strike_type": "less",
+     "floor_strike": null,
+     "cap_strike": 70,
+     "close_time": "2026-11-06T06:00:00Z",
+     "yes_sub_title": "69\u00b0 or below",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXHIGHNY-26NOV05-B70.5",
+     "strike_type": "between",
+     "floor_strike": 70,
+     "cap_strike": 71,
+     "close_time": "2026-11-06T06:00:00Z",
+     "yes_sub_title": "70\u00b0 to 71\u00b0",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXHIGHNY-26NOV05-B72.5",
+     "strike_type": "between",
+     "floor_strike": 72,
+     "cap_strike": 73,
+     "close_time": "2026-11-06T06:00:00Z",
+     "yes_sub_title": "72\u00b0 to 73\u00b0",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXHIGHNY-26NOV05-B74.5",
+     "strike_type": "between",
+     "floor_strike": 74,
+     "cap_strike": 75,
+     "close_time": "2026-11-06T06:00:00Z",
+     "yes_sub_title": "74\u00b0 to 75\u00b0",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXHIGHNY-26NOV05-B76.5",
+     "strike_type": "between",
+     "floor_strike": 76,
+     "cap_strike": 77,
+     "close_time": "2026-11-06T06:00:00Z",
+     "yes_sub_title": "76\u00b0 to 77\u00b0",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXHIGHNY-26NOV05-T77",
+     "strike_type": "greater",
+     "floor_strike": 77,
+     "cap_strike": null,
+     "close_time": "2026-11-06T06:00:00Z",
+     "yes_sub_title": "78\u00b0 or above",
+     "status": "active",
+     "result": ""
+    }
+   ]
+  }
+ },
+ "KXTRUMPAPPROVE-26NOV05": {
+  "event": {
+   "event_ticker": "KXTRUMPAPPROVE-26NOV05",
+   "series_ticker": "KXTRUMPAPPROVE",
+   "mutually_exclusive": true,
+   "markets": [
+    {
+     "ticker": "KXTRUMPAPPROVE-26NOV05-U38.8",
+     "strike_type": "less",
+     "floor_strike": null,
+     "cap_strike": 38.8,
+     "close_time": "2026-11-05T17:59:00Z",
+     "yes_sub_title": "Below 38.8%",
+     "status": "finalized",
+     "result": "no"
+    },
+    {
+     "ticker": "KXTRUMPAPPROVE-26NOV05-E38.8",
+     "strike_type": "between",
+     "floor_strike": 38.8,
+     "cap_strike": 38.8,
+     "close_time": "2026-11-05T17:59:00Z",
+     "yes_sub_title": "38.8%",
+     "status": "finalized",
+     "result": "no"
+    },
+    {
+     "ticker": "KXTRUMPAPPROVE-26NOV05-E38.9",
+     "strike_type": "between",
+     "floor_strike": 38.9,
+     "cap_strike": 38.9,
+     "close_time": "2026-11-05T17:59:00Z",
+     "yes_sub_title": "38.9%",
+     "status": "finalized",
+     "result": "no"
+    },
+    {
+     "ticker": "KXTRUMPAPPROVE-26NOV05-E39.0",
+     "strike_type": "between",
+     "floor_strike": 39,
+     "cap_strike": 39,
+     "close_time": "2026-11-05T17:59:00Z",
+     "yes_sub_title": "39.0%",
+     "status": "finalized",
+     "result": "no"
+    },
+    {
+     "ticker": "KXTRUMPAPPROVE-26NOV05-E39.1",
+     "strike_type": "between",
+     "floor_strike": 39.1,
+     "cap_strike": 39.1,
+     "close_time": "2026-11-05T17:59:00Z",
+     "yes_sub_title": "39.1%",
+     "status": "finalized",
+     "result": "yes"
+    },
+    {
+     "ticker": "KXTRUMPAPPROVE-26NOV05-E39.2",
+     "strike_type": "between",
+     "floor_strike": 39.2,
+     "cap_strike": 39.2,
+     "close_time": "2026-11-05T17:59:00Z",
+     "yes_sub_title": "39.2%",
+     "status": "finalized",
+     "result": "no"
+    },
+    {
+     "ticker": "KXTRUMPAPPROVE-26NOV05-E39.3",
+     "strike_type": "between",
+     "floor_strike": 39.3,
+     "cap_strike": 39.3,
+     "close_time": "2026-11-05T17:59:00Z",
+     "yes_sub_title": "39.3%",
+     "status": "finalized",
+     "result": "no"
+    },
+    {
+     "ticker": "KXTRUMPAPPROVE-26NOV05-E39.4",
+     "strike_type": "between",
+     "floor_strike": 39.4,
+     "cap_strike": 39.4,
+     "close_time": "2026-11-05T17:59:00Z",
+     "yes_sub_title": "39.4%",
+     "status": "finalized",
+     "result": "no"
+    },
+    {
+     "ticker": "KXTRUMPAPPROVE-26NOV05-A39.4",
+     "strike_type": "greater",
+     "floor_strike": 39.4,
+     "cap_strike": null,
+     "close_time": "2026-11-05T17:59:00Z",
+     "yes_sub_title": "Above 39.4%",
+     "status": "finalized",
+     "result": "no"
+    }
+   ]
+  }
+ },
+ "KXNFLTEAMTOTAL-26NOV08GBNE": {
+  "event": {
+   "event_ticker": "KXNFLTEAMTOTAL-26NOV08GBNE",
+   "series_ticker": "KXNFLTEAMTOTAL",
+   "mutually_exclusive": false,
+   "markets": [
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-NE4",
+     "strike_type": "greater",
+     "floor_strike": 3.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "New England over 3.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-NE8",
+     "strike_type": "greater",
+     "floor_strike": 7.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "New England over 7.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-NE11",
+     "strike_type": "greater",
+     "floor_strike": 10.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "New England over 10.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-NE15",
+     "strike_type": "greater",
+     "floor_strike": 14.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "New England over 14.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-NE18",
+     "strike_type": "greater",
+     "floor_strike": 17.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "New England over 17.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-NE21",
+     "strike_type": "greater",
+     "floor_strike": 20.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "New England over 20.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-NE22",
+     "strike_type": "greater",
+     "floor_strike": 21.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "New England over 21.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-NE25",
+     "strike_type": "greater",
+     "floor_strike": 24.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "New England over 24.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-NE29",
+     "strike_type": "greater",
+     "floor_strike": 28.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "New England over 28.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-NE32",
+     "strike_type": "greater",
+     "floor_strike": 31.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "New England over 31.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-NE36",
+     "strike_type": "greater",
+     "floor_strike": 35.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "New England over 35.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-NE39",
+     "strike_type": "greater",
+     "floor_strike": 38.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "New England over 38.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-NE43",
+     "strike_type": "greater",
+     "floor_strike": 42.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "New England over 42.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-GB4",
+     "strike_type": "greater",
+     "floor_strike": 3.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "Green Bay over 3.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-GB8",
+     "strike_type": "greater",
+     "floor_strike": 7.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "Green Bay over 7.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-GB11",
+     "strike_type": "greater",
+     "floor_strike": 10.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "Green Bay over 10.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-GB15",
+     "strike_type": "greater",
+     "floor_strike": 14.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "Green Bay over 14.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-GB18",
+     "strike_type": "greater",
+     "floor_strike": 17.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "Green Bay over 17.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-GB21",
+     "strike_type": "greater",
+     "floor_strike": 20.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "Green Bay over 20.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-GB22",
+     "strike_type": "greater",
+     "floor_strike": 21.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "Green Bay over 21.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-GB23",
+     "strike_type": "greater",
+     "floor_strike": 22.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "Green Bay over 22.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-GB25",
+     "strike_type": "greater",
+     "floor_strike": 24.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "Green Bay over 24.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-GB29",
+     "strike_type": "greater",
+     "floor_strike": 28.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "Green Bay over 28.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-GB32",
+     "strike_type": "greater",
+     "floor_strike": 31.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "Green Bay over 31.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-GB36",
+     "strike_type": "greater",
+     "floor_strike": 35.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "Green Bay over 35.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-GB39",
+     "strike_type": "greater",
+     "floor_strike": 38.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "Green Bay over 38.5 points",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXNFLTEAMTOTAL-26NOV08GBNE-GB43",
+     "strike_type": "greater",
+     "floor_strike": 42.5,
+     "cap_strike": null,
+     "close_time": "2026-11-10T21:25:00Z",
+     "yes_sub_title": "Green Bay over 42.5 points",
+     "status": "active",
+     "result": ""
+    }
+   ]
+  }
+ },
+ "KXRAIN-26NOV05": {
+  "event": {
+   "event_ticker": "KXRAIN-26NOV05",
+   "series_ticker": "KXRAIN",
+   "mutually_exclusive": false,
+   "markets": [
+    {
+     "ticker": "KXRAIN-26NOV05-NYC",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T05:00:00Z",
+     "yes_sub_title": "New York City",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-CHI",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T06:00:00Z",
+     "yes_sub_title": "Chicago",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-AUS",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T06:00:00Z",
+     "yes_sub_title": "Austin",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-MIA",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T05:00:00Z",
+     "yes_sub_title": "Miami",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-DEN",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T07:00:00Z",
+     "yes_sub_title": "Denver",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-PHIL",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T05:00:00Z",
+     "yes_sub_title": "Philadelphia",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-LAX",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T08:00:00Z",
+     "yes_sub_title": "Los Angeles",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-LV",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T08:00:00Z",
+     "yes_sub_title": "Las Vegas",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-NOLA",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T06:00:00Z",
+     "yes_sub_title": "New Orleans",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-SFO",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T08:00:00Z",
+     "yes_sub_title": "San Francisco",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-DC",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T05:00:00Z",
+     "yes_sub_title": "Washington DC",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-SEA",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T08:00:00Z",
+     "yes_sub_title": "Seattle",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-BOS",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T05:00:00Z",
+     "yes_sub_title": "Boston",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-PHX",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T07:00:00Z",
+     "yes_sub_title": "Phoenix",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-ATL",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T05:00:00Z",
+     "yes_sub_title": "Atlanta",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-MIN",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T06:00:00Z",
+     "yes_sub_title": "Minneapolis",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-DAL",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T06:00:00Z",
+     "yes_sub_title": "Dallas",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-SATX",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T06:00:00Z",
+     "yes_sub_title": "San Antonio",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-HOU",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T06:00:00Z",
+     "yes_sub_title": "Houston",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-OKC",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T06:00:00Z",
+     "yes_sub_title": "Oklahoma City",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-EWR",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T05:00:00Z",
+     "yes_sub_title": "Newark",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-TTN",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T05:00:00Z",
+     "yes_sub_title": "Trenton",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-DTW",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T05:00:00Z",
+     "yes_sub_title": "Detroit",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-MKE",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T06:00:00Z",
+     "yes_sub_title": "Milwaukee",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-LEX",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T05:00:00Z",
+     "yes_sub_title": "Lexington",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-CMH",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T05:00:00Z",
+     "yes_sub_title": "Columbus",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-PVD",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T05:00:00Z",
+     "yes_sub_title": "Providence",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-CLL",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T06:00:00Z",
+     "yes_sub_title": "College Station",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-PIT",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T05:00:00Z",
+     "yes_sub_title": "Pittsburgh",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-ABQ",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T07:00:00Z",
+     "yes_sub_title": "Albuquerque",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-SGF",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T06:00:00Z",
+     "yes_sub_title": "Springfield",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-IND",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T05:00:00Z",
+     "yes_sub_title": "Indianapolis",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-STL",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T06:00:00Z",
+     "yes_sub_title": "St. Louis",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-TPA",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T05:00:00Z",
+     "yes_sub_title": "Tampa",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXRAIN-26NOV05-WPB",
+     "strike_type": "greater",
+     "floor_strike": 0,
+     "cap_strike": null,
+     "close_time": "2026-11-06T05:00:00Z",
+     "yes_sub_title": "West Palm Beach",
+     "status": "active",
+     "result": ""
+    }
+   ]
+  }
+ },
+ "KXTRUTHSOCIALD-26NOV05": {
+  "event": {
+   "event_ticker": "KXTRUTHSOCIALD-26NOV05",
+   "series_ticker": "KXTRUTHSOCIALD",
+   "mutually_exclusive": true,
+   "markets": [
+    {
+     "ticker": "KXTRUTHSOCIALD-26NOV05-T5",
+     "strike_type": "less",
+     "floor_strike": null,
+     "cap_strike": 5,
+     "close_time": "2026-11-06T04:59:00Z",
+     "yes_sub_title": "<5",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXTRUTHSOCIALD-26NOV05-B7",
+     "strike_type": "between",
+     "floor_strike": 5,
+     "cap_strike": 9,
+     "close_time": "2026-11-06T04:59:00Z",
+     "yes_sub_title": "5-9",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXTRUTHSOCIALD-26NOV05-B12",
+     "strike_type": "between",
+     "floor_strike": 10,
+     "cap_strike": 14,
+     "close_time": "2026-11-06T04:59:00Z",
+     "yes_sub_title": "10-14",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXTRUTHSOCIALD-26NOV05-B17",
+     "strike_type": "between",
+     "floor_strike": 15,
+     "cap_strike": 19,
+     "close_time": "2026-11-06T04:59:00Z",
+     "yes_sub_title": "15-19",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXTRUTHSOCIALD-26NOV05-B22",
+     "strike_type": "between",
+     "floor_strike": 20,
+     "cap_strike": 24,
+     "close_time": "2026-11-06T04:59:00Z",
+     "yes_sub_title": "20-24",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXTRUTHSOCIALD-26NOV05-B27",
+     "strike_type": "between",
+     "floor_strike": 25,
+     "cap_strike": 29,
+     "close_time": "2026-11-06T04:59:00Z",
+     "yes_sub_title": "25-29",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXTRUTHSOCIALD-26NOV05-B34",
+     "strike_type": "between",
+     "floor_strike": 30,
+     "cap_strike": 39,
+     "close_time": "2026-11-06T04:59:00Z",
+     "yes_sub_title": "30-39",
+     "status": "active",
+     "result": ""
+    },
+    {
+     "ticker": "KXTRUTHSOCIALD-26NOV05-T40",
+     "strike_type": "greater_or_equal",
+     "floor_strike": 40,
+     "cap_strike": null,
+     "close_time": "2026-11-06T04:59:00Z",
+     "yes_sub_title": "40+",
+     "status": "active",
+     "result": ""
+    }
+   ]
+  }
+ }
+}

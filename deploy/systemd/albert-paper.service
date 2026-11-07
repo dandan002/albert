@@ -1,0 +1,17 @@
+[Unit]
+Description=albert: live paper maker on WebSocket books (no orders)
+After=network-online.target time-sync.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/albert
+Environment=PYTHON=/home/ubuntu/albert/.venv/bin/python
+ExecStart=/home/ubuntu/albert/deploy/paper-loop.sh
+Restart=always
+RestartSec=60
+KillMode=control-group
+TimeoutStopSec=90
+
+[Install]
+WantedBy=multi-user.target

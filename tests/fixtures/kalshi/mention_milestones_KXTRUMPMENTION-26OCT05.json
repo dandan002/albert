@@ -1,0 +1,23 @@
+{
+ "cursor": "",
+ "milestones": [
+  {
+   "category": "Mentions",
+   "details": {},
+   "end_date": "2026-10-06T02:00:00Z",
+   "id": "8a3cf6be-7e6c-4477-bfa8-614d77d6c09e",
+   "last_updated_ts": "2026-10-06T01:08:55.728339Z",
+   "notification_message": "What will Trump say?",
+   "primary_event_tickers": [
+    "KXTRUMPMENTION-26OCT05"
+   ],
+   "related_event_tickers": [
+    "KXTRUMPMENTION-26OCT05"
+   ],
+   "source_ids": {},
+   "start_date": "2026-10-05T23:00:00Z",
+   "title": "Trump holds Midterm Rally in Grand Island, Nebraska",
+   "type": "one_off_milestone"
+  }
+ ]
+}

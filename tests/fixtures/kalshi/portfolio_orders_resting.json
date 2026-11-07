@@ -1,0 +1,30 @@
+{
+ "cursor": "",
+ "orders": [
+  {
+   "action": "sell",
+   "book_side": "ask",
+   "client_order_id": "",
+   "created_time": "2026-11-04T15:45:29.2851Z",
+   "exchange_index": 0,
+   "fill_count_fp": "0.00",
+   "initial_count_fp": "67.22",
+   "last_update_time": "2026-11-04T15:45:29.2851Z",
+   "maker_fees_dollars": "0.000000",
+   "maker_fill_cost_dollars": "0.000000",
+   "no_price_dollars": "0.0800",
+   "order_id": "01a1a73c-99a8-79b6-8f8a-d46d62dbffd9",
+   "outcome_side": "no",
+   "remaining_count_fp": "67.22",
+   "side": "yes",
+   "status": "resting",
+   "subaccount_number": 0,
+   "taker_fees_dollars": "0.000000",
+   "taker_fill_cost_dollars": "0.000000",
+   "ticker": "KXIMPEACH-29-JAN20",
+   "type": "limit",
+   "user_id": "REDACTED",
+   "yes_price_dollars": "0.9200"
+  }
+ ]
+}

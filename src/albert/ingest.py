@@ -23,7 +23,6 @@ class Clients:
     pm: pm.Polymarket
     pmus: pmus.PolymarketUS
     iem: wx.IEM | None = None
-    nws: wx.NWS | None = None
     pandascore: "ps.PandaScore | None" = None
 
     @classmethod
@@ -43,8 +42,6 @@ class Clients:
                                                record_live=record_live)),
             iem=wx.IEM(CachedClient("iem", s.iem_base, s.raw_dir, min_interval=0.5,
                                     record_live=record_live, timeout=120.0)),
-            nws=wx.NWS(CachedClient("nws", s.nws_base, s.raw_dir, min_interval=0.5,
-                                    record_live=record_live, user_agent=s.nws_user_agent)),
             # Free tier: 60 requests/minute, so one request every 1.1 s.
             pandascore=ps.PandaScore(CachedClient(
                 "pandascore", s.pandascore_base, s.raw_dir, min_interval=1.1, record_live=record_live,

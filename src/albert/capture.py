@@ -37,7 +37,7 @@ def _write_text(root: Path, venue: str, name: str, text: str, lines: int = 40) -
 
 
 def capture_weather(s: Settings, c: Clients, root: Path) -> list[Path]:
-    """IEM (CLI, ASOS, NBM) and api.weather.gov samples for the weather parsers."""
+    """IEM (CLI, ASOS, NBM) samples for the weather parsers."""
     now = datetime.now(UTC)
     day = (now - timedelta(days=3)).date()
     out = [
@@ -45,8 +45,6 @@ def capture_weather(s: Settings, c: Clients, root: Path) -> list[Path]:
         _write_text(root, "iem", "asos.csv", c.iem.asos("NYC", day, day + timedelta(days=1), cache=False).payload),
         _write_text(root, "iem", "nbm.csv", c.iem.nbm(
             "NYC", now - timedelta(days=2), now - timedelta(days=2) + timedelta(hours=7), cache=False).payload, 60),
-        _write(root, "nws", "observations",
-               c.nws.latest_observations("NYC", now - timedelta(hours=3)).payload, 3),
     ]
     return out
 
@@ -112,4 +110,36 @@ def capture(s: Settings, c: Clients, root: Path) -> list[Path]:
     out.append(_write(root, "pmus", "bbo", u.get(f"/markets/{slug}/bbo", cache=False).payload))
     out.append(_write(root, "pmus", "events", u.get("/events", {"limit": 2, "closed": "true"},
                                                     cache=False).payload, 2))
+    return out
+
+
+def _redact(payload: Any) -> Any:
+    """Drop the account's user id from portfolio fixtures (the rest is kept verbatim)."""
+    if isinstance(payload, list):
+        return [_redact(x) for x in payload]
+    if isinstance(payload, dict):
+        return {k: ("REDACTED" if k == "user_id" else _redact(v)) for k, v in payload.items()}
+    return payload
+
+
+def capture_portfolio(root: Path, env: str = "prod") -> list[Path]:
+    """Read-only Kalshi portfolio endpoints (orders, fills, positions, balance, queue positions)
+    for the order-layer parsers. GET requests only: nothing is placed or cancelled."""
+    from albert.venues.kalshi_trade import KalshiTrader
+
+    out: list[Path] = []
+    with KalshiTrader.sync(env) as t:
+        resting = t.get("/portfolio/orders", {"status": "resting", "limit": 5})
+        out.append(_write(root, "kalshi", "portfolio_orders_resting", _redact(resting), 3))
+        for status in ("canceled", "executed"):
+            out.append(_write(root, "kalshi", f"portfolio_orders_{status}", _redact(t.get(
+                "/portfolio/orders", {"status": status, "limit": 3})), 3))
+        out.append(_write(root, "kalshi", "portfolio_fills", _redact(t.get("/portfolio/fills", {"limit": 3})), 3))
+        out.append(_write(root, "kalshi", "portfolio_positions", _redact(t.get("/portfolio/positions")), 3))
+        out.append(_write(root, "kalshi", "portfolio_balance", t.get("/portfolio/balance"), 5))
+        if resting.get("orders"):
+            out.append(_write(root, "kalshi", "portfolio_queue_positions", t.get(
+                "/portfolio/orders/queue_positions",
+                {"market_tickers": resting["orders"][0]["ticker"]}), 3))
+        out.append(_write(root, "kalshi", "account_limits", t.get("/account/limits"), 5))
     return out

@@ -1,0 +1,55 @@
+{
+ "source": {
+  "url": "https://api.elections.kalshi.com/trade-api/v2/events",
+  "params": {
+   "series_ticker": "KXRAIN",
+   "limit": 200
+  },
+  "fetched_at": "2026-11-05T23:25:35.527003+00:00",
+  "note": "trimmed: first and last event"
+ },
+ "response": {
+  "cursor": "",
+  "events": [
+   {
+    "category": "Climate and Weather",
+    "collateral_return_type": "",
+    "event_ticker": "KXRAIN-26NOV06",
+    "exchange_index": 0,
+    "last_updated_ts": "2026-11-05T10:01:36.766864Z",
+    "mutually_exclusive": false,
+    "series_ticker": "KXRAIN",
+    "settlement_sources": [
+     {
+      "name": "The Weather Company",
+      "url": "https://weather.com/kalshi"
+     }
+    ],
+    "strike_date": "2026-11-07T04:59:59Z",
+    "strike_period": "",
+    "sub_title": "On Nov 6, 2026",
+    "title": "Where will it rain on Nov 6, 2026?"
+   },
+   {
+    "category": "Climate and Weather",
+    "collateral_return_type": "",
+    "event_ticker": "KXRAIN-26JUL15",
+    "exchange_index": 0,
+    "last_updated_ts": "2026-08-28T01:38:04.372822Z",
+    "mutually_exclusive": false,
+    "series_ticker": "KXRAIN",
+    "settlement_sources": [
+     {
+      "name": "The Weather Company",
+      "url": "https://weather.com/kalshi"
+     }
+    ],
+    "strike_date": "2026-07-16T03:59:59Z",
+    "strike_period": "",
+    "sub_title": "On Jul 15, 2026",
+    "title": "Where will it rain on Jul 15, 2026?"
+   }
+  ],
+  "milestones": []
+ }
+}

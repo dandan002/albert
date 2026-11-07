@@ -1,0 +1,17 @@
+[Unit]
+Description=albert: continuous Kalshi + Polymarket L2 recorder (public data)
+After=network-online.target time-sync.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/albert
+Environment=PYTHON=/home/ubuntu/albert/.venv/bin/python
+ExecStart=/home/ubuntu/albert/deploy/record-loop.sh --paired-days 3
+Restart=always
+RestartSec=60
+KillMode=control-group
+TimeoutStopSec=90
+
+[Install]
+WantedBy=multi-user.target

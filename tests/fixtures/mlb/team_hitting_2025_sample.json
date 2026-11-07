@@ -1,0 +1,150 @@
+{
+ "stats": [
+  {
+   "type": {
+    "displayName": "season"
+   },
+   "group": {
+    "displayName": "hitting"
+   },
+   "totalSplits": 30,
+   "exemptions": [],
+   "splits": [
+    {
+     "season": "2025",
+     "stat": {
+      "gamesPlayed": 162,
+      "groundOuts": 1432,
+      "airOuts": 1595,
+      "runs": 798,
+      "doubles": 294,
+      "triples": 13,
+      "homeRuns": 191,
+      "strikeOuts": 1099,
+      "baseOnBalls": 520,
+      "intentionalWalks": 25,
+      "hits": 1461,
+      "hitByPitch": 65,
+      "avg": ".265",
+      "atBats": 5507,
+      "obp": ".333",
+      "slg": ".427",
+      "ops": ".760",
+      "caughtStealing": 25,
+      "stolenBases": 77,
+      "stolenBasePercentage": ".755",
+      "caughtStealingPercentage": ".245",
+      "groundIntoDoublePlay": 133,
+      "numberOfPitches": 23366,
+      "plateAppearances": 6180,
+      "totalBases": 2354,
+      "rbi": 771,
+      "leftOnBase": 1121,
+      "sacBunts": 35,
+      "sacFlies": 45,
+      "babip": ".298",
+      "groundOutsToAirouts": "0.90",
+      "catchersInterference": 8,
+      "atBatsPerHomeRun": "28.83"
+     },
+     "team": {
+      "id": 141,
+      "name": "Toronto Blue Jays",
+      "link": "/api/v1/teams/141"
+     },
+     "rank": 1
+    },
+    {
+     "season": "2025",
+     "stat": {
+      "gamesPlayed": 162,
+      "groundOuts": 1355,
+      "airOuts": 1457,
+      "runs": 778,
+      "doubles": 268,
+      "triples": 24,
+      "homeRuns": 212,
+      "strikeOuts": 1337,
+      "baseOnBalls": 528,
+      "intentionalWalks": 19,
+      "hits": 1426,
+      "hitByPitch": 60,
+      "avg": ".258",
+      "atBats": 5517,
+      "obp": ".328",
+      "slg": ".431",
+      "ops": ".759",
+      "caughtStealing": 30,
+      "stolenBases": 124,
+      "stolenBasePercentage": ".805",
+      "caughtStealingPercentage": ".195",
+      "groundIntoDoublePlay": 95,
+      "numberOfPitches": 23954,
+      "plateAppearances": 6166,
+      "totalBases": 2378,
+      "rbi": 753,
+      "leftOnBase": 1133,
+      "sacBunts": 16,
+      "sacFlies": 42,
+      "babip": ".303",
+      "groundOutsToAirouts": "0.93",
+      "catchersInterference": 3,
+      "atBatsPerHomeRun": "26.02"
+     },
+     "team": {
+      "id": 143,
+      "name": "Philadelphia Phillies",
+      "link": "/api/v1/teams/143"
+     },
+     "rank": 2
+    },
+    {
+     "season": "2025",
+     "stat": {
+      "gamesPlayed": 162,
+      "groundOuts": 1435,
+      "airOuts": 1462,
+      "runs": 806,
+      "doubles": 265,
+      "triples": 18,
+      "homeRuns": 166,
+      "strikeOuts": 1266,
+      "baseOnBalls": 564,
+      "intentionalWalks": 15,
+      "hits": 1423,
+      "hitByPitch": 73,
+      "avg": ".258",
+      "atBats": 5510,
+      "obp": ".332",
+      "slg": ".403",
+      "ops": ".735",
+      "caughtStealing": 53,
+      "stolenBases": 164,
+      "stolenBasePercentage": ".756",
+      "caughtStealingPercentage": ".244",
+      "groundIntoDoublePlay": 97,
+      "numberOfPitches": 24502,
+      "plateAppearances": 6227,
+      "totalBases": 2222,
+      "rbi": 750,
+      "leftOnBase": 1158,
+      "sacBunts": 26,
+      "sacFlies": 50,
+      "babip": ".305",
+      "groundOutsToAirouts": "0.98",
+      "catchersInterference": 4,
+      "atBatsPerHomeRun": "33.19"
+     },
+     "team": {
+      "id": 158,
+      "name": "Milwaukee Brewers",
+      "link": "/api/v1/teams/158"
+     },
+     "rank": 3
+    }
+   ],
+   "splitsTiedWithOffset": [],
+   "splitsTiedWithLimit": []
+  }
+ ]
+}
