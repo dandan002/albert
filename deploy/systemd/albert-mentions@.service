@@ -1,0 +1,18 @@
+[Unit]
+Description=albert: pre-speech NO-bid mentions bot (%i; prod also needs KALSHI_LIVE_ENABLED=1 and --live)
+After=network-online.target time-sync.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/albert
+EnvironmentFile=-/home/ubuntu/albert/deploy/mentions-%i.conf
+ExecStart=/home/ubuntu/albert/.venv/bin/python -m albert live mentions --env %i --minutes 525600 $MENTIONS_ARGS
+# SIGTERM cancels every bot order (albm prefix) before exit; orders also carry expiration_time.
+KillSignal=SIGTERM
+TimeoutStopSec=120
+Restart=on-failure
+RestartSec=300
+
+[Install]
+WantedBy=multi-user.target

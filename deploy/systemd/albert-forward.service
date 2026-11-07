@@ -1,0 +1,17 @@
+[Unit]
+Description=albert: forward paper test of the fundamental leads (no orders)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/albert
+Environment=PYTHON=/home/ubuntu/albert/.venv/bin/python
+Environment="LEADS=mentions fcs rain"
+ExecStart=/home/ubuntu/albert/deploy/forward-loop.sh
+Restart=always
+RestartSec=120
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target
