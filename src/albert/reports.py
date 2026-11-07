@@ -25,8 +25,16 @@ def md_table(frame: pl.DataFrame, max_rows: int = 30, digits: int = 4) -> str:
 class Report:
     def __init__(self, reports_dir: Path, name: str) -> None:
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+        reports_dir.mkdir(parents=True, exist_ok=True)
         self.dir = reports_dir / f"{name}-{stamp}"
-        self.dir.mkdir(parents=True, exist_ok=True)
+        n = 1
+        while True:   # two reports of one name in the same second must not share a folder
+            try:
+                self.dir.mkdir()
+                break
+            except FileExistsError:
+                n += 1
+                self.dir = reports_dir / f"{name}-{stamp}-{n}"
         self.parts: list[str] = [f"# {name}\n\n_generated {stamp}_\n"]
 
     def text(self, title: str, body: str) -> None:
