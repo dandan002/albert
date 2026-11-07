@@ -447,12 +447,16 @@ def paper_l2(
     holdback_ms: float = typer.Option(500.0, help="Bookkeeping delay to pair trades with deltas"),
     min_spread: float = typer.Option(0.05),
     improve: bool = typer.Option(True),
-    cooldown_s: float = typer.Option(300.0),
+    cooldown_s: float = typer.Option(5.0, max=5.0, help="Pause after a fill, seconds (at most 5)"),
     max_pos: float = typer.Option(3.0, help="Max net contracts per market"),
     max_gross: float = typer.Option(30.0, help="Stop adding exposure above this many contracts"),
     max_loss: float = typer.Option(5.0, help="Halt when run PnL (marked to mid) < -$X"),
     pm_band: float = typer.Option(None, help="Keep bids this far inside the Polymarket fair value"),
     pm_pull: float = typer.Option(0.0, help="Pull quotes when Polymarket moved this much"),
+    skew: float = typer.Option(0.0, help="Inventory skew toward flat, $ per net contract (0 = off)"),
+    pair_edge: float = typer.Option(0.01, help="A skewed pairing bid keeps a pair this profitable"),
+    cooldown_side: bool = typer.Option(True, help="The cooldown pauses only the side that filled "
+                                       "(the pairing side keeps its place in the queue)"),
     out: str = typer.Option("paper_l2", help="Folder under data/ for runs, STOP file and log"),
     max_spread: float = typer.Option(0.25, help="Select: widest quoted spread"),
     select_min_spread: float = typer.Option(0.0, help="Select: narrowest quoted spread"),
@@ -485,7 +489,8 @@ def paper_l2(
     (run_dir / "stream" / "pairs").mkdir(parents=True)
     (run_dir / "stream" / "pairs" / f"{run_id}.json").write_text(json.dumps(pairs, indent=1))
     params = {"min_spread": min_spread, "improve": improve, "cooldown_s": cooldown_s,
-              "max_pos": max_pos, "pm_band": pm_band, "pm_pull": pm_pull}
+              "max_pos": max_pos, "pm_band": pm_band, "pm_pull": pm_pull, "skew": skew,
+              "pair_edge": pair_edge, "cooldown_side": cooldown_side}
     strat = Quoter(category_of={k: v.get("category") for k, v in series.items()}, **params)
     cfg = SimConfig(latency_ms=latency_ms, fee_info=series, writes_per_s=writes_per_s or None)
     guards = Guards(max_gross=max_gross, max_loss=max_loss)
@@ -764,7 +769,8 @@ def live_l2(
     seed: int = typer.Option(1),
     min_spread: float = typer.Option(0.05),
     improve: bool = typer.Option(True),
-    cooldown_s: float = typer.Option(300.0),
+    cooldown_s: float = typer.Option(5.0, max=5.0, help="Pause after a fill, seconds (at most 5)"),
+    cooldown_side: bool = typer.Option(True, help="The cooldown pauses only the side that filled"),
     max_pos: float = typer.Option(1.0, help="Max net contracts per market"),
     max_gross: float = typer.Option(10.0),
     max_loss: float = typer.Option(10.0, help="Halt when run PnL (marked to mid) < -$X"),
@@ -795,7 +801,8 @@ def live_l2(
     root = s.data_dir / "live"
     run_dir = root / env / run_id
     run_dir.mkdir(parents=True)
-    params = {"min_spread": min_spread, "improve": improve, "cooldown_s": cooldown_s, "max_pos": max_pos}
+    params = {"min_spread": min_spread, "improve": improve, "cooldown_s": cooldown_s, "max_pos": max_pos,
+              "cooldown_side": cooldown_side}
     strat = Quoter(category_of={k: v.get("category") for k, v in series.items()}, **params)
     guards = LiveGuards(max_gross=max_gross, max_loss=max_loss, group_contracts_limit=group_limit,
                         order_expiry_s=expiry_s)
@@ -949,6 +956,12 @@ def backtest_l2_cmd(
     pm_pull: float = typer.Option(0.0, help="quote: pull when Polymarket moved this much"),
     pm_window_s: float = typer.Option(10.0, help="quote: ...within this many seconds"),
     pm_only: bool = typer.Option(False, help="quote: trade only markets with a Polymarket price"),
+    skew: float = typer.Option(0.0, help="quote: inventory skew toward flat, $ per net contract "
+                               "(raise the pairing bid, lower the adding bid; 0 = off)"),
+    pair_edge: float = typer.Option(0.01, help="quote: a skewed pairing bid keeps a YES+NO pair "
+                                    "at least this profitable"),
+    cooldown_side: bool = typer.Option(False, help="quote: the cooldown pauses only the side that "
+                                       "filled (the pairing side keeps quoting)"),
     root: str = typer.Option(None, help="Stream root to replay (default data/raw/stream; a paper "
                              "run's data/paper_l2/<run>/stream reconciles that run)"),
 ) -> None:
@@ -960,7 +973,8 @@ def backtest_l2_cmd(
         params |= {"max_spread": max_spread, "improve": improve, "cooldown_s": cooldown_s,
                    "pull_frac": pull_frac, "categories": set(category) if category else None,
                    "pm_band": pm_band, "pm_pull": pm_pull, "pm_window_s": pm_window_s,
-                   "pm_only": pm_only}
+                   "pm_only": pm_only, "skew": skew, "pair_edge": pair_edge,
+                   "cooldown_side": cooldown_side}
     s, c = _clients()
     typer.echo(backtest_l2(s, c, start=start, end=end, strategy=strategy, latency_ms=latency_ms,
                            queue=queue, writes_per_s=writes_per_s or None, params=params,

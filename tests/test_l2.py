@@ -127,6 +127,25 @@ def test_quoter_respects_spread_band_and_cooldown():
     assert not [o for o in sim.live_orders("M")]                     # both pulled for the cooldown
 
 
+def test_one_sided_cooldown_keeps_the_pairing_side_quoting():
+    sim = Simulator(SimConfig(latency_ms=0))
+    q = Quoter(min_spread=0.05, improve=True, cooldown_s=60, min_requote_s=0, cooldown_side=True)
+    sim.apply(_snap(T0, [(0.40, 10)], [(0.50, 5)]))
+    q.on_event(sim, "M")
+    assert len(sim.live_orders("M")) == 2
+    sim.apply(_delta(T0 + MS, "yes", 0.40, -2, exec_=True))     # sells through our 0.41 YES bid
+    q.on_event(sim, "M")
+    assert [f.side for f in sim.fills] == ["yes"]
+    live = sim.live_orders("M")
+    assert [o.side for o in live] == ["no"]                        # NO (pairs the YES) stays
+    sim.apply(_snap(T0 + 30 * 10**9, [(0.40, 10)], [(0.50, 5)]))  # 30 s later: YES still paused
+    q.on_event(sim, "M")
+    assert not [o for o in sim.live_orders("M") if o.side == "yes"]
+    sim.apply(_snap(T0 + 61 * 10**9, [(0.40, 10)], [(0.50, 5)]))  # after 60 s: YES requoted
+    q.on_event(sim, "M")
+    assert [o for o in sim.live_orders("M") if o.side == "yes"]
+
+
 def test_write_budget_throttles_places():
     sim = Simulator(SimConfig(latency_ms=0, writes_per_s=2))
     sim.apply(_snap(T0, [(0.40, 10)], [(0.50, 5)]))
@@ -171,3 +190,40 @@ def test_quoter_pm_band_and_pull():
     sim.apply(Event(T0 + 2 * 10**9, "ext", "M", {"mid": 0.47}))   # +5c in 2 s: pull everything
     q.on_event(sim, "M")
     assert not sim.live_orders("M")
+
+
+def test_quoter_skew_moves_both_bids_toward_flat():
+    from albert.backtest.l2 import Quoter
+
+    q = {"yes_bid": 0.40, "yes_ask": 0.45}
+    s = Quoter(skew=0.01, pair_edge=0.01)
+    s._bought["M"] = {"yes": [2.0, 0.80]}                      # long 2 YES at 0.40
+    assert s._skewed("M", q, 2.0, 0.40, 0.55) == (0.38, 0.57)  # NO up 2c, YES down 2c
+    s._bought["M"] = {"yes": [2.0, 0.90]}                      # at 0.45: a pair must cost <= 0.99
+    assert s._skewed("M", q, 2.0, 0.40, 0.55) == (0.38, 0.55)  # cap 0.54 < base: base kept
+    s2 = Quoter(skew=0.05)
+    s2._bought["M"] = {"no": [3.0, 1.50]}                      # long 3 NO at 0.50 (pos -3)
+    yes, no = s2._skewed("M", q, -3.0, 0.40, 0.55)
+    assert yes == 0.44 and no == 0.40                          # YES capped 1c under the ask
+    assert Quoter(skew=0.01)._skewed("M", q, 0.4, 0.40, 0.55) == (0.40, 0.55)  # < 1c: no change
+    assert Quoter(skew=0.30)._skewed("M", q, 2.0, 0.40, 0.55)[0] is None       # below 1c: pulled
+
+
+def test_pair_breakdown_parts_add_up():
+    import polars as pl
+
+    from albert.backtest.l2 import pair_breakdown
+
+    fills = pl.DataFrame({
+        "market": ["E1-A", "E1-A", "E1-A", "E2-B"], "side": ["yes", "no", "yes", "no"],
+        "qty": [1.0, 1.0, 1.0, 2.0], "price": [0.40, 0.55, 0.42, 0.30], "fee": [0.0, 0.01, 0.0, 0.0],
+        "final_yes": [1.0, 1.0, 1.0, 0.7], "settled": [True, True, True, False]})
+    b = pair_breakdown(fills)
+    # E1-A: 1 pair at avg YES 0.41 + NO 0.55 -> +0.04; 1 unpaired YES at 0.41 settles 1 -> +0.59
+    # E2-B: 2 NO at 0.30 marked at 0.30 -> 0
+    assert abs(b["pair_pnl"] - 0.04) < 1e-9 and abs(b["directional_pnl"] - 0.59) < 1e-9
+    total = sum((f if s == "yes" else 1 - f) * q - p * q - fee for s, q, p, fee, f in
+                zip(fills["side"], fills["qty"], fills["price"], fills["fee"], fills["final_yes"], strict=True))
+    assert abs(b["pnl"] - total) < 1e-9
+    assert b["paired_contracts"] == 2 and b["contracts"] == 5 and b["events"] == 2
+    assert pair_breakdown(fills, settled_only=True)["markets"] == 1

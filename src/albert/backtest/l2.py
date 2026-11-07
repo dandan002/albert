@@ -646,9 +646,16 @@ class Quoter:
     * ``min_spread`` / ``max_spread``: quote only in this spread band (measured before us).
     * ``pull_frac``: when joining, cancel if the external size ahead of us shrinks by this
       fraction (the queue is being eaten or pulled: the price is about to move).
-    * ``cooldown_s``: after any fill in a market, pull both sides and wait.
+    * ``cooldown_s``: after any fill in a market, pull both sides and wait. With
+      ``cooldown_side`` only the side that filled waits; the other side (which would pair the
+      fill into a $1 YES+NO pair) keeps quoting.
     * ``min_requote_s``: at most one new order per market side in this interval (rate limits).
     * ``categories``: series categories to trade (None = all).
+    * ``skew``: inventory skew toward neutral, in dollars per net contract. Long YES by ``q``
+      raises the NO bid by ``skew * q`` (a NO fill pairs with held YES; a YES+NO pair settles at
+      exactly $1) and lowers the YES bid by the same amount; short YES does the reverse. The
+      raised bid stays one tick under the opposite ask (post-only) and never pays more than
+      ``1 - avg cost of the held side - pair_edge`` (a pair must not lose). 0 = off.
     * Paired markets (Polymarket intl mid replayed as ``ext`` events): ``pm_band`` keeps each bid
       at least this far below the Polymarket fair value (``None`` = ignore it); ``pm_pull`` pulls
       both sides for ``pm_window_s`` when Polymarket moved this much in the last ``pm_window_s``;
@@ -660,7 +667,8 @@ class Quoter:
                  pull_frac: float = 0.0, cooldown_s: float = 0.0, min_requote_s: float = 1.0,
                  categories: set[str] | None = None, category_of: dict[str, str] | None = None,
                  markets: set[str] | None = None, pm_band: float | None = None,
-                 pm_pull: float = 0.0, pm_window_s: float = 10.0, pm_only: bool = False) -> None:
+                 pm_pull: float = 0.0, pm_window_s: float = 10.0, pm_only: bool = False,
+                 skew: float = 0.0, pair_edge: float = 0.01, cooldown_side: bool = False) -> None:
         self.min_spread, self.max_spread, self.lo, self.hi = min_spread, max_spread, lo, hi
         self.max_pos, self.size, self.improve = max_pos, size, improve
         self.pull_frac, self.cooldown_ns = pull_frac, int(cooldown_s * 1e9)
@@ -672,6 +680,9 @@ class Quoter:
         self._seen_fills = 0
         self.pm_band, self.pm_pull, self.pm_only = pm_band, pm_pull, pm_only
         self.pm_window_ns = int(pm_window_s * 1e9)
+        self.skew, self.pair_edge, self.cooldown_side = skew, pair_edge, cooldown_side
+        self._cool_side: dict[tuple[str, str], int] = {}
+        self._bought: dict[str, dict[str, list[float]]] = {}   # market -> side -> [qty, cost]
 
     def _eligible(self, market: str) -> bool:
         if self.markets is not None and market not in self.markets:
@@ -705,16 +716,46 @@ class Quoter:
         if fair is not None and self.pm_band is not None:
             yes = yes if yes <= fair - self.pm_band + EPS else None
             no = no if no <= 1 - fair - self.pm_band + EPS else None
+        if self.skew and abs(pos) > EPS:
+            yes, no = self._skewed(market, q, pos, yes, no)
         if pos < self.max_pos:
             want["yes"] = yes
         if pos > -self.max_pos:
             want["no"] = no
+        for side in ("yes", "no"):
+            if sim.now < self._cool_side.get((market, side), 0):
+                want[side] = None
         return want
+
+    def _skewed(self, market: str, q: dict, pos: float, yes: float | None,
+                no: float | None) -> tuple[float | None, float | None]:
+        """Shift both bids toward a flat position (see ``skew``); prices stay on the 1c grid."""
+        shift = round(self.skew * abs(pos), 2)
+        if shift < 0.01 - EPS:
+            return yes, no
+        held, pair = ("yes", "no") if pos > 0 else ("no", "yes")
+        base = {"yes": yes, "no": no}
+        if base[pair] is not None:
+            # one tick under the opposite ask: the NO ask is 1 - yes_bid, the YES ask is yes_ask
+            cap = round((1 - q["yes_bid"] if pair == "no" else q["yes_ask"]) - 0.01, 2)
+            qty, cost = self._bought.get(market, {}).get(held, (0.0, 0.0))
+            if qty > EPS:
+                cap = min(cap, round(1 - cost / qty - self.pair_edge, 2))
+            base[pair] = max(base[pair], min(round(base[pair] + shift, 2), cap))
+        if base[held] is not None:
+            lowered = round(base[held] - shift, 2)
+            base[held] = lowered if lowered >= 0.01 - EPS else None
+        return base["yes"], base["no"]
 
     def on_event(self, sim: Simulator, market: str) -> None:
         for f in sim.fills[self._seen_fills:]:
-            if self.cooldown_ns:
+            if self.cooldown_ns and self.cooldown_side:
+                self._cool_side[(f.market, f.side)] = f.t_ns + self.cooldown_ns
+            elif self.cooldown_ns:
                 self._cool_until[f.market] = f.t_ns + self.cooldown_ns
+            b = self._bought.setdefault(f.market, {}).setdefault(f.side, [0.0, 0.0])
+            b[0] += f.qty
+            b[1] += f.qty * f.price
         self._seen_fills = len(sim.fills)
         if market not in sim.synced or not self._eligible(market):
             return
@@ -820,6 +861,44 @@ def _cluster_t(frame, col: str, cluster: str = "market") -> tuple[float | None, 
     return mean, (mean / se if se > 0 else None), k
 
 
+def pair_breakdown(fills, *, settled_only: bool = False) -> dict[str, Any]:
+    """Split fill PnL into YES+NO pairs (a pair pays exactly $1: spread capture with no outcome
+    risk), the unpaired net position (directional, marked at ``final_yes``) and fees, per market;
+    plus the spread of PnL across events. Needs columns market, side, qty, price, fee, final_yes,
+    settled. The three parts add up to the total PnL exactly."""
+    import polars as pl
+
+    f = fills.filter(pl.col("final_yes").is_not_null())
+    if settled_only:
+        f = f.filter(pl.col("settled"))
+    if f.is_empty():
+        return {"markets": 0}
+    side_qty = lambda s: pl.col("qty").filter(pl.col("side") == s).sum()
+    side_cost = lambda s: (pl.col("qty") * pl.col("price")).filter(pl.col("side") == s).sum()
+    g = f.group_by("market").agg(yes=side_qty("yes"), no=side_qty("no"), yc=side_cost("yes"),
+                                 nc=side_cost("no"), fee=pl.col("fee").sum(),
+                                 final=pl.col("final_yes").first())
+    g = g.with_columns(pairs=pl.min_horizontal("yes", "no"),
+                       ya=pl.when(pl.col("yes") > 0).then(pl.col("yc") / pl.col("yes")).otherwise(0.0),
+                       na=pl.when(pl.col("no") > 0).then(pl.col("nc") / pl.col("no")).otherwise(0.0))
+    g = g.with_columns(
+        pair_pnl=pl.col("pairs") * (1 - pl.col("ya") - pl.col("na")),
+        dir_pnl=(pl.col("yes") - pl.col("pairs")) * (pl.col("final") - pl.col("ya"))
+        + (pl.col("no") - pl.col("pairs")) * (1 - pl.col("final") - pl.col("na")),
+        event=pl.col("market").str.replace(r"-[^-]+$", ""))
+    g = g.with_columns(pnl=pl.col("pair_pnl") + pl.col("dir_pnl") - pl.col("fee"))
+    ev = g.group_by("event").agg(pl.col("pnl").sum())["pnl"]
+    contracts = g["yes"].sum() + g["no"].sum()
+    return {"markets": g.height, "events": ev.len(), "contracts": contracts,
+            "paired_contracts": 2 * g["pairs"].sum(),
+            "paired_share": 2 * g["pairs"].sum() / contracts if contracts else None,
+            "net_contracts": (g["yes"] - g["no"]).abs().sum(),
+            "pair_pnl": g["pair_pnl"].sum(), "directional_pnl": g["dir_pnl"].sum(),
+            "fees": g["fee"].sum(), "pnl": g["pnl"].sum(),
+            "pnl_per_event_mean": ev.mean(), "pnl_per_event_std": ev.std() if ev.len() > 1 else None,
+            "events_positive": (ev > 0).mean()}
+
+
 def backtest_l2(s, c, *, start: str | None, end: str | None, strategy: str, latency_ms: float,
                 queue: str, params: dict[str, Any], writes_per_s: float | None = 10.0,
                 root: Path | None = None) -> Path:
@@ -886,5 +965,7 @@ def backtest_l2(s, c, *, start: str | None, end: str | None, strategy: str, late
         "settled_contracts": fills.filter(pl.col("settled"))["qty"].sum(),
         "by_how": dict(fills.group_by("how").agg(pl.col("qty").sum()).iter_rows()),
     })
+    rep.json("Pairs vs inventory (all fills; unsettled marked at the last mid)", pair_breakdown(fills))
+    rep.json("Pairs vs inventory (settled markets only)", pair_breakdown(fills, settled_only=True))
     rep.table("Fills", fills.drop("t_ns"), save_as="fills", max_rows=40)
     return rep.save()
