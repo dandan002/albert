@@ -308,6 +308,11 @@ Numbers marked [I] are estimates. The rest come from §7 measurements or docs.
 | Cancel request → engine ack (warm keep-alive) | RTT + server ≈ 5–20 ms [I] | ≈ 20–40 ms [I] | **≈ 47 ms p50** on a warm uncached GET (`/exchange/status` via ALB) [V §7.3]. Order writes unmeasured. |
 | **Signal → cancel acked** | **≈ 10–30 ms** | **≈ 30–60 ms** | ≈ 80–120 ms |
 
+**Measured 2026-11-07 (AWS us-east-2, direct hosts):** exchange event → our receive p50 7.0 ms /
+p99 12.8 ms (2.8M frames: 6 ms Kalshi-side, 1.4 ms network). Prod create and cancel each took
+~4-5 ms from our send to the engine `ts_ms`, with REST RTT 5.6-6.4 ms. So signal → cancel acked
+≈ 13 ms, the low end of the same-region estimate. Details: `deploy/aws.md`.
+
 **Budget to enforce:** p50 ≤ 100 ms, p99 ≤ 300 ms from receiving a market-data trigger to the
 cancel being acknowledged (measure with Kalshi `ts_ms` and our monotonic clock). Every venue/region
 option above passes, so **region choice is a tie-breaker, not a requirement**. Anything slower than

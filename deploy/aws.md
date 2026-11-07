@@ -53,7 +53,18 @@ The code uses Kalshi's recommended hosts (docs.kalshi.com/getting_started/api_en
 
 Kalshi's own event → send time is ~5 ms p50. Demo runs in us-west-2: ~48–52 ms from here
 whatever the host (demo create/cancel RTT p50 ~60–73 ms); it proves plumbing only.
-Prod order create/cancel latency is not measured yet (prod is gated); expect roughly the signed
-REST figure. `KalshiTrader` keeps idle connections for 300 s to avoid a new TLS handshake per
+Prod order latency (one $1 post-only order placed and cancelled by hand, 2026-11-07):
+
+| | Create | Cancel |
+|---|---|---|
+| Send → engine `ts_ms` | ~5 ms | ~4 ms |
+| REST round trip | 6.4 ms | 5.6 ms |
+| Send → `warp-ws` `user_order` | 5.8 ms | 5.4 ms |
+
+`warp-ws` delivers the order update ~1 ms after the engine stamp, before the REST response.
+So market event → our order at the engine is ~7 ms (feed) + <1 ms (decide, sign) + ~5 ms ≈
+13 ms p50. Simulator and paper default `latency_ms` is 20 (was 100). That's decision → engine,
+because replay times are already our receive times. Repeated `GET /portfolio/balance` calls take
+~1.6 s each after the first (other reads 5–8 ms), so keep balance reads out of any hot loop. `KalshiTrader` keeps idle connections for 300 s to avoid a new TLS handshake per
 sparse order. Further options, not done: an Ed25519 prod key (signing 0.3 ms → 0.03 ms) and
 AWS PrivateLink (Premier tier and above only).

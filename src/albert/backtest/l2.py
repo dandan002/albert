@@ -313,7 +313,10 @@ class Market:
 
 @dataclass
 class SimConfig:
-    latency_ms: float = 100.0
+    # Decision -> order live (or cancelled) at the engine. Measured on prod 2026-11-07 from AWS
+    # us-east-2 (direct hosts): send -> engine ts_ms 4-5 ms, REST RTT 5.6-6.4 ms. 20 ms is ~4x that,
+    # to cover event-loop lag under load and unmeasured tails. recv_ns already includes the feed delay.
+    latency_ms: float = 20.0
     queue: str = "risk_averse"          # risk_averse | optimistic
     fee_info: dict[str, dict] = field(default_factory=dict)   # series -> {fee_type, fee_multiplier}
     # Write budget (token bucket): Kalshi Basic tier allows 10 order writes/s; a cancel costs
