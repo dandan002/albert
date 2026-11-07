@@ -43,10 +43,26 @@ from typing import Any
 
 import httpx
 
-from albert.backtest.l2 import (EPS, Event, Fill, Level, Market, OnlineClassifier, Order, SimConfig,
-                                Simulator, _pm_tops)
-from albert.venues.kalshi_trade import (ENVS, NotAllowed, TradeError, order_body, parse_fill,
-                                        parse_order)
+from albert.backtest.l2 import (
+    EPS,
+    Event,
+    Fill,
+    Level,
+    Market,
+    OnlineClassifier,
+    Order,
+    SimConfig,
+    Simulator,
+    _pm_tops,
+)
+from albert.venues.kalshi_trade import (
+    ENVS,
+    NotAllowed,
+    TradeError,
+    order_body,
+    parse_fill,
+    parse_order,
+)
 
 BOT_PREFIX = "alb"                 # every bot client_order_id starts with this
 MARKOUT_S = (10, 60, 300)
@@ -306,9 +322,9 @@ class LiveBroker:
             if fr.post_position is not None and abs(fr.post_position - self.position[o.market]) > 1e-6:
                 self.diag["post_position_mismatch"] += 1
             self.touched_ns[oid] = self.now
-        elif typ == "order_group_updates":
-            if msg.get("order_group_id") == self.group and msg.get("event_type") in ("triggered", "deleted"):
-                self.halt(f"order group {msg.get('event_type')}")
+        elif (typ == "order_group_updates" and msg.get("order_group_id") == self.group
+              and msg.get("event_type") in ("triggered", "deleted")):
+            self.halt(f"order group {msg.get('event_type')}")
 
     # -- halts --
     def cancel_all(self, reason: str) -> int:
@@ -476,8 +492,8 @@ class LiveMaker:
         for p in pairs:
             self.by_token.setdefault(p["token_id"], []).append((p["kalshi_ticker"], bool(p.get("complement"))))
         self.rec = Recorder(run_dir / "stream", signer, on_frame=self.on_frame,
-                            kalshi_ws=ENVS[env]["ws"])
-        self.ledger = open(run_dir / "ledger.jsonl", "a", buffering=1)
+                            kalshi_ws=ENVS[env]["ws"], kalshi_private_ws=ENVS[env]["ws_private"])
+        self.ledger = open(run_dir / "ledger.jsonl", "a", buffering=1)  # noqa: SIM115 - closed in close()
         self.last_md_ns = time.time_ns()
         self.gaps_seen = 0
         self.drops_seen = 0
@@ -681,7 +697,8 @@ class LiveMaker:
         from albert.stream import disk_guard
 
         tasks = [disk_guard(self.rec, min_free_gb), self.guard_loop(), self.worker(),
-                 self.rec.kalshi_private_conn("u0")]
+                 self.rec.kalshi_private_conn("u0"),
+                 self.rec.kalshi_private_conn("u1", ("order_group_updates",), self.rec.kalshi_ws)]
         for i in range(0, len(kalshi), chunk):
             tasks.append(self.rec.kalshi_conn(f"k{i // chunk}", kalshi[i:i + chunk]))
         for i in range(0, len(pm_tokens), chunk):
@@ -733,14 +750,17 @@ async def plumbing(trader, signer, out_dir: Path, *, market: str | None = None,
     if trader.env != "demo":
         raise NotAllowed("the plumbing test runs on demo only")
     out_dir.mkdir(parents=True, exist_ok=True)
-    rest_log = open(out_dir / "rest.jsonl", "a", buffering=1)
+    rest_log = open(out_dir / "rest.jsonl", "a", buffering=1)  # noqa: SIM115, ASYNC230 - one-off test log
     frames: list[dict[str, Any]] = []
 
     def on_frame(venue: str, recv_ns: int, frame: str) -> None:
         frames.append(json.loads(frame))
 
-    rec = Recorder(out_dir / "stream", signer, on_frame=on_frame, kalshi_ws=ENVS["demo"]["ws"])
+    rec = Recorder(out_dir / "stream", signer, on_frame=on_frame, kalshi_ws=ENVS["demo"]["ws"],
+                   kalshi_private_ws=ENVS["demo"]["ws_private"])
     ws_task = asyncio.create_task(rec.kalshi_private_conn("u0"))
+    ws_task_groups = asyncio.create_task(
+        rec.kalshi_private_conn("u1", ("order_group_updates",), rec.kalshi_ws))
     steps: list[PlumbingStep] = []
     prefix = f"{BOT_PREFIX}plumb{int(time.time())}"
 
@@ -848,7 +868,7 @@ async def plumbing(trader, signer, out_dir: Path, *, market: str | None = None,
             await step("delete_group", trader.delete_order_group(group))
     finally:
         rec.stop.set()
-        await asyncio.gather(ws_task, return_exceptions=True)
+        await asyncio.gather(ws_task, ws_task_groups, return_exceptions=True)
         rec.close()
         (out_dir / "ws_private.json").write_text(json.dumps(frames, indent=1))
         (out_dir / "steps.json").write_text(json.dumps([asdict(s) for s in steps], indent=1, default=str))

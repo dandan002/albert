@@ -82,6 +82,9 @@ with `nice -n 10` and keep < 3 GB RAM so the recorder never starves.
    positive weeks, on settlement).
 
 ## Useful commands
+- Kalshi hosts (2026-11-07): signed REST and all WebSockets use the direct us-east-2 hosts
+  (`external-api*`, `warp-ws` for fills/user_orders); unsigned market-data REST stays on
+  `api.elections.kalshi.com`. Latency table and reasons in `deploy/aws.md`.
 - Tests/lint: `.venv/bin/python -m pytest -q` (456 pass), `.venv/bin/python -m ruff check src tests`
 - Accounts (read-only): `.venv/bin/python -m albert live check --env demo|prod`
 - Bot orders only: `.venv/bin/python -m albert live cancel-own --env demo` (prod: add `--live`)

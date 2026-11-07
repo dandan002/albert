@@ -24,21 +24,35 @@ Direction (docs: Order direction): V2 orders quote the YES leg. A bid for YES at
 import asyncio
 import re
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Iterator
+from typing import Any
 
 import httpx
 
 from albert.config import secret
 from albert.venues.kalshi_auth import KalshiSigner, load_private_key
 
+# Kalshi's recommended hosts (docs.kalshi.com/getting_started/api_environments). The external-api
+# hosts reach the exchange directly in AWS us-east-2; the shared hosts (api.elections.kalshi.com,
+# demo-api.kalshi.co) go through CloudFront, whose edge can be in another region (measured
+# 2026-11-07 from us-east-2: signed REST p50 7.4 ms vs 15-37 ms, WS ping 1.3 vs 2.7-25 ms).
+# ``ws_private`` (warp-ws) carries only the ``fill`` and ``user_orders`` channels, with lower
+# latency; every other channel, order_group_updates included, stays on ``ws``.
+# ``rest_data`` (unsigned market-data reads: market lists, books for planning) stays on the shared
+# host: CloudFront caches it, latency there does not matter, and the uncached direct host
+# rate-limited (429) the recorder's startup market listing.
 ENVS = {
-    "prod": {"rest": "https://api.elections.kalshi.com/trade-api/v2",
-             "ws": "wss://api.elections.kalshi.com/trade-api/ws/v2",
+    "prod": {"rest": "https://external-api.kalshi.com/trade-api/v2",
+             "rest_data": "https://api.elections.kalshi.com/trade-api/v2",
+             "ws": "wss://external-api-ws.kalshi.com/trade-api/ws/v2",
+             "ws_private": "wss://warp-ws.kalshi.com/trade-api/ws/v2",
              "key_id": "KALSHI_API_KEY_ID", "key": "KALSHI_PRIVATE_KEY"},
-    "demo": {"rest": "https://demo-api.kalshi.co/trade-api/v2",
-             "ws": "wss://demo-api.kalshi.co/trade-api/ws/v2",
+    "demo": {"rest": "https://external-api.demo.kalshi.co/trade-api/v2",
+             "rest_data": "https://demo-api.kalshi.co/trade-api/v2",
+             "ws": "wss://external-api-ws.demo.kalshi.co/trade-api/ws/v2",
+             "ws_private": "wss://warp-ws.demo.kalshi.co/trade-api/ws/v2",
              "key_id": "KALSHI_DEMO_API_KEY_ID", "key": "KALSHI_DEMO_PRIVATE_KEY"},
 }
 API_PREFIX = "/trade-api/v2"
@@ -248,7 +262,9 @@ class KalshiTrader:
         except NotAllowed:
             self.writable = False
         self.bucket = TokenBucket(write_rate, write_capacity)
-        self.http = httpx.AsyncClient(base_url=ENVS[env]["rest"], transport=transport, timeout=timeout)
+        # Keep the TLS connection warm between sparse orders (a new connection costs ~6 ms more).
+        self.http = httpx.AsyncClient(base_url=ENVS[env]["rest"], transport=transport, timeout=timeout,
+                                      limits=httpx.Limits(keepalive_expiry=300))
         self.requests: list[tuple[str, str]] = []   # (method, path) log, for tests and audits
 
     async def aclose(self) -> None:

@@ -169,6 +169,8 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
   Measured latency from the Mac: Kalshi event→send ~6 ms, send→our receive ~20 ms (Mac clock
   44 ± 18 ms behind; raw recv_ns precede ts_ms), REST RTT ~25 ms keep-alive → ~50 ms event to
   order at the exchange (the simulator's 100 ms default is conservative).
+  From the AWS us-east-2 host on Kalshi's direct hosts (2026-11-07): WS send→receive ~1.4 ms,
+  signed REST ~7 ms keep-alive, so event→order at the exchange is ~15 ms (`deploy/aws.md`).
   - *Structural arbitrage* (`research/arb_l2.py`): 95 complete mutually-exclusive sets, 929
     threshold-ladder pairs. Zero set arbs after fees (best gross gap +2c vs ~3.5c of fees on a
     50/50 pair). One ladder dislocation (KXTOKENUSE, +5.9c/lot, 88 lots) lasted 7 ms and was

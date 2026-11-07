@@ -40,9 +40,11 @@ from albert.categories import kalshi_is_non_financial, pm_is_non_financial
 from albert.venues import kalshi as k
 from albert.venues.kalshi_auth import KalshiSigner
 
-KALSHI_WS = "wss://api.elections.kalshi.com/trade-api/ws/v2"
+# Direct us-east-2 hosts (see venues/kalshi_trade.ENVS); the CloudFront host added ~10-20 ms.
+KALSHI_WS = "wss://external-api-ws.kalshi.com/trade-api/ws/v2"
+KALSHI_PRIVATE_WS = "wss://warp-ws.kalshi.com/trade-api/ws/v2"   # fill and user_orders only
 KALSHI_WS_PATH = "/trade-api/ws/v2"
-KALSHI_REST = "https://api.elections.kalshi.com/trade-api/v2"
+KALSHI_REST = "https://api.elections.kalshi.com/trade-api/v2"   # market data: cached shared host
 PM_WS = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
 FLUSH_SECONDS = 30.0
 HOUR_NS = 3600 * 10**9
@@ -82,7 +84,7 @@ class HourlyWriter:
                 break
             n += 1
         self._path, self._hour, self._lines = path, hour, 0
-        self._f = open(path.with_name(path.name + ".part"), "wb")
+        self._f = open(path.with_name(path.name + ".part"), "wb")  # noqa: SIM115 - closed on hour roll
         self._zw = zstandard.ZstdCompressor(level=ZSTD_LEVEL).stream_writer(self._f, closefd=False)
 
     def write(self, recv_ns: int, frame: str) -> None:
@@ -305,12 +307,13 @@ def select_pm(n: int, *, events: int = 200) -> list[dict[str, Any]]:
 class Recorder:
     def __init__(self, root: Path, signer: KalshiSigner | None,
                  on_frame: Callable[[str, int, str], None] | None = None,
-                 kalshi_ws: str = KALSHI_WS) -> None:
+                 kalshi_ws: str = KALSHI_WS, kalshi_private_ws: str = KALSHI_PRIVATE_WS) -> None:
         """``on_frame(venue, recv_ns, frame)`` is called after each frame is written (used by
         the live paper and live traders, which record exactly the input they trade on).
         ``kalshi_ws`` selects the environment (the demo exchange has its own URL and keys)."""
         self.root = root
         self.kalshi_ws = kalshi_ws
+        self.kalshi_private_ws = kalshi_private_ws
         self.on_frame = on_frame
         self.signer = signer
         self.stop = asyncio.Event()
@@ -413,17 +416,20 @@ class Recorder:
                 backoff = min(backoff * 2, 60.0)
 
     async def kalshi_private_conn(self, conn: str,
-                                  channels: tuple[str, ...] = ("user_orders", "fill",
-                                                               "order_group_updates")) -> None:
+                                  channels: tuple[str, ...] = ("user_orders", "fill"),
+                                  url: str | None = None) -> None:
         """The account's own order, fill and order-group updates (authenticated channels; no
-        market filter, so every order on the account is seen, including manual ones)."""
+        market filter, so every order on the account is seen, including manual ones). ``fill``
+        and ``user_orders`` go to the low-latency warp host by default; that host rejects every
+        other channel, so ``order_group_updates`` needs ``url=self.kalshi_ws``."""
+        url = url or self.kalshi_private_ws
         self._writer("kalshi", conn)
         st = self.stats[conn]
         backoff = 1.0
         while not self.stop.is_set():
             try:
                 headers = self.signer.headers("GET", KALSHI_WS_PATH)
-                async with connect(self.kalshi_ws, additional_headers=headers, max_size=2**26,
+                async with connect(url, additional_headers=headers, max_size=2**26,
                                    open_timeout=20, ping_interval=20) as ws:
                     st.connects += 1
                     backoff = 1.0
