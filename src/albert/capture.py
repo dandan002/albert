@@ -37,7 +37,7 @@ def _write_text(root: Path, venue: str, name: str, text: str, lines: int = 40) -
 
 
 def capture_weather(s: Settings, c: Clients, root: Path) -> list[Path]:
-    """IEM (CLI, ASOS, NBM) and api.weather.gov samples for the weather parsers."""
+    """IEM (CLI, ASOS, NBM) samples for the weather parsers."""
     now = datetime.now(UTC)
     day = (now - timedelta(days=3)).date()
     out = [
@@ -45,8 +45,6 @@ def capture_weather(s: Settings, c: Clients, root: Path) -> list[Path]:
         _write_text(root, "iem", "asos.csv", c.iem.asos("NYC", day, day + timedelta(days=1), cache=False).payload),
         _write_text(root, "iem", "nbm.csv", c.iem.nbm(
             "NYC", now - timedelta(days=2), now - timedelta(days=2) + timedelta(hours=7), cache=False).payload, 60),
-        _write(root, "nws", "observations",
-               c.nws.latest_observations("NYC", now - timedelta(hours=3)).payload, 3),
     ]
     return out
 

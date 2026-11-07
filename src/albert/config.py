@@ -17,11 +17,7 @@ class Settings:
     pm_data_base: str = "https://data-api.polymarket.com/v2"
     pmus_base: str = "https://gateway.polymarket.us/v1"
     iem_base: str = "https://mesonet.agron.iastate.edu"
-    nws_base: str = "https://api.weather.gov"
     pandascore_base: str = "https://api.pandascore.co"
-    # api.weather.gov asks for a contact in the User-Agent.
-    nws_user_agent: str = field(default_factory=lambda: "albert-research ("
-                                + os.environ.get("ALBERT_NWS_CONTACT", "github.com/dandan002/albert") + ")")
     # Save live (uncached) responses too. Off by default: a long-running paper/live loop would
     # write hundreds of MB a day, and its decisions are already in the ledger.
     record_live: bool = field(default_factory=lambda: os.environ.get("ALBERT_RECORD_LIVE", "0") == "1")

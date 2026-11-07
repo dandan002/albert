@@ -17,11 +17,6 @@ def test_asos_and_nbm_rows_from_recorded_csv(fixture_text):
     assert any(r["txn"] is not None and r["xnd"] is not None for r in nbm)
 
 
-def test_nws_observations_convert_to_fahrenheit(fixture):
-    rows = wx.nws_obs_rows(fixture("nws/observations.json"), "NYC")
-    assert rows and all(20 < r["tmpf"] < 120 for r in rows)
-
-
 def test_cli_code_and_lst_bounds():
     assert wx.cli_code("recorded at New York City (CLINYC) for Sep 2") == "NYC"
     # CLI days run on local *standard* time, even in summer.

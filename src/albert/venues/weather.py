@@ -10,7 +10,8 @@ Report (CLI) for one station, e.g. ``CLINYC`` = Central Park (KNYC). Three NWS p
 
 ``api.weather.gov`` serves these live but keeps only about a week of observations and no
 past forecasts, so history comes from the Iowa Environmental Mesonet (IEM), which archives
-the same NWS products. Live trading uses ``api.weather.gov`` plus IEM's real-time NBM feed.
+the same NWS products, read from the IEM archive. (api.weather.gov is not used: its robots.txt
+disallows all agents; the client was removed on 2026-11-06.)
 
 The CLI "day" is midnight to midnight *local standard time* (1am-1am during daylight time).
 """
@@ -27,7 +28,6 @@ import polars as pl
 from albert.http import CachedClient, Fetched
 
 IEM_BASE = "https://mesonet.agron.iastate.edu"
-NWS_BASE = "https://api.weather.gov"
 
 # CLI site code (from Kalshi rules, e.g. "CLINYC" -> "NYC") -> IANA time zone.
 STATION_TZ = {
@@ -81,23 +81,6 @@ class IEM:
             "station": f"K{code}", "model": "NBS", "format": "csv",
             "sts": start.strftime("%Y-%m-%dT%H:%MZ"), "ets": end.strftime("%Y-%m-%dT%H:%MZ")},
             cache=cache)
-
-
-class NWS:
-    """api.weather.gov (live only). Needs a User-Agent with a contact address."""
-
-    def __init__(self, client: CachedClient) -> None:
-        self.client = client
-
-    def latest_observations(self, code: str, start: datetime) -> Fetched:
-        return self.client.get(f"/stations/K{code}/observations",
-                               {"start": start.strftime("%Y-%m-%dT%H:%M:%SZ")}, cache=False)
-
-    def point(self, lat: float, lon: float) -> Fetched:
-        return self.client.get(f"/points/{lat:.4f},{lon:.4f}")
-
-    def station(self, code: str) -> Fetched:
-        return self.client.get(f"/stations/K{code}")
 
 
 # ---- normalizers ------------------------------------------------------------------------------
@@ -166,15 +149,3 @@ def frame(rows: list[dict], schema: dict) -> pl.DataFrame:
     return pl.DataFrame(rows, schema=schema)
 
 
-def nws_obs_rows(payload: dict[str, Any], code: str) -> list[dict]:
-    """api.weather.gov observations (degC, sometimes whole degrees) -> F. Missing values skipped."""
-    rows = []
-    for f in payload.get("features") or []:
-        p = f.get("properties") or {}
-        c = (p.get("temperature") or {}).get("value")
-        ts = p.get("timestamp")
-        if c is None or ts is None:
-            continue
-        rows.append({"code": code, "ts": datetime.fromisoformat(ts).astimezone(UTC),
-                     "tmpf": round(c * 9 / 5 + 32, 1)})
-    return rows
