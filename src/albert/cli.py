@@ -466,11 +466,11 @@ def paper_l2(
 
     from albert.backtest.l2 import Quoter, SimConfig
     from albert.ingest import kalshi_series
-    from albert.paper_l2 import Guards, PaperMaker
+    from albert.paper_l2 import Guards, PaperMaker, market_result
     from albert.stream import select_kalshi, select_paired
     from albert.venues.kalshi_auth import KalshiSigner
 
-    s, c = _clients()
+    s, c = _clients(live_loop=True)   # settlement polls are not recorded unless ALBERT_RECORD_LIVE=1
     series = kalshi_series(s, c)
     vol = None if min_vol24h is None and max_vol24h is None else (min_vol24h or 0.0, max_vol24h if max_vol24h is not None else float("inf"))
     k_rows = select_kalshi(series, kalshi, days=days, seed=seed, max_spread=max_spread, min_spread=select_min_spread,
@@ -490,7 +490,9 @@ def paper_l2(
     cfg = SimConfig(latency_ms=latency_ms, fee_info=series, writes_per_s=writes_per_s or None)
     guards = Guards(max_gross=max_gross, max_loss=max_loss)
     pm = PaperMaker(run_dir, KalshiSigner.from_env(), strategy=strat, cfg=cfg, pairs=pairs,
-                    guards=guards, holdback_ms=holdback_ms, stop_file=root / "STOP")
+                    guards=guards, holdback_ms=holdback_ms, stop_file=root / "STOP",
+                    fetch_result=lambda t: market_result(
+                        c.kalshi.client.get(f"/markets/{t}", cache=False).payload.get("market", {})))
     pm.write("start", {"run_id": run_id, "minutes": minutes, "params": params,
                        "latency_ms": latency_ms, "writes_per_s": writes_per_s,
                        "holdback_ms": holdback_ms, "guards": vars(guards), "seed": seed,

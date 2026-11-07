@@ -14,13 +14,16 @@ A run lives in ``data/paper_l2/<run_id>/``:
   line every minute (equity marked to mid, positions, open orders, diagnostics), halts, and end.
 
 Risk guards (the same ones a live run will need): per-market position cap (``max_pos``), a cap on
-gross open contracts, a loss limit on mark-to-mid PnL for the run, and a kill switch
+gross open contracts in unresolved markets (held markets are polled for their result every
+``settle_every_s``; a settled market is marked at its result, drops out of gross, and is no
+longer quoted), a loss limit on mark-to-mid PnL for the run, and a kill switch
 (``touch data/paper_l2/STOP`` or SIGTERM). A halt cancels every order and stops quoting.
 """
 
 import asyncio
 import json
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -37,6 +40,12 @@ class Guards:
     max_gross: float = 30.0          # stop adding exposure above this many open contracts
     max_loss: float = 5.0            # halt when mark-to-mid PnL for the run falls below -$X
     status_every_s: float = 60.0
+    settle_every_s: float = 300.0    # poll held markets for a result this often
+
+
+def market_result(market: dict[str, Any]) -> float | None:
+    """YES payout of a Kalshi ``/markets/{ticker}`` market: 1.0, 0.0, or None while unresolved."""
+    return {"yes": 1.0, "no": 0.0}.get(market.get("result") or "")
 
 
 @dataclass
@@ -50,7 +59,8 @@ class PaperState:
 class PaperMaker:
     def __init__(self, run_dir: Path, signer, *, strategy: Quoter, cfg: SimConfig,
                  pairs: list[dict[str, Any]], guards: Guards, holdback_ms: float = 500.0,
-                 stop_file: Path | None = None) -> None:
+                 stop_file: Path | None = None,
+                 fetch_result: Callable[[str], float | None] | None = None) -> None:
         self.dir = run_dir
         self.sim = Simulator(cfg)
         self.strategy = strategy
@@ -58,6 +68,8 @@ class PaperMaker:
         self.clf = OnlineClassifier(holdback_ms)
         self.state = PaperState()
         self.stop_file = stop_file
+        self.fetch_result = fetch_result
+        self.results: dict[str, float] = {}     # settled market -> YES payout
         self.by_token: dict[str, list[tuple[str, bool]]] = {}
         for p in pairs:
             self.by_token.setdefault(p["token_id"], []).append((p["kalshi_ticker"], bool(p.get("complement"))))
@@ -86,6 +98,9 @@ class PaperMaker:
             self.sim.apply(ev)
             if self.state.halted:
                 continue
+            if ev.market in self.results:
+                self._cancel_market(ev.market)    # resolved: nothing left to trade
+                continue
             if self._gross() >= self.guards.max_gross:
                 self._cancel_market(ev.market)    # stop adding exposure; existing positions ride
                 continue
@@ -94,7 +109,23 @@ class PaperMaker:
 
     # -- guards and accounting --
     def _gross(self) -> float:
-        return sum(abs(q) for q in self.sim.position.values())
+        return sum(abs(q) for m, q in self.sim.position.items() if m not in self.results)
+
+    def settle(self, market: str, result: float) -> None:
+        """Record a market's result: it is marked at the result, leaves gross, and is not quoted."""
+        if market in self.results:
+            return
+        self.results[market] = result
+        self._cancel_market(market)
+        yes = sum(f.qty for f in self.sim.fills if f.market == market and f.side == "yes")
+        no = sum(f.qty for f in self.sim.fills if f.market == market and f.side == "no")
+        self.write("settle", {"market": market, "result": result, "yes": yes, "no": no,
+                              "payout": yes * result + no * (1 - result),
+                              "position": self.sim.position[market]})
+
+    def unsettled_held(self) -> list[str]:
+        """Markets with a fill that have no result yet (the ones a settlement poll checks)."""
+        return sorted({f.market for f in self.sim.fills} - set(self.results))
 
     def _cancel_market(self, market: str) -> None:
         for o in self.sim.live_orders(market):
@@ -117,7 +148,9 @@ class PaperMaker:
             h[0 if f.side == "yes" else 1] += f.qty
             pnl -= f.qty * f.price + f.fee
         for m, (yes, no) in held.items():
-            mid = self.last_mid(m)
+            mid = self.results.get(m)
+            if mid is None:
+                mid = self.last_mid(m)
             if mid is None:
                 mid = 0.5   # never quoted two-sided: cannot happen for a fill, kept for safety
             pnl += yes * mid + no * (1 - mid)
@@ -173,15 +206,32 @@ class PaperMaker:
                 next_status = time.monotonic() + self.guards.status_every_s
                 self.write("status", {
                     "equity": round(eq, 4), "cash": round(self.sim.cash, 4),
-                    "gross": self._gross(), "markets_held": sum(1 for q in self.sim.position.values() if abs(q) > 1e-9),
+                    "gross": self._gross(), "settled": len(self.results), "markets_held": sum(1 for q in self.sim.position.values() if abs(q) > 1e-9),
                     "open_orders": sum(len(self.sim.live_orders(m)) for m in list(self.sim.by_market)),
                     "orders": len(self.sim.orders), "fills": len(self.sim.fills),
                     "synced": len(self.sim.synced), "halted": self.state.halted,
                     "classifier": dict(self.clf.stats), "diag": dict(self.sim.diag)})
 
+    async def settler(self) -> None:
+        """Poll every held, unresolved market for its result (REST, off the event loop)."""
+        if self.fetch_result is None:
+            return
+        while not self.rec.stop.is_set():
+            await self.rec._sleep_or_stop(self.guards.settle_every_s)
+            for m in self.unsettled_held():
+                if self.rec.stop.is_set():
+                    break
+                try:
+                    r = await asyncio.to_thread(self.fetch_result, m)
+                except Exception as e:  # noqa: BLE001 - a failed poll is retried next round
+                    self.write("settle_error", {"market": m, "error": repr(e)[:300]})
+                    continue
+                if r is not None:
+                    self.settle(m, r)
+
     async def run(self, *, minutes: float, kalshi: list[str], pm_tokens: list[str],
                   chunk: int = 100, min_free_gb: float = 10.0) -> None:
-        tasks = [disk_guard(self.rec, min_free_gb), self.ticker()]
+        tasks = [disk_guard(self.rec, min_free_gb), self.ticker(), self.settler()]
         for i in range(0, len(kalshi), chunk):
             tasks.append(self.rec.kalshi_conn(f"k{i // chunk}", kalshi[i:i + chunk]))
         for i in range(0, len(pm_tokens), chunk):
@@ -199,7 +249,7 @@ class PaperMaker:
         positions = {m: q for m, q in self.sim.position.items() if abs(q) > 1e-9}
         end = {"stopped_reason": self.rec.stopped_reason, "halted": self.state.halted,
                "equity": self.equity(), "cash": self.sim.cash, "fills": len(self.sim.fills),
-               "orders": len(self.sim.orders), "positions": positions,
+               "orders": len(self.sim.orders), "positions": positions, "results": dict(self.results),
                "final_mids": {m: self.last_mid(m) for m in {f.market for f in self.sim.fills}},
                "classifier": dict(self.clf.stats), "diag": dict(self.sim.diag),
                "files": [asdict(f) for f in files],
@@ -251,8 +301,7 @@ def report(s, c, run: str | None = None, out: str = "paper_l2") -> Path:
             f[f"mo_{h}s"], f[f"mx_{h}s"] = mo, mx
     results = {}
     for t in {f["market"] for f in fills}:
-        m = c.kalshi.client.get(f"/markets/{t}", cache=False).payload.get("market", {})
-        results[t] = 1.0 if m.get("result") == "yes" else 0.0 if m.get("result") == "no" else None
+        results[t] = market_result(c.kalshi.client.get(f"/markets/{t}", cache=False).payload.get("market", {}))
     for f in fills:
         settle = results.get(f["market"])
         final = settle if settle is not None else f["last_mid"]
