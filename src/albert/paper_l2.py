@@ -229,7 +229,7 @@ def report(s, c, run: str | None = None) -> Path:
                      "stopped": end and end["stopped_reason"], "halted": end and end["halted"],
                      "equity": (end or last_status or {}).get("equity"),
                      "fills": sum(r["kind"] == "fill" for r in rows),
-                     "classifier": (end or last_status or {}).get("classifier")})
+                     "classifier": json.dumps((end or last_status or {}).get("classifier") or {})})
         final_mids = (end or {}).get("final_mids", {})
         n = 0
         for r in rows:
@@ -241,8 +241,7 @@ def report(s, c, run: str | None = None) -> Path:
             elif r["kind"] == "markout":
                 marks[(rd.name, r["fill"], r["h"])] = (r["mo"], r.get("mx"))
     rep = Report(s.reports_dir, "paper-l2")
-    rep.table("Runs", pl.DataFrame(info, infer_schema_length=None).with_columns(
-        pl.col("classifier").cast(pl.String)))
+    rep.table("Runs", pl.DataFrame(info, infer_schema_length=None))
     if not fills:
         rep.text("Fills", "No fills yet.")
         return rep.save()
