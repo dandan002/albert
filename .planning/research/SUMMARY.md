@@ -321,3 +321,26 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     of std). Illiquid 3 h: 5 s ≈ no cooldown ($7.66); skew roughly neutral per unit of std.
   - Decision (user): cooldown capped at 5 s, one-sided (8de5bd7). Skew off; `--skew` stays for
     replays. One day of data; settled contracts per config ≈ 100 liquid, ≈ 30 illiquid.
+- **In-play rerun of the fast, risk-neutral studies (2026-11-08 ~06–08 UTC).** Window 2026-11-07
+  17 UTC → 11-08 06 UTC (Saturday CFB, NBA, NHL, CBB; 466 markets, 166 paired). Runner and outputs
+  in the session scratchpad (`inplay_hft.py`); reports `research-lead-lag-fast-inplay-20261108T073825Z`.
+  The stock loaders (`read_stream`, `arb_l2.iter_stream`, `backtest.l2.iter_events`) hold a whole
+  hour in memory (>4 GB on in-play hours); the runner streams line by line and filters markets
+  first (checked event-for-event against the originals). Each recorded hour opens with fresh
+  snapshots, so hour-aligned chunks are exact.
+  - *Structural arbitrage:* 223 in-play episodes with ≥1 contract on every leg (24 games, ~10×
+    pre-game), median life 5–7 ms, p90 13–19 ms, 72% taken by a trade. At 10 ms both legs fill on
+    36 (+0.45c), one leg on 167 (−2.9c after unwind): −2.1c per attempt; −2.4c at 25 ms. Episodes
+    lasting seconds to minutes (max "edge" 63c) are float dust in `arb_l2.Books` (levels of
+    ~4e-9 contracts left after deltas sum to zero), not liquidity.
+  - *Polymarket → Kalshi:* 1 s mid changes correlate 0.41–0.65 at lag 0 in play (≤0.013 pre-game);
+    Kalshi leading by 1 s 0.17–0.29, Polymarket leading 0.04–0.08. Kalshi follows a ≥1c PM move by
+    +0.29c at 60 s (2,630 moves, 32 games); stale Kalshi quote taken at 50 ms: −3.1 to −3.4c
+    (t −16 to −23); every edge/move/exit cell negative.
+  - *Sibling (team A book moves → take team B's stale quote):* responds in ~0.4–0.6 s, follow
+    +0.6 to +1.9c; taker −2.4 to −3.1c at edge ≥0. Best cell (move ≥3c, edge ≥2c) +0.3 to +1.1c,
+    t ≤0.7, 41 trades: noise (it was +2.8c before the 02–04 UTC hours were added).
+  - *Maker defence:* Kalshi trades preceded by a PM move with the taker (5 s) mark +0.19c for the
+    maker at 1 s vs +0.53c otherwise; still positive.
+  - **Net:** no fast, risk-neutral edge in play either. Arbitrage appears ~10× as often but lives
+    ~5 ms and is taken by faster traders; at our ~10–15 ms only one leg usually fills.
