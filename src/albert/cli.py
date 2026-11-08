@@ -776,15 +776,28 @@ def live_l2(
     max_loss: float = typer.Option(10.0, help="Halt when run PnL (marked to mid) < -$X"),
     group_limit: int = typer.Option(5, help="Exchange-side: contracts matched per rolling 15 s"),
     expiry_s: float = typer.Option(900.0, help="expiration_time on every order"),
+    tag: str = typer.Option(..., help="One letter naming this maker (client ids alb<tag>...; not "
+                            "'m', the mentions bot). Runs live in data/live/<env>/<tag>/"),
+    max_cost: float = typer.Option(5.0, help="$ deployed: unsettled fill cost (incl. earlier runs of "
+                                   "this tag) + open orders' collateral"),
+    writes_per_s: float = typer.Option(4.0, help="Order writes per second (the account's Basic "
+                                       "bucket, ~10 creates/s, is shared by every bot)"),
+    max_spread: float = typer.Option(0.25, help="Select: widest quoted spread"),
+    select_min_spread: float = typer.Option(0.0, help="Select: narrowest quoted spread"),
+    min_vol24h: float = typer.Option(None, help="Select: trailing 24 h volume >= this (contracts)"),
+    max_vol24h: float = typer.Option(None, help="Select: trailing 24 h volume <= this"),
+    exclude_category: list[str] = typer.Option(["Mentions"], help="Series categories never quoted "
+                                               "(Mentions: the mentions bot's markets)"),
 ) -> None:
     """Live maker with real orders: the paper maker's Quoter, own orders netted from the book,
-    guards and exchange-side backstops. Stop with `touch data/live/STOP` or SIGTERM."""
+    guards and exchange-side backstops. Stop with `touch data/live/STOP` (every live maker) or
+    SIGTERM."""
     import asyncio
     import signal
 
     from albert.backtest.l2 import Quoter, SimConfig
     from albert.ingest import kalshi_series
-    from albert.live_l2 import LiveGuards, LiveMaker
+    from albert.live_l2 import LiveGuards, LiveMaker, carried_from_ledgers, check_tag
     from albert.stream import select_kalshi
     from albert.venues.kalshi_trade import ENVS, KalshiTrader, signer_for
 
@@ -794,21 +807,29 @@ def live_l2(
     trader = KalshiTrader(env, signer, allow_prod=live)
     if not trader.writable:
         raise typer.BadParameter(f"{env} is not enabled for orders (prod needs KALSHI_LIVE_ENABLED=1 and --live)")
+    check_tag(tag)
+    vol = None if min_vol24h is None and max_vol24h is None else (
+        min_vol24h or 0.0, max_vol24h if max_vol24h is not None else float("inf"))
+    skip = set(exclude_category or ())
     tickers = ([t.strip() for t in markets.split(",") if t.strip()] if markets else
                [m["ticker"] for m in select_kalshi(series, kalshi, days=days, seed=seed,
-                                                   rest=ENVS[env]["rest_data"])])
+                                                   rest=ENVS[env]["rest_data"], max_spread=max_spread,
+                                                   min_spread=select_min_spread, vol24h=vol)])
+    tickers = [t for t in tickers if series.get(t.split("-", 1)[0], {}).get("category") not in skip]
     run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     root = s.data_dir / "live"
-    run_dir = root / env / run_id
+    tag_dir = root / env / tag
+    carried = carried_from_ledgers(sorted(tag_dir.glob("*/ledger.jsonl")))
+    run_dir = tag_dir / run_id
     run_dir.mkdir(parents=True)
     params = {"min_spread": min_spread, "improve": improve, "cooldown_s": cooldown_s, "max_pos": max_pos,
               "cooldown_side": cooldown_side}
     strat = Quoter(category_of={k: v.get("category") for k, v in series.items()}, **params)
     guards = LiveGuards(max_gross=max_gross, max_loss=max_loss, group_contracts_limit=group_limit,
-                        order_expiry_s=expiry_s)
+                        order_expiry_s=expiry_s, max_cost=max_cost)
     lm = LiveMaker(run_dir, env, signer, trader, run_id=run_id, strategy=strat,
-                   cfg=SimConfig(fee_info=series, writes_per_s=10.0), guards=guards, pairs=[],
-                   stop_file=root / "STOP")
+                   cfg=SimConfig(fee_info=series, writes_per_s=writes_per_s), guards=guards, pairs=[],
+                   stop_file=root / "STOP", tag=tag, carried=carried)
 
     async def main():
         loop = asyncio.get_running_loop()
@@ -820,8 +841,12 @@ def live_l2(
             loop.add_signal_handler(sig, on_signal, sig.name)
         try:
             ok = await lm.prepare(tickers)
-            lm.write("start", {"run_id": run_id, "env": env, "minutes": minutes, "params": params,
-                               "guards": vars(guards), "markets": ok, "seed": seed})
+            lm.write("start", {"run_id": run_id, "env": env, "tag": tag, "minutes": minutes,
+                               "params": params, "guards": vars(guards), "markets": ok, "seed": seed,
+                               "writes_per_s": writes_per_s,
+                               "select": {"kalshi": kalshi, "days": days, "max_spread": max_spread,
+                                          "min_spread": select_min_spread, "vol24h": vol,
+                                          "exclude_category": sorted(skip)}})
             typer.echo(f"live l2 {env} {run_id}: {len(ok)} markets ({len(tickers) - len(ok)} blocked)")
             await lm.run(minutes=minutes, kalshi=ok, pm_tokens=[])
         finally:

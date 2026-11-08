@@ -1,0 +1,19 @@
+[Unit]
+Description=albert: LIVE Kalshi maker with real orders (%i; needs KALSHI_LIVE_ENABLED=1; stop: touch data/live/STOP)
+After=network-online.target time-sync.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/albert
+Environment=PYTHON=/home/ubuntu/albert/.venv/bin/python
+EnvironmentFile=/home/ubuntu/albert/deploy/live-maker-%i.conf
+ExecStart=/home/ubuntu/albert/deploy/live-maker-loop.sh $LIVE_TAG $LIVE_ARGS
+KillMode=control-group
+KillSignal=SIGTERM
+TimeoutStopSec=120
+Restart=on-failure
+RestartSec=300
+
+[Install]
+WantedBy=multi-user.target

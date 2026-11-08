@@ -1,5 +1,24 @@
 # Live (cash) maker pilot: plan
 
+**Live since 2026-11-08 00:11-00:25 UTC (user request: $5 of real money per strategy, sports
+included, fees from Kalshi's per-series API data because kalshi.com returns 429 to fetches).**
+`KALSHI_LIVE_ENABLED=1` is set in `.env`. Three systemd services on the primary account
+(subaccounts need the Advanced API tier):
+
+| Service | Tag / client ids | Budget |
+| --- | --- | --- |
+| `albert-mentions@prod` (`deploy/mentions-prod.conf`) | `albm` | $5 collateral, $5 daily fill cost |
+| `albert-live-maker@illiquid` (`deploy/live-maker-illiquid.conf`) | `albi` | $5 deployed, 5 contracts, -$5 halt |
+| `albert-live-maker@liquid` (`deploy/live-maker-liquid.conf`) | `albl` | $5 deployed, 5 contracts, -$5 halt |
+
+Makers: deployed = cost of own fills in unsettled markets (also from earlier runs of the tag,
+rebuilt from `data/live/prod/<tag>/*/ledger.jsonl`) + open orders' collateral. Settled markets are
+detected each reconcile (`GET /markets/{t}`) and leave gross/deployed/reconciliation. Markets
+off shard 0 are blocked (cash is on shard 0; shard 3 = NBA rejects with
+`insufficient_shard_balance`). Liquid and illiquid universes are disjoint by 24 h volume; Mentions
+is excluded from both. A maker halted by a guard is not restarted by `deploy/live-maker-loop.sh`.
+Stop: `touch data/live/STOP` (makers), `touch data/live/mentions/STOP` (mentions, also demo).
+
 Status (2026-11-07 01:00 UTC): **demo plumbing passes 11/11** (resting order, queue position,
 cancel, post-only reject, expiry, 1-contract fill, positions, order-group trigger, cancel-own sweep;
 private WS frames parse, fixture `ws_private_demo.json`). The demo key is Ed25519 (supported).
