@@ -36,7 +36,7 @@ import httpx
 import zstandard
 from websockets.asyncio.client import connect
 
-from albert.categories import kalshi_is_non_financial, pm_is_non_financial
+from albert.categories import kalshi_series_is_financial, pm_is_non_financial
 from albert.venues import kalshi as k
 from albert.venues.kalshi_auth import KalshiSigner
 
@@ -219,7 +219,9 @@ def select_kalshi(series_info: dict[str, dict], n: int, *, days: float = 7.0, ma
             cursor = page.get("cursor")
             if not cursor or not page.get("markets"):
                 break
-    eligible = [m for m in rows if kalshi_is_non_financial(m["category"])
+    eligible = [m for m in rows
+                if not kalshi_series_is_financial(m["series_ticker"], m["category"],
+                                                  series_info.get(m["series_ticker"], {}).get("title"))
                 and m["yes_bid"] and m["yes_ask"] and 0 < m["yes_ask"] - m["yes_bid"] <= max_spread + 1e-9
                 and m["yes_ask"] - m["yes_bid"] >= min_spread - 1e-9
                 and (vol24h is None or vol24h[0] <= m["volume_24h"] <= vol24h[1])]

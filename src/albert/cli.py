@@ -738,8 +738,13 @@ def live_mentions(
     run_dir = root / env / datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     limits = MentionLimits(margin=margin, max_collateral=max_collateral, max_daily_loss=max_daily_loss,
                            max_events=max_events, group_limit=group_limit)
+    def load_series() -> dict[str, dict]:
+        from albert.ingest import kalshi_series
+
+        return kalshi_series(s, _clients(live_loop=True)[1])
+
     bot = MentionsBot(s, env, trader, run_dir, limits=limits, base=ENVS[data_env]["rest_data"], stop_file=stop_file,
-                      log=typer.echo)
+                      log=typer.echo, series_loader=load_series)
 
     async def main():
         task = asyncio.current_task()
@@ -815,7 +820,11 @@ def live_l2(
                [m["ticker"] for m in select_kalshi(series, kalshi, days=days, seed=seed,
                                                    rest=ENVS[env]["rest_data"], max_spread=max_spread,
                                                    min_spread=select_min_spread, vol24h=vol)])
-    tickers = [t for t in tickers if series.get(t.split("-", 1)[0], {}).get("category") not in skip]
+    from albert.categories import kalshi_financial_series
+
+    fin = kalshi_financial_series(series)
+    tickers = [t for t in tickers if series.get(t.split("-", 1)[0], {}).get("category") not in skip
+               and t.split("-", 1)[0] not in fin and t.split("-", 1)[0] in series]
     run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     root = s.data_dir / "live"
     tag_dir = root / env / tag
@@ -829,7 +838,7 @@ def live_l2(
                         order_expiry_s=expiry_s, max_cost=max_cost)
     lm = LiveMaker(run_dir, env, signer, trader, run_id=run_id, strategy=strat,
                    cfg=SimConfig(fee_info=series, writes_per_s=writes_per_s), guards=guards, pairs=[],
-                   stop_file=root / "STOP", tag=tag, carried=carried)
+                   stop_file=root / "STOP", tag=tag, carried=carried, financial_series=fin)
 
     async def main():
         loop = asyncio.get_running_loop()

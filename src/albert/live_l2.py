@@ -585,7 +585,8 @@ class LiveMaker:
                  cfg: SimConfig, guards: LiveGuards, pairs: list[dict[str, Any]],
                  holdback_ms: float = 0.0, stop_file: Path | None = None, tag: str = "q",
                  carried: dict[str, dict[str, float]] | None = None,
-                 shards_allowed: frozenset[int] = frozenset({0})) -> None:
+                 shards_allowed: frozenset[int] = frozenset({0}),
+                 financial_series: frozenset[str] = frozenset()) -> None:
         from albert.stream import Recorder
 
         guards.check()
@@ -597,6 +598,7 @@ class LiveMaker:
         # The account's cash sits on shard 0; an order on a shard without balance is rejected
         # (insufficient_shard_balance, e.g. NBA on shard 3), so such markets are blocked.
         self.shards_allowed = shards_allowed
+        self.financial_series = financial_series   # never quoted, whatever the market list says
         self.broker = LiveBroker(cfg, guards, client_prefix=self.prefix)
         # No holdback live (2026-11-07): the classifier's labels only move external size between
         # chunks of a level, and the live book holds no own orders, so the level totals the
@@ -637,6 +639,8 @@ class LiveMaker:
         blocked = (manual | set(self.baseline)) & set(markets)
         self.broker.blocked |= manual | set(self.baseline)
         self.broker.shard = await self.trader.shards([m for m in markets if m not in self.broker.blocked])
+        financial = {m for m in markets if m.split("-", 1)[0] in self.financial_series}
+        self.broker.blocked |= financial
         off_shard = {m for m in markets if m not in self.broker.blocked
                      and self.broker.shard.get(m) not in self.shards_allowed}
         self.broker.blocked |= off_shard
@@ -649,7 +653,7 @@ class LiveMaker:
                                            if m not in self.broker.results},
                                "deployed": self.broker.deployed(),
                                "positions_before": self.baseline, "blocked": sorted(blocked),
-                               "off_shard": sorted(off_shard),
+                               "off_shard": sorted(off_shard), "financial": sorted(financial),
                                "order_group": self.broker.group, "balance": balance,
                                "shards": dict(sorted(Counter(self.broker.shard.values()).items()))})
         return [m for m in markets if m not in self.broker.blocked]

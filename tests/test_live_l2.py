@@ -683,3 +683,16 @@ def test_markets_on_a_shard_without_balance_are_blocked(tmp_path):
     prep = json.loads((tmp_path / "ledger.jsonl").read_text().splitlines()[0])
     assert prep["off_shard"] == ["GONE-1", "KXNBAAST-26NOV07ORLGSW-X"]
     asyncio.run(lm.shutdown())
+
+
+def test_financial_series_are_never_quoted(tmp_path):
+    lm = LiveMaker(tmp_path, "demo", None, FakeTrader(), run_id="R", strategy=Quoter(),
+                   cfg=SimConfig(), guards=LiveGuards(), pairs=[], tag="l",
+                   financial_series=frozenset({"KXGDPCN"}))
+    ok = asyncio.run(lm.prepare(["KXGDPCN-26DEC31-T5", "KXHIGHDEN-26NOV05-B60.5"]))
+    assert ok == ["KXHIGHDEN-26NOV05-B60.5"] and "KXGDPCN-26DEC31-T5" in lm.broker.blocked
+    assert lm.broker.place("KXGDPCN-26DEC31-T5", "yes", 0.40) is None
+    assert lm.broker.diag["refused_blocked_market"] == 1
+    prep = json.loads((tmp_path / "ledger.jsonl").read_text().splitlines()[0])
+    assert prep["financial"] == ["KXGDPCN-26DEC31-T5"]
+    asyncio.run(lm.shutdown())

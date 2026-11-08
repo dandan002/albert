@@ -208,3 +208,18 @@ def test_a_taker_fill_on_our_order_halts(tmp_path):
     assert bot.halted and "taker fill" in bot.halted
     assert asyncio.run(bot.tick()) is False
     assert bot.spent_today() == pytest.approx(bot.events[EV].orders[oid]["price"] + 0.01)
+
+
+def test_finance_mention_events_are_skipped(tmp_path):
+    bot, _ = _bot(tmp_path, FakeTrader(), START - timedelta(hours=6))
+    # no series list: ticker and Mentions-name rules only
+    assert bot.is_financial("KXFEDMENTION") and bot.is_financial("KXEARNINGSMENTIONORCL")
+    assert not bot.is_financial("KXTRUMPMENTION")
+    # with a loader: the list decides, unknown series are skipped (fail closed)
+    bot.series_loader = dict
+    bot.series_info = {"KXTRUMPMENTION": {"category": "Mentions", "title": "What will Trump say?"},
+                       "KXWALLERMENTION": {"category": "Mentions", "title": "Waller Mention"}}
+    assert not bot.is_financial("KXTRUMPMENTION")
+    assert bot.is_financial("KXWALLERMENTION") and bot.is_financial("KXNEWSERIESMENTION")
+    bot.series_info = None
+    assert bot.is_financial("KXTRUMPMENTION")       # loader set but the list failed to load

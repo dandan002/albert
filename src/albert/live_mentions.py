@@ -116,7 +116,8 @@ def plan_event(s, base: str, event: str, start: datetime, now: datetime, margin:
 class MentionsBot:
     def __init__(self, s, env: str, trader, run_dir: Path, *, limits: MentionLimits, base: str,
                  stop_file: Path, transport=None, clock: Callable[[], datetime] | None = None,
-                 log: Callable[[str], None] = print) -> None:
+                 log: Callable[[str], None] = print,
+                 series_loader: Callable[[], dict[str, dict]] | None = None) -> None:
         self.s, self.env, self.trader, self.run_dir = s, env, trader, run_dir
         self.limits, self.base, self.stop_file, self.transport = limits, base, stop_file, transport
         self.clock = clock or (lambda: datetime.now(UTC))
@@ -129,6 +130,12 @@ class MentionsBot:
         self.fill_cost_today: dict[str, float] = {}
         self.halted: str | None = None
         self._n = 0
+        # Finance filter (albert.categories): the series list is reloaded once a day; an event whose
+        # series is not in it yet is skipped, so a new finance series cannot slip through untitled.
+        self.series_loader = series_loader
+        self.series_info: dict[str, dict] | None = None
+        self.series_day: str | None = None
+        self.skipped_financial: set[str] = set()
         run_dir.mkdir(parents=True, exist_ok=True)
 
     # -- ledger --
@@ -181,6 +188,12 @@ class MentionsBot:
         if self.halted:
             await self.shutdown(self.halted)
             return False
+        if self.series_loader is not None and self.series_day != now.strftime("%Y-%m-%d"):
+            try:
+                self.series_info = await asyncio.to_thread(self.series_loader)
+                self.series_day = now.strftime("%Y-%m-%d")
+            except Exception as e:  # noqa: BLE001 - keep yesterday's list (or skip every event)
+                self.write("error", {"what": "series list", "error": repr(e)[:200]})
         starts = await self._milestones(now)
         await self._fills()
         await self._watch(now, starts)
@@ -202,6 +215,19 @@ class MentionsBot:
         due = F.mention_due(page, now - timedelta(hours=1), timedelta(0), timedelta(days=2), set())
         return {r["event"]: r["start"] for r in due.iter_rows(named=True)}
 
+    def is_financial(self, series: str) -> bool:
+        """Finance-related series (albert.categories) are never traded. Without a series list
+        (no loader) only the ticker and Mentions-name rules apply; with one, unknown series are
+        skipped."""
+        from albert.categories import kalshi_series_is_financial
+
+        if self.series_info is None:
+            return self.series_loader is not None or kalshi_series_is_financial(series, "Mentions", None)
+        info = self.series_info.get(series)
+        if info is None:
+            return True
+        return kalshi_series_is_financial(series, info.get("category"), info.get("title"))
+
     def _due(self, now: datetime, starts: dict[str, datetime], force: list[str] | None) -> list[tuple[str, datetime]]:
         from albert.research import forward as F
 
@@ -210,6 +236,11 @@ class MentionsBot:
         out = []
         for ev, start in sorted(starts.items(), key=lambda kv: kv[1]):
             if ev in self.done or F.speech_group(ev.split("-")[0]) in EXCLUDED_GROUPS:
+                continue
+            if self.is_financial(ev.split("-")[0]):
+                if ev not in self.skipped_financial:
+                    self.skipped_financial.add(ev)
+                    self.write("skip_financial", {"event": ev})
                 continue
             if DUE[0] < start - now <= DUE[1]:
                 out.append((ev, start))
