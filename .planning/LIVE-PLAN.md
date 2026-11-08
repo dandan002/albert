@@ -1,5 +1,11 @@
 # Live (cash) maker pilot: plan
 
+**STOPPED 2026-11-08 05:11 UTC at the user's request ("kill all live and paper trades").** Every
+trading service (live makers, mentions prod/paper/demo, paper makers, forward test) is stopped and
+disabled; `KALSHI_LIVE_ENABLED=0` in `.env`; kill files left in place. No bot orders rest on the
+exchange. The bots' 1-contract positions (13 markets) ride to settlement. The L2 recorder (public
+data only) still runs.
+
 **Live since 2026-11-08 00:11-00:25 UTC (user request: $5 of real money per strategy, sports
 included, fees from Kalshi's per-series API data because kalshi.com returns 429 to fetches).**
 `KALSHI_LIVE_ENABLED=1` is set in `.env`. Three systemd services on the primary account
