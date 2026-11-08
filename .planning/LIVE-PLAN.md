@@ -9,7 +9,7 @@ included, fees from Kalshi's per-series API data because kalshi.com returns 429 
 | --- | --- | --- |
 | `albert-mentions@prod` (`deploy/mentions-prod.conf`) | `albm` | $5 collateral, $5 daily fill cost |
 | `albert-live-maker@illiquid` (`deploy/live-maker-illiquid.conf`) | `albi` | $5 deployed, 5 contracts, -$5 halt |
-| `albert-live-maker@liquid` (`deploy/live-maker-liquid.conf`) | `albl` | $5 deployed, 5 contracts, -$5 halt |
+| `albert-live-maker@liquid` (`deploy/live-maker-liquid.conf`) | `albl` | $10 deployed, 10 contracts, -$10 halt (raised 2026-11-08 01:30) |
 
 Makers: deployed = cost of own fills in unsettled markets (also from earlier runs of the tag,
 rebuilt from `data/live/prod/<tag>/*/ledger.jsonl`) + open orders' collateral. Settled markets are
