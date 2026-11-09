@@ -371,3 +371,27 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
   - A "held < 1 h" slice (+1.5%, t 3.5) is look-ahead (actual close of early-closing markets);
     by hours to the *scheduled* expiration, known at entry, <1 h is −2.1% (t −2.0) and every
     bucket is negative. Favourites are overpriced by about 2–3c plus the taker spread.
+- **In-play "vol ladder" and LMSR market making (2026-11-09).** Replay of both recorded in-play
+  nights (Sat 11-07 17 → 11-08 06 UTC, Sun 11-08 17 → 11-09 06; 56 games, game-winner markets
+  only while in play) through `backtest.l2.Simulator` (20 ms latency, risk-averse queue,
+  post-only, write budget 10/s Basic or 30/s Advanced), positions held to settlement, exact maker
+  fees (0.0175·P(1−P); every in-play game series has maker fees except NCAAWB). Runner
+  `vol_ladder.py` in the session scratchpad (streams events, shared top-of-book history, cached
+  best price; checked fill-for-fill against the plain version); report
+  `research-vol-ladder-inplay-20261109T175400Z`.
+  - *Ladders* (several resting levels per side around a reservation price; offsets scaled by
+    σ of recent mid changes; inventory skew; optional trend lean and jump guard; 1-s and
+    sub-second (0.25 s samples, 10 s σ, 2 s trend, 1 s guard, 0.1 s requote) versions): gross
+    −0.29 to −0.34c per contract (t −2.3 to −7.9), net −0.63 to −0.65c (t −4.5 to −13.7), every
+    variant negative on both nights, 0–22% of games positive. Join-the-best 1 lot: −0.19c gross,
+    −0.52c net. Sub-second adjustment, trend lean, jump guard and the Advanced write budget change
+    nothing (all ≈ −0.33c gross). Mid 10 s after a fill −0.2 to −0.3c, exit 60 s −0.75 to −1.2c:
+    fills are adversely selected. ~99.8% of contracts paired, so losses are adverse selection plus
+    fees, not outcome risk. Ladders need ~$160–180 of resting collateral.
+  - *LMSR* (binary LMSR cost curve, 3 one-contract units per side, Advanced budget): pure LMSR
+    anchored at the first in-play mid (b=10) −0.12c gross (t −1.0), −0.46c net (t −3.8), pairs
+    +$246 but inventory −$286 (it fills to the 10-contract cap per market as games move);
+    re-centred on the live mid (b=10 / b=25) −0.19 / −0.17c gross, −0.46 / −0.48c net (t −9 /
+    −11); on a 60-s EWMA −0.20c gross, −0.50c net. Negative on both nights.
+  - **Net:** no in-play passive quoting design earns its spread at our latency; the maker fee
+    alone (~0.33c average) exceeds any gross result.
