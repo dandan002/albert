@@ -1,0 +1,252 @@
+This section develops the pricing framework. \Cref{sec:model-setup} states the one property every
+model must respect. \Cref{sec:model-m0,sec:model-m1,sec:model-m2} build the single-contract model
+in three layers: a Gaussian ``Bachelier digital'' with a deterministic information clock (M0), a
+stochastic-volatility extension with a general backbone (M1), and jumps (M2).
+\Cref{sec:model-ladder} treats strips of contracts on one numeric outcome, and
+\Cref{sec:model-hazard} treats contracts that pay if an event occurs before a deadline. Proofs are
+in \cref{app:derivations}.
+
+\subsection{Setup}\label{sec:model-setup}
+
+Fix a filtered probability space $(\Omega,\F,(\F_t)_{t\le T},\Prob)$. A binary contract pays one
+unit at $T$ if an event $A\in\F_T$ occurs. Its fair price is the conditional probability
+\begin{equation}\label{eq:fair}
+  \pr_t=\Prob(A\mid\F_t),\qquad 0\le t\le T .
+\end{equation}
+We abstract from interest (collateral is posted in full and settlement horizons are short), from
+fees and from risk premia. Whether market prices equal $\pr_t$ is an empirical question we return
+to in \cref{sec:discussion}. By construction $\pr_t$ is a martingale bounded in $[0,1]$ with
+$\pr_T\in\{0,1\}$. That alone fixes the total variance.
+
+\begin{lemma}[Variance identity]\label{lem:variance}
+For any binary contract, $\E\big[\langle \pr\rangle_T\big]=\E\big[(\pr_T-\pr_0)^2\big]=\pr_0(1-\pr_0)$,
+where $\langle\pr\rangle$ is the quadratic variation. For prices observed at
+$0=t_0<t_1<\dots<t_n=T$, $\E\sum_i(\pr_{t_{i+1}}-\pr_{t_i})^2=\pr_0(1-\pr_0)$.
+\end{lemma}
+
+A model of prediction-market prices is therefore a model of \emph{when} and \emph{how} a fixed
+budget of variance $\pr_0(1-\pr_0)$ is released. It specifies the timing (a clock), the dependence
+on the price level (a backbone), randomness in the release rate (stochastic volatility) and its
+lumpiness (jumps). These are the four dimensions the empirical work measures.
+
+\subsection{M0: the Bachelier digital and the information clock}\label{sec:model-m0}
+
+\begin{definition}[M0]\label{def:m0}
+A latent score $Y$ satisfies $\dd Y_t=s(t)\,\dd W_t$ with a deterministic information flow
+$s(\cdot)$, and $A=\{Y_T>0\}$. Write
+\[
+  \Vrem_t=\int_t^T s(u)^2\,\dd u
+\]
+for the remaining information variance, and $\irate_t=s(t)^2/\Vrem_t$ for the
+\emph{information rate}, the fraction of the remaining uncertainty resolved per unit time.
+\end{definition}
+
+The construction goes back to \citet{stern1994}'s Brownian model of sports scores. Its implication
+for the volatility of a probability price was developed by \citet{archakipeirotis2009}, and
+\citet{taleb2018} applies it to election forecasts.
+
+\begin{proposition}[Pricing, dynamics and transition under M0]\label{prop:m0}
+Under M0, with $\Phi$ and $\varphi$ the standard normal distribution and density:
+\begin{enumerate}
+  \item \emph{Price.} $\pr_t=\Phi\big(Y_t/\sqrt{\Vrem_t}\big)$. As a function $\pr(t,y)$ it solves the
+  backward heat equation with a digital payoff,
+  \begin{equation}\label{eq:pde}
+    \partial_t \pr+\tfrac12 s(t)^2\,\partial_{yy}\pr=0,\qquad \pr(T,y)=\ind{y>0}.
+  \end{equation}
+  This is the Black--Scholes equation with zero rate and normal (Bachelier) dynamics for a
+  cash-or-nothing payoff.
+  \item \emph{Dynamics.} In probit units $\Zt_t=\Phi^{-1}(\pr_t)=Y_t/\sqrt{\Vrem_t}$,
+  \begin{equation}\label{eq:zdyn}
+    \dd\Zt_t=\sqrt{\irate_t}\,\dd W_t+\tfrac12\irate_t\Zt_t\,\dd t,\qquad
+    \dd\pr_t=\varphi(\Zt_t)\sqrt{\irate_t}\,\dd W_t .
+  \end{equation}
+  \item \emph{Transition.} For $h>0$ let $R=\Vrem_t/\Vrem_{t+h}\ge1$. Then
+  \begin{equation}\label{eq:transition}
+    \Zt_{t+h}\mid\F_t\sim\N\!\big(\Zt_t\sqrt R,\;R-1\big),\qquad
+    \Prob(\pr_{t+h}\le x\mid\pr_t)=\Phi\!\left(\frac{\Phi^{-1}(x)-\Phi^{-1}(\pr_t)\sqrt R}{\sqrt{R-1}}\right).
+  \end{equation}
+\end{enumerate}
+\end{proposition}
+
+Three implications organise the empirical work.
+\begin{itemize}
+  \item \emph{Clock.} The price's instantaneous volatility is $\varphi(\Phi^{-1}(\pr))\sqrt{\irate_t}$:
+  a level factor times a clock factor. With a uniform flow ($s$ constant) the clock is
+  $\irate_t=1/\tauexp$, with $\tauexp=T-t$, so volatility at a given price rises like
+  $\tauexp^{-1/2}$ into expiry.
+  \item \emph{Test statistic.} The standardised innovation
+  \begin{equation}\label{eq:u}
+    \ustd=\frac{\Zt_{t+h}-\Zt_t\sqrt R}{\sqrt{R-1}}
+  \end{equation}
+  is standard normal under M0. Its variance tests the clock and its kurtosis tests the Gaussian
+  shape.
+  \item \emph{Drift.} In probit units the price drifts away from zero at rate $\tfrac12\irate\Zt$. The
+  martingale requires this drift to offset the convexity of $\Phi$.
+\end{itemize}
+
+The analogues of the option Greeks follow directly. Delta is $\partial\pr/\partial Y=\varphi(\Zt)/\sqrt{\Vrem}$.
+The ``vega'' with respect to remaining variance is $\partial\pr/\partial\Vrem=-\tfrac12\Zt\varphi(\Zt)/\Vrem$:
+more uncertainty pulls the price toward $\tfrac12$. Theta at a fixed score is
+$\partial\pr/\partial t=\tfrac12\Zt\varphi(\Zt)\irate$: with no news, favourites drift up and
+longshots down. Theta is exactly offset in expectation by the diffusion term of \eqref{eq:pde}.
+
+\subsection{M1: a bounded SABR model}\label{sec:model-m1}
+
+M0 ties volatility to the level through $\varphi(\Phi^{-1}(\pr))$ and to time through a
+deterministic clock. M1 relaxes both, in the spirit of SABR \citep{hagan2002}.
+
+\begin{definition}[M1]\label{def:m1}
+\begin{equation}\label{eq:m1}
+  \dd\pr_t=\alpha_t\,c(\tauexp_t)\,g_\beta(\pr_t)\,\dd W_t,\qquad
+  g_\beta(\pr)=[\pr(1-\pr)]^\beta,\qquad
+  \dd\alpha_t=\nu\,\alpha_t\,\dd B_t,\qquad
+  \dd\langle W,B\rangle_t=\rho\,\sgn(\Zt_t)\,\dd t .
+\end{equation}
+\end{definition}
+
+The parameters play the following roles.
+\begin{itemize}
+  \item \emph{Backbone $\beta$.} It nests the leading bounded diffusions:
+  \begin{itemize}
+    \item $\beta=1$ is the logit-normal model, $\dd\,\mathrm{logit}\,\pr=\sigma\,\dd W+\dots$, the
+    analogue of lognormal dynamics;
+    \item $\beta=\tfrac12$ is the Wright--Fisher or Jacobi diffusion \citep{karlintaylor1981}, the
+    analogue of square-root dynamics;
+    \item the M0 backbone $\varphi(\Phi^{-1}(\pr))$ behaves like $\pr\sqrt{2\ln(1/\pr)}$ near zero,
+    between the two.
+  \end{itemize}
+  Pure Bachelier dynamics for $\pr$ ($\beta=0$) are inadmissible, because they do not keep the
+  price in $[0,1]$.
+  \item \emph{Clock $c(\cdot)$.} The deterministic information schedule.
+  \item \emph{Vol of vol $\nu$.} How strongly the information rate itself fluctuates.
+  \item \emph{Correlation $\rho$.} The factor $\sgn(\Zt)$ makes the specification invariant to
+  relabelling YES and NO. With $\rho<0$, volatility rises when the price moves toward
+  $\tfrac12$; with $\rho>0$, it rises as the price moves toward resolution.
+\end{itemize}
+
+\Cref{lem:variance} holds for every specification of M1. Stochastic volatility redistributes the
+variance budget across time and paths; it does not enlarge it.
+
+\subsection{M2: jumps}\label{sec:model-m2}
+
+Information often arrives discretely: scores, rulings, releases, the start of a speech. M2 adds
+compensated jumps to the latent score,
+\begin{equation}\label{eq:m2}
+  \dd Y_t=s(t)\,\dd W_t+J_t\,\dd N_t,
+\end{equation}
+where $N$ is a counting process with intensity $\kappa(t)$ and $J$ an independent jump size. With
+Gaussian jumps $J\sim\N(\mu_J,\sigma_J^2)$, a constant intensity and $n$ jumps remaining with
+Poisson probability $\pi_n$, the price is a \citet{merton1976}-type mixture,
+\begin{equation}\label{eq:m2price}
+  \pr_t=\sum_{n\ge0}\pi_n\,\Phi\!\left(\frac{Y_t+n\mu_J}{\sqrt{\Vrem_t+n\sigma_J^2}}\right).
+\end{equation}
+Between jumps, the drift that keeps $\pr$ a martingale is the compensator of the expected jump,
+not the diffusive convexity term. The M0 link between local variance and outward probit drift
+(\cref{prop:m0}, item 2) therefore breaks when a share of the variance arrives in jumps. We use
+this in \cref{sec:res-hf}.
+
+\subsection{Strips of digitals on one outcome: implied distributions and smiles}\label{sec:model-ladder}
+
+Many contracts are listed as ladders on one numeric outcome $X_T$, such as a temperature, a
+points total or a score. Each leg pays $\ind{X_T>K}$ (or $\ind{K_1<X_T\le K_2}$ for brackets). The
+survival function $S_t(K)=\Prob(X_T>K\mid\F_t)$ is then the price of a strip of digital options,
+and it identifies the conditional distribution of $X_T$. This is the digital counterpart of
+\citet{breedenlitzenberger1978}.
+
+\begin{definition}[Implied median, implied volatility, moneyness]\label{def:smile}
+The implied median is $\Fmed_t=S_t^{-1}(\tfrac12)$. The Bachelier-digital implied volatility of
+strike $K$ solves
+\[
+  S_t(K)=\Phi\big((\Fmed_t-K)/\sigma_K\big),
+\]
+and moneyness is $m=(K-\Fmed_t)/\satm$. The smile is the map $m\mapsto\sigma_K/\satm$, summarised by
+\[
+  \sigma_K/\satm-1=a+s\,m+c\,m^2 ,
+\]
+with skew $s$ and curvature $c$.
+\end{definition}
+
+\begin{proposition}[Shape of the digital smile]\label{prop:smile}
+\begin{enumerate}
+  \item If $X_T\mid\F_t$ is Gaussian, the smile is flat: $\sigma_K\equiv\satm$.
+  \item If $X_T\mid\F_t$ is symmetric with tails heavier than the Gaussian of the same
+  interquartile range, then $\sigma_K>\satm$ for every strike beyond the quartiles: the smile turns
+  up in the wings. For Student-$t$ outcomes, $\sigma_K/\satm$ increases in $|m|$ (verified
+  numerically; \cref{app:derivations}).
+  \item Skewness tilts the smile: right skew makes $\sigma_K$ larger above $\Fmed$ than below it.
+\end{enumerate}
+\end{proposition}
+
+Two further concepts carry over from equity options. The first is smile dynamics: a smile is
+\emph{sticky-strike} if $\sigma_K$ at a fixed $K$ does not respond to moves in $\Fmed$, and
+\emph{sticky-moneyness} if $\sigma_K$ depends on $K$ only through $m$ \citep{derman1999}. The
+second is a variance-swap analogue. If $X_T$ is Gaussian given $\F_t$, each leg is an M0 contract
+with $Y=X-K$ and $\Vrem_t=\satm(t)^2$. The ladder's at-the-money term structure is then an
+\emph{implied information clock}, and the implied median is a martingale with
+\begin{equation}\label{eq:varswap}
+  \E\big[(\Fmed_{t+h}-\Fmed_t)^2\big]=\E\big[\satm(t)^2-\satm(t+h)^2\big].
+\end{equation}
+Comparing the two sides is the prediction-market analogue of comparing realized and implied
+variance \citep{carrwu2009,bollerslev2009}.
+
+\subsection{Deadline contracts: a reduced-form hazard model}\label{sec:model-hazard}
+
+A large class of contracts pays if an event occurs \emph{by} a date $T$: a product release, a
+statement, an elimination, a weather system forming. We model the event time $\vartheta$ with an
+intensity $h_t$, as in reduced-form credit models
+\citep{jarrowturnbull1995,lando1998,duffiesingleton1999}.
+
+\begin{proposition}[Hazard pricing]\label{prop:hazard}
+On $\{\vartheta>t\}$ the price is
+\[
+  \pr_t=1-\E_t\Big[\exp\Big(-\int_t^T h_u\,\dd u\Big)\Big].
+\]
+\begin{enumerate}
+  \item \emph{Deterministic hazard.} $\pr_t=1-e^{-H(t,T)}$ with $H(t,T)=\int_t^T h_u\,\dd u$. Before
+  the event the price decays deterministically,
+  \begin{equation}\label{eq:theta}
+    \frac{\dd\pr_t}{\dd t}=-h_t\,(1-\pr_t),
+  \end{equation}
+  and at $\vartheta$ it jumps to $1$. The decay is exactly the compensator of the jump, so $\pr$ is
+  a martingale.
+  \item \emph{Implied average hazard.} $\hbarimp_t=-\ln(1-\pr_t)/(T-t)$.
+  \item \emph{Term structure.} For a strip with deadlines $T_1<T_2$ written on the same event, the
+  forward hazard is
+  \[
+    h(T_1,T_2)=-\frac{\ln\big[(1-\pr_t(T_2))/(1-\pr_t(T_1))\big]}{T_2-T_1}\ \ge 0,
+  \]
+  so $\pr_t(T_1)\le\pr_t(T_2)$ is a static no-arbitrage condition.
+\end{enumerate}
+\end{proposition}
+
+A Cox specification, in which $h$ is itself a diffusion (for example the square-root intensity
+of \citealp{cox1985cir}), adds news-driven diffusion to the deterministic decay and the resolution jump. We call the
+deterministic decay in \eqref{eq:theta} the contract's theta.
+
+\paragraph{Summary.} The three contract types share one structure: a latent state, an information
+clock that releases a fixed variance budget, and jumps. They differ in the latent state, which is
+a Gaussian score, a numeric outcome, or an event time. \Cref{tab:model-map} maps the objects to
+their option-pricing analogues.
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Model objects and their option-pricing analogues.}\label{tab:model-map}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Prediction-market object & Symbol & Analogue \\
+\midrule
+Remaining information variance & $\Vrem_t$ & total implied variance $\sigma^2\tauexp$ \\
+Information rate (clock) & $\irate_t=s_t^2/\Vrem_t$ & forward variance per unit of total variance \\
+Probit price & $\Zt=\Phi^{-1}(\pr)$ & normalised moneyness $d_2$ \\
+Backbone & $\beta$ in $[\pr(1-\pr)]^\beta$ & CEV exponent / SABR $\beta$ \\
+Vol state, vol of vol, correlation & $\alpha,\nu,\rho$ & SABR $\alpha,\nu,\rho$ \\
+Ladder implied median & $\Fmed$ & forward \\
+Ladder implied volatility & $\sigma_K$, $\satm$ & Bachelier implied volatility \\
+Deadline implied hazard & $\hbarimp$ & credit spread / default intensity \\
+Decay with no event & $-h(1-\pr)$ & carry of a short credit position \\
+\bottomrule
+\end{tabular}
+\end{threeparttable}
+\end{table}

@@ -1,0 +1,95 @@
+\subsection{Kalshi event contracts}
+
+Kalshi is a US exchange for event contracts, regulated by the Commodity Futures Trading Commission
+as a designated contract market. Each binary contract pays \$1 if its event occurs and \$0
+otherwise, and is fully collateralised. Trading takes place in a central limit order book. A bid
+for NO at price $q$ is economically an offer of YES at $1-q$, so each market has a single YES book.
+During our sample, prices were quoted on a one-cent grid from 1\cents to 99\cents.
+
+Kalshi charges a taker fee per order of $0.07\times C\times P(1-P)$, rounded up, for $C$ contracts at
+price $P$, with series-specific multipliers. Some series also carry a maker fee with coefficient
+$0.0175$. Both fees vanish at the edges of the price range. Together with the one-cent tick, this
+shapes trading near 0 and 1 and matters for interpreting small departures from fair pricing
+(\cref{sec:discussion}).
+
+Contracts are organised as \emph{series} (a recurring question), \emph{events} (one instance, such
+as one game or one city-day) and \emph{markets} (one binary leg). Several of our designs exploit
+this structure. A game has a winner leg and ladders of spread and total legs. A city-day of
+temperature has a ladder of threshold or bracket legs. A question such as ``Will a model be
+released before $T$'' is often listed with several deadlines.
+
+\subsection{Scope}
+
+We study \emph{non-financial} contracts in Kalshi's seven categories:
+\begin{itemize}
+  \item Sports;
+  \item Climate and Weather;
+  \item Entertainment;
+  \item Mentions (whether a speaker says a phrase during an event);
+  \item Science and Technology;
+  \item Politics;
+  \item Elections.
+\end{itemize}
+We exclude crypto, equity-index, interest-rate and economic-release contracts. Their prices are
+tied to traded underlyings with their own dynamics, whereas the events we study have no traded
+underlying, so the information structure of the contract itself is the object of interest.
+
+\subsection{Data}
+
+All data come from Kalshi's public market-data interface. We use no account-level information.
+
+\paragraph{Market metadata.} 1.30 million binary markets in the seven categories that closed between
+15 August and 31 October 2026. For each market we have:
+\begin{itemize}
+  \item its series and event;
+  \item the rules text;
+  \item open and close times;
+  \item the scheduled expected expiration;
+  \item the settlement result;
+  \item the fee schedule.
+\end{itemize}
+
+\paragraph{Hourly quotes.} Hourly candles with the closing best bid and ask. The base panel has
+60,231 markets with the highest volume in each category, from 13 February to 31 October 2026. Two
+studies supplement it:
+\begin{itemize}
+  \item the ladder study fetches complete ladders, 1.76 million additional hourly candles;
+  \item the deadline study fetches the full history of deadline contracts whose deadlines fall
+  between 1 January and 2 November 2026.
+\end{itemize}
+
+\paragraph{Trades.} 7.3 million trade prints on 14,771 markets between 30 July and 31 October 2026,
+each with size, price and aggressor side.
+
+\paragraph{Order-book recordings.} We recorded the full WebSocket feed: order-book snapshots, deltas
+and trades. Receive timestamps were taken on a server in the exchange's cloud region. The
+recordings cover two evenings with many live games: 7 November 17:00 to 8 November 06:00 UTC, and
+8 November 17:00 to 9 November 06:00 UTC. They give event-time order books for in-game
+game-winner markets (NBA, NCAAF, NFL, NHL).
+
+\subsection{Timing conventions and look-ahead}
+
+Three timestamps in the metadata could bias the analysis if used naively.
+\begin{itemize}
+  \item \emph{Close time.} The recorded close time of a market that resolves early reveals the event.
+  We never use it to define a horizon.
+  \item \emph{Scheduled settlement.} The scheduled \emph{expected expiration} is announced in advance,
+  but it marks settlement, not the end of information. It lies 11--14 hours after the last weather
+  observation and days after many speeches.
+  \item \emph{Deadlines.} The deadline of a ``by $T$'' contract is parsed from its rules text.
+\end{itemize}
+Each study therefore defines time to expiry $\tauexp$ from information available at the decision
+time:
+\begin{itemize}
+  \item the single-contract study uses a per-series scheduled end of information, estimated on the
+  estimation sample only;
+  \item the ladder study uses leads before the scheduled settlement;
+  \item the deadline study uses the parsed deadline.
+\end{itemize}
+Quotes are always taken from the last candle (or book state) strictly before the decision time.
+
+\subsection{Sample split}
+
+Every parameter, functional form and threshold is chosen on the \emph{estimation sample}, data
+before 1 October 2026. Results are then reported on the \emph{holdout}, October 2026, without
+re-estimation. The order-book study covers two November evenings and is purely descriptive.

@@ -1,0 +1,95 @@
+\paragraph{Proof of \cref{lem:variance}.}
+Since $\pr$ is a square-integrable martingale, $\pr^2-\langle\pr\rangle$ is a martingale. Hence
+$\E\langle\pr\rangle_T=\E\pr_T^2-\pr_0^2$. Because $\pr_T\in\{0,1\}$, $\pr_T^2=\pr_T$ and
+$\E\pr_T=\pr_0$, so $\E\langle\pr\rangle_T=\pr_0-\pr_0^2$. For a discrete grid, martingale
+increments are orthogonal, so
+$\E\sum_i(\pr_{t_{i+1}}-\pr_{t_i})^2=\E(\pr_T-\pr_0)^2=\pr_0(1-\pr_0)$. \qed
+
+\paragraph{Proof of \cref{prop:m0}.}
+\emph{Price.} Given $\F_t$, $Y_T=Y_t+\int_t^T s\,\dd W\sim\N(Y_t,\Vrem_t)$, so
+$\Prob(Y_T>0\mid\F_t)=\Phi(Y_t/\sqrt{\Vrem_t})$. Write $\pr(t,y)=\Phi(y/\sqrt{\Vrem_t})$. With
+$\dot\Vrem_t=-s(t)^2$ and $\zeta=y/\sqrt{\Vrem_t}$:
+\[
+  \partial_t\pr=\varphi(\zeta)\,y\,\tfrac12\Vrem_t^{-3/2}s(t)^2,\qquad
+  \partial_{yy}\pr=\varphi'(\zeta)/\Vrem_t=-\zeta\varphi(\zeta)/\Vrem_t .
+\]
+Hence $\partial_t\pr+\tfrac12 s^2\partial_{yy}\pr
+=\tfrac12 s^2\varphi(\zeta)\big[y\Vrem^{-3/2}-\zeta\Vrem^{-1}\big]=0$. The terminal condition holds
+because $\Vrem_t\to0$ as $t\to T$.
+
+\emph{Dynamics.} By It\^o's formula for $\Zt=Y\Vrem^{-1/2}$,
+\[
+  \dd\Zt=\Vrem^{-1/2}s\,\dd W+Y\cdot\big(-\tfrac12\big)\Vrem^{-3/2}\dot\Vrem\,\dd t
+  =\sqrt{\irate}\,\dd W+\tfrac12\irate\Zt\,\dd t .
+\]
+Applying It\^o to $\pr=\Phi(\Zt)$:
+\[
+  \dd\pr=\varphi(\Zt)\big(\sqrt{\irate}\,\dd W+\tfrac12\irate\Zt\,\dd t\big)+\tfrac12\varphi'(\Zt)\,\irate\,\dd t
+  =\varphi(\Zt)\sqrt{\irate}\,\dd W ,
+\]
+since $\varphi'(z)=-z\varphi(z)$.
+
+\emph{Transition.} $Y_{t+h}=Y_t+\xi$ with $\xi\sim\N(0,\Vrem_t-\Vrem_{t+h})$ independent of $\F_t$.
+Then
+\[
+  \Zt_{t+h}=\frac{Y_t+\xi}{\sqrt{\Vrem_{t+h}}}=\Zt_t\sqrt{R}+\frac{\xi}{\sqrt{\Vrem_{t+h}}},
+\]
+and $\Var\big(\xi/\sqrt{\Vrem_{t+h}}\big)=(\Vrem_t-\Vrem_{t+h})/\Vrem_{t+h}=R-1$. The distribution of
+$\pr_{t+h}$ follows because $\Phi$ is increasing. \qed
+
+\paragraph{Uniform clock.} With $s$ constant, $\Vrem_t=s^2(T-t)$, $\irate_t=1/(T-t)$ and
+$R=\tauexp/(\tauexp-h)$. For a power-law clock $\Vrem_t\propto\tauexp^{\gamma}$, $\irate_t=\gamma/\tauexp$.
+A ladder whose at-the-money implied volatility scales as $\satm\propto\tauexp^{b}$ therefore implies
+$\irate_t=2b/\tauexp$; Brownian information gives $b=\tfrac12$.
+
+\paragraph{Backbone asymptotics.} Near zero, Mills' ratio gives
+$\varphi(\Phi^{-1}(\pr))=\pr\,|\Phi^{-1}(\pr)|\,(1+o(1))$, and
+$|\Phi^{-1}(\pr)|=\sqrt{2\ln(1/\pr)}\,(1+o(1))$. So
+$\varphi(\Phi^{-1}(\pr))\sim\pr\sqrt{2\ln(1/\pr)}$, which lies between $g_1(\pr)\sim\pr$ and
+$g_{1/2}(\pr)\sim\sqrt{\pr}$.
+
+\paragraph{Proof of \cref{prop:smile}.}
+(i) If $X_T\mid\F_t\sim\N(\Fmed,\sigma^2)$ then $S(K)=\Phi((\Fmed-K)/\sigma)$ and $\sigma_K=\sigma$ for
+every $K$.
+
+(ii) Let $X_T=\Fmed+\sigma_0\varepsilon$ with $\varepsilon$ symmetric, with distribution $G$ and
+upper quartile $x_q$, so that $G(x_q)=\tfrac34$. Take $K>\Fmed$ and $x=(K-\Fmed)/\sigma_0$. Then
+$S(K)=1-G(x)$ and $\sigma_K=\sigma_0\,x/\Phi^{-1}(G(x))$. Matching the interquartile range defines
+$\satm=\sigma_0x_q/\Phi^{-1}(\tfrac34)$, so
+\[
+  \frac{\sigma_K}{\satm}=\frac{x}{x_q}\cdot\frac{\Phi^{-1}(\tfrac34)}{\Phi^{-1}(G(x))}.
+\]
+Heavier tails than the quartile-matched Gaussian means
+$1-G(x)>1-\Phi\big(x\,\Phi^{-1}(\tfrac34)/x_q\big)$ for $x>x_q$. That is,
+$\Phi^{-1}(G(x))<x\,\Phi^{-1}(\tfrac34)/x_q$, which gives $\sigma_K/\satm>1$. The case $K<\Fmed$
+follows by symmetry. For a Student-$t$ with $\nu$ degrees of freedom, $x/\Phi^{-1}(G(x))$ is
+increasing in $x>0$. We verified this numerically on a fine grid for $\nu\in[1.5,100]$; we do not
+prove it in general. This gives monotonicity in $|m|$.
+
+(iii) Under right skew the upper tail is heavier than the lower one, so by the same argument
+applied to each tail separately, $\sigma_K$ is larger for $m>0$ than for $m<0$ at equal $|m|$.
+\qed
+
+\paragraph{Proof of \eqref{eq:varswap}.}
+If $X_T\mid\F_t\sim\N(\Fmed_t,\satm(t)^2)$ for all $t$, then $\Fmed_t=\E[X_T\mid\F_t]$ is a martingale.
+By the conditional-variance decomposition,
+\[
+  \satm(t)^2=\E_t\big[\satm(t+h)^2\big]+\Var_t(\Fmed_{t+h}) .
+\]
+Taking expectations gives \eqref{eq:varswap}. Without Gaussianity the identity holds for the
+conditional mean and variance. The empirical version uses the median and the interquartile scale
+as robust proxies. \qed
+
+\paragraph{Proof of \cref{prop:hazard}.}
+On $\{\vartheta>t\}$, $\Prob(\vartheta\le T\mid\F_t)=1-\E_t\exp(-\int_t^T h)$ is the standard
+reduced-form survival formula \citep{lando1998}. For deterministic $h$,
+$\pr_t=1-\exp(-H(t,T))$ with $\partial_tH=-h_t$, so $\dot\pr_t=-h_t e^{-H}=-h_t(1-\pr_t)$.
+
+Write $D_t=\ind{\vartheta\le t}$. The price process is $\pr_t=D_t+(1-D_t)(1-e^{-H(t,T)})$, and
+\[
+  \dd\pr_t=(1-D_{t-})\big[-h_t(1-\pr_{t-})\,\dd t+(1-\pr_{t-})\,\dd D_t\big]
+  =(1-D_{t-})(1-\pr_{t-})\big(\dd D_t-h_t\,\dd t\big).
+\]
+This is a martingale because $D_t-\int_0^{t\wedge\vartheta}h_u\,\dd u$ is one. For the term
+structure, $1-\pr_t(T_i)=\exp(-H(t,T_i))$, so $H(T_1,T_2)=H(t,T_2)-H(t,T_1)\ge0$, and the forward
+hazard formula follows. \qed

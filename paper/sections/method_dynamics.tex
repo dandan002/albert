@@ -1,0 +1,190 @@
+% Single-contract dynamics: sample construction and estimators.
+% Code: src/albert/research/pm_vol.py (steps prep, fit, vi, fc, hf_extract, hf, drift_sim, drift_tail).
+
+\subsubsection{Sample, clock time and look-ahead guards}\label{sec:dyn-sample}
+
+\paragraph{Hourly panel.}
+We use the hourly candles of \cref{sec:data} for the settled markets of the seven non-financial
+categories, February to October 2026. Kalshi omits a candle when nothing changed, so each market
+is placed on a regular hourly grid from its first candle to its last candle at or before
+\texttt{close\_time}, with the closing yes bid and ask forward-filled. Candles ending after the
+close are dropped. This gives 4{,}828{,}986 market-hours on 47{,}505 markets.
+% source: data/research/pm_vol/prep.log
+Sports rows are split into \emph{pre-game} (the step ends before the scheduled start, parsed from the
+ticker or set to expected expiration minus 3\,h) and \emph{in-game}.
+
+A step is $(t,t+h]$ with $h=1$\,h. The decision quote must have a spread of at most 4\cents{} and a
+mid in $[0.03,0.97]$; the end quote must be two-sided with a spread of at most 10\cents. This
+measurement filter removes 0.4--5.2\% of otherwise valid steps.
+% source: results_cat.json:categories.*.dropped_end_quote / base_steps
+Mids are clipped to $[0.005,0.995]$ before taking $\Zt=\Phi^{-1}(\pr)$.
+
+\paragraph{Time to the scheduled end.}
+The model needs $\tauexp$, the time until information stops arriving (\cref{sec:model}).
+\texttt{close\_time} cannot be used: for markets that close early it is look-ahead, since an early
+close usually reveals the outcome. \texttt{expected\_expiration\_time} is the settlement schedule
+and can lag the information by days. We therefore set $T=\texttt{expected\_expiration\_time}-o_s$
+per series. The offset $o_s$ is the modal (expiration $-$ close) among the series' markets that
+closed before 1 October 2026 if at least half share it, and otherwise their median over NO-settled
+markets, which run to the scheduled end. Series without such markets have no schedule and are
+excluded; this removes all October Elections series, so Elections has no holdout. Sports use
+$T=\texttt{expected\_expiration\_time}$, about the start plus 3\,h.
+
+On NO-settled markets the median of $\texttt{close\_time}-T$ is 0 in every non-sports category in
+the \estim{}, and in the holdout everywhere except Mentions ($+10.4$\,h).
+% source: report research-pm-vol-20261109T215533Z (scheduled-end table)
+Steps ending less than 30 minutes before $T$ are dropped. The \estim{} (before 1 October 2026)
+contains steps that end before 1 October and the holdout (October 2026) contains steps that start on
+or after it. All parameters and tuning choices use the \estim{} only, and $t$-statistics are
+clustered by event (\cref{sec:method}).
+
+\subsubsection{Clock, innovations and the variance identity}\label{sec:dyn-clock}
+
+Let $L_t=\int_t^{t+h}\irate_s\,\dd s=\ln(\Vrem_t/\Vrem_{t+h})$ be a step's clock increment, so that
+M0 gives $\Zt_{t+h}\mid\Zt_t\sim\N(\Zt_t e^{L_t/2},\,e^{L_t}-1)$ (\cref{sec:model}). Treating the
+observed mid as the fair price plus noise of variance $k s_t^2$ ($s_t$ the spread), we maximize
+\begin{equation}\label{eq:dyn-nll}
+\ell=\sum\log\varphi_{\N}\!\Big(\tilde\Zt_{t+h};\,\tilde\Zt_t e^{L_t/2},\;e^{L_t}-1+k\,s_t^2/\varphi(\tilde\Zt_t)^2\Big)
+\end{equation}
+over the clock and $k$. Tildes denote observed mids.
+
+The candidate clocks are uniform ($\irate=1/\tauexp$, $L=\ln[\tauexp/(\tauexp-h)]$), scaled
+($a/\tauexp$), power ($a\tauexp^{-b}$, $L=a[\tauexp^{1-b}-(\tauexp-h)^{1-b}]/(1-b)$), piecewise
+constant over $\tauexp$ buckets with edges $2,4,\ldots,1024$\,h, and the power and piecewise forms
+times 24 hour-of-day factors with mean one (``$\times$hour''). Each is fitted per category by
+L-BFGS on up to 200{,}000 estimation steps. The BIC-best form is used downstream, and forms are
+compared by holdout mean negative log-likelihood per step relative to uniform.
+
+The standardized innovation
+\begin{equation}\label{eq:dyn-u}
+\ustd_t=\frac{\tilde\Zt_{t+h}-\tilde\Zt_t e^{L_t/2}}{\sqrt{e^{L_t}-1+k\,s_t^2/\varphi(\tilde\Zt_t)^2}}
+\end{equation}
+is $\N(0,1)$ under M0. We report its variance, excess kurtosis and tail frequencies.
+
+The \emph{probit-drift} test regresses $\tilde\Zt_{t+h}-\tilde\Zt_t$ on $\tilde\Zt_t(e^{L_t/2}-1)$ for
+steps with $L_t\le2$. M0 predicts a slope of one, the outward drift that keeps $\pr$ a martingale.
+An IV version instruments with the previous hour's $\tilde\Zt$ to remove errors-in-variables bias
+from quote noise.
+
+The \emph{variance identity} is checked per market: $\sum(\Delta\pr)^2$ over two-sided quotes
+(spread at most 4\cents) sampled every $k\in\{1,6,24\}$\,h, plus the final move
+$(y-\pr_{\text{last}})^2$, compared with $\pr_0(1-\pr_0)$.
+
+\subsubsection{Backbone, stochastic volatility, leverage and jumps}\label{sec:dyn-sv}
+
+\paragraph{Backbone.}
+For each backbone $g$ we fit by QLIKE
+\begin{equation}\label{eq:dyn-backbone}
+\E[(\Delta \pr)^2\mid \pr,\tauexp]=c_{j(\tauexp)}^2\,g(\pr)^2/g(1/2)^2+k\,s^2,
+\end{equation}
+with one scale per $\tauexp$ bucket $j$. The candidates are the M1 power family
+$g=[\pr(1-\pr)]^\beta$, logit-normal ($\beta=1$), Jacobi ($\beta=1/2$) and the probit backbone
+$\varphi(\Phi^{-1}(\pr))$ of M0; they are compared by holdout QLIKE relative to probit. A model-light
+check regresses log cell means of $(\Delta\pr)^2$, Roll-corrected as
+$\E(\Delta\pr_t)^2+2\E(\Delta\pr_t\Delta\pr_{t+1})$ \citep{roll1984}, on $\tauexp$-bucket fixed
+effects and $2\beta\log[\pr(1-\pr)]$, with an event-level Poisson bootstrap (100 draws).
+
+\paragraph{Volatility clustering.}
+We estimate the within-market autocorrelation of $|\ustd_t|$ at lags 1--168\,h. It is computed
+pooled and, removing static differences between markets, demeaned by market (markets with at least
+48 steps). We fit $\Corr(|\ustd_t|,|\ustd_{t+k}|)=A\phi^k$ over $k\le24$ and report the half-life
+$\ln0.5/\ln\phi$. Under log-normal stochastic volatility \citep{taylor1986},
+$A=(x-1)/(\tfrac{\pi}{2}x-1)$ with $x=e^{\sigma_h^2/4}$ and $\sigma_h^2=\Var(\log\alpha^2)$. This
+gives the M1 vol-of-vol $\nu=\tfrac12\sqrt{\sigma_h^2(1-\phi^2)}$ per $\sqrt{\text{hour}}$, which we
+report per $\sqrt{\text{day}}$.
+
+\paragraph{Leverage.}
+The sign of $\rho$, in the $\sgn\Zt$ convention of M1, comes from
+\begin{equation}\label{eq:dyn-lev}
+\Corr\Big(\sgn(\Zt_t)\,\ustd_t,\;\tfrac16\textstyle\sum_{j=1}^{6}|\ustd_{t+j}|\Big),
+\end{equation}
+on steps with $\pr\in[0.1,0.9]$ and $\ustd$ winsorized at $\pm8$. A negative value means volatility
+rises after moves toward $1/2$. A price-unit version replaces $\ustd$ by $\Delta\pr$ over the fitted
+backbone volatility.
+
+\paragraph{Jumps.}
+Following M2, an EM \citep{dempster1977} fits the zero-mean scale mixture
+\begin{equation}\label{eq:dyn-em}
+\ustd\sim(1-\pi)\,\N(0,s_d^2)+\pi\,\N(0,s_d^2+s_J^2)
+\end{equation}
+to steps in which the mid moved; hours without a change are reported as the zero-move share. The
+jump share of variance is $\sum\gamma_i(\Delta\pr_i)^2/\sum(\Delta\pr_i)^2$, with $\gamma_i$ the
+posterior jump probability. The mixture is a random clock burst, which keeps $\pr$ an exact
+martingale.
+
+\subsubsection{Variance forecasts}\label{sec:dyn-forecast}
+
+The target is $RV_{t,H}=\sum_{j<H}(\Delta\pr_{t+j})^2$ for $H\in\{1,6\}$\,h, on decision rows with at
+least 24\,h of history. We compare five forecasts:
+\begin{itemize}
+\item \textsc{hist}: the trailing mean of $(\Delta\pr)^2$ over $W\in\{6,24,72\}$\,h, times $H$;
+\item M0: the closed-form transition variance under the fitted clock;
+\item \textsc{bb}: the backbone local variance of \cref{eq:dyn-backbone};
+\item M1: the M0 variance times
+  $\hat\alpha_t^2=(1-w)+w\,\mathrm{EWMA}_{\mathrm{hl}}[(\Delta\pr)^2/v_1]$ over the market's past
+  steps, with $v_1$ the one-step M0 variance plus noise, $\mathrm{hl}\in\{3,12,48\}$\,h and
+  $w\in\{0.25,\ldots,1\}$;
+\item \textsc{m1bb}: \textsc{bb} times $\hat\alpha_t^2$.
+\end{itemize}
+Each forecast is calibrated on the \estim{} as $\kappa\cdot\text{base}+c_0s^2H+c_1$ by QLIKE, with
+$W$, hl and $w$ chosen there. Holdout accuracy is measured by QLIKE, $\log f+RV/f$
+\citep{patton2011}, and by MSE, with event-clustered $t$-statistics on per-row loss differences
+\citep{dieboldmariano1995}.
+
+\subsubsection{High-frequency in-game sample}\label{sec:dyn-hf}
+
+For the nights of 7--8 and 8--9 November 2026 (17:00 to 06:00 UTC) we replay every recorded order-book
+snapshot and delta of the public Kalshi websocket for game-winner series. Each market's book is
+reduced to its top, persists across hourly files and is reset by snapshots. We keep one leg per
+game, the first alphabetically excluding ties. Its in-game window runs from expected expiration
+minus the league's game length to expected expiration plus 1\,h. The window is cut at the first
+decided quote (mid at most 2\cents{} or at least 98\cents{}, spread at most 10\cents) and 10 minutes
+before $T$. Legs with at least 30 minutes remaining are kept: 50 legs (NBA 14, NCAAF 14, NFL 10,
+NHL 12), 6{,}965 in-game minutes and 267{,}422 top-of-book changes. % source: hf_results.json:games
+
+The mid is sampled as of each point of an $h$-second grid, $h\in\{1,5,15,60,300\}$. Steps do not
+overlap and use the uniform clock with $\tauexp$ in seconds. The start spread is at most 3\cents{}
+(2\cents{} as a robustness check), the start mid is in $[0.03,0.97]$ and the end spread is at most
+10\cents; $t$-statistics cluster by game.
+
+\paragraph{Signature and jumps.}
+The variance signature is $RV(h)/T$ per in-game hour for $h$ from 1 to 600\,s on the same windows
+\citep{andersen2000signature}. Under i.i.d.\ noise of standard deviation $\eta$ in the mid,
+\begin{equation}\label{eq:dyn-signature}
+\E[RV(h)]/T=\sigma^2+2\eta^2/h ,
+\end{equation}
+which we fit across $h$ \citep{zhang2005,aitsahalia2005}.
+
+At 5, 10 and 15\,s we compare realized variance with bipower variation,
+$BV=\mu_1^{-2}\sum_i|r_i||r_{i-1}|$ with $\mu_1=\sqrt{2/\pi}$, and report the jump share
+$(RV-BV)/RV$ \citep{barndorffnielsen2004,barndorffnielsen2006,huangtauchen2005}. Threshold jumps,
+following \citet{leemykland2008}, have $|\ustd_i|>4\hat\sigma_i$ and $|\Delta\pr_i|\ge2$\cents,
+where $\hat\sigma_i$ is the bipower scale of $\ustd$ over the preceding 30 minutes, floored at 0.25.
+
+For a fixed score increment, Stern's Brownian game model predicts a jump size proportional to
+$\varphi(\Zt)/\sqrt{\tauexp}$ \citep{stern1994,polsonstern2015}. We regress $\log|\Delta\pr|$ on
+that quantity over the detected 10-second jumps, with league fixed effects; the predicted slope is
+one. Leverage at 1, 2 and 5 minutes uses \cref{eq:dyn-lev} with the next five steps.
+
+\subsubsection{Tick-grid control simulations}\label{sec:dyn-control}
+
+\paragraph{Matched high-frequency control.}
+For each leg we simulate an M0 path per second under the uniform clock from the leg's first mid. We
+quote it on the 1\cents{} grid with the leg's observed spread, bid
+$=\operatorname{round}(100\pr-s/2)$\cents{} and ask $=$ bid $+\,s$, apply the same cuts, and compute
+the same statistics. The control therefore has M0, ticks and the real spreads, but no jumps and no
+stochastic volatility.
+
+\paragraph{Hourly drift control.}
+M0 paths are simulated on each market's real hourly grid with the category's fitted clock, in three
+versions:
+\begin{itemize}
+\item \emph{true}: not quoted;
+\item \emph{tick}: quoted on the grid with the real spreads;
+\item \emph{stale}: quoted on the grid but re-quoted only in hours with a real candle.
+\end{itemize}
+To locate any shortfall we refit the drift regression inside $|\ustd|\le2$, a window centred on M0's
+mean that biases the slope toward one, and inside $|\Delta\Zt|\le2$\,sd, centred on zero, which
+biases it toward zero. On $|\Zt|\ge0.5$ we also compute the local second-order martingale ratio
+$\E[\sgn(\Zt)\Delta\Zt]/\E[\tfrac12|\Zt|(\Delta\Zt)^2]$, which is one when $\pr$ is a martingale,
+whatever the clock.

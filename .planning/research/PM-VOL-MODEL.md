@@ -176,7 +176,7 @@ A Cox (stochastic-intensity) version adds diffusion from news between events.
    - Part of the excess volatility near the edges comes from the 1c tick floor.
 6. **Stochastic volatility is real but short-lived.**
    - corr(|u_t|, |u_t+1|) within a market is 0.09–0.14, with t 3.5–6.4, and holds on holdout.
-   - Half-life is 6–20 h and ν is about 0.3–0.5 per √day.
+   - Half-life is 7–21 h within market (weather about 40 h, few markets) and ν is about 0.3–0.5 per √day.
    - The filtered vol state forecasts next-period variance better than M0 and better than
      recent realized variance (QLIKE, holdout: pre-game t −30 at 6 h, weather −6.1, in-game
      −3.0, Politics −2.2).
@@ -274,7 +274,7 @@ The control shows what ticks and spreads alone produce.
 ### 6.3 Strike ladders: smile, its dynamics, calibration (`pm_smile.py`, report `research-pm-smile-20261109T220959Z`)
 
 **Sample and method.**
-- 24,192 snapshots of 13.2k ladder events, at fixed leads before `expected_expiration_time`:
+- 24,192 snapshots of 10,177 ladders in 9,213 events, at fixed leads before `expected_expiration_time`:
 
   | Group | Events |
   |---|---|
@@ -523,7 +523,7 @@ high.
    strikes, the smile moves with the implied median (sticky moneyness, coefficient 1.0–2.1)
    rather than staying fixed in strike.
 5. **Stochastic volatility is real but short-lived.**
-   - Half-life is 6–20 h, and vol of vol ν is about 0.3–0.5 per √day.
+   - Half-life is 7–21 h within market (weather about 40 h), and vol of vol ν is about 0.3–0.5 per √day.
    - The filtered vol state improves variance forecasts.
    - Leverage (vol rising as the price nears ½) appears only in-game at the hourly scale.
 6. **The one systematic mispricing is a single phenomenon seen three ways: tails and time are

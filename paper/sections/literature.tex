@@ -1,0 +1,98 @@
+This paper draws on four literatures: prediction-market prices as probabilities, models of
+probability-price dynamics, option pricing and the volatility smile, and reduced-form credit
+models.
+
+\paragraph{Prediction-market prices as probabilities.} \citet{wolferszitzewitz2004} survey prediction
+markets and their forecasting record. \citet{manski2006} and \citet{wolferszitzewitz2006} ask when
+an equilibrium price equals a mean belief. \citet{berg2008} document long-run accuracy in the Iowa
+Electronic Markets, and \citet{pageclemen2013} find that prediction markets are well calibrated
+except for contracts with long horizons. In betting markets the dominant departure from
+calibration is the favourite--longshot bias: longshots are overpriced relative to their win
+frequency \citep{griffith1949,thalerziemba1988}. \citet{snowbergwolfers2010} attribute it to
+misperception of small probabilities rather than risk love. \citet{ottaviani2008} survey the
+explanations. On Kalshi, \citet{burgi2025} use transaction data on more than 300,000 contracts.
+They document a favourite--longshot bias that is stronger for takers than for makers, and model it
+as modest belief disagreement with an overestimation of small probabilities.
+\citet{rothschildsethi2016} study trader types and microstructure in a political prediction market.
+
+These papers study the \emph{level} of prices relative to outcomes. We study how prices
+\emph{move}. We also show that the favourite--longshot bias reappears, in different guises, in the
+cross-section of strikes and in the term structure of deadlines.
+
+\paragraph{Dynamics of probability prices.} \citet{stern1994} models the score difference of a game
+as a Brownian motion. The win probability is then a normal distribution function of the lead,
+scaled by the square root of time remaining: our M0 with a uniform clock.
+\citet{polsonstern2015} invert betting lines to obtain the implied volatility of a game, and
+\citet{fengpolsonxu2016} extend the approach to soccer with a Skellam process.
+
+\citet{archakipeirotis2009} derive the volatility of a binary contract's price from latent ability
+diffusions. They show that volatility depends on the price and on time to expiration, and that the
+structural model beats GARCH in forecasting InTrade volatility. \citet{taleb2018} uses the same
+construction to argue that a well-calibrated election forecast must stay close to one half when
+uncertainty is high.
+
+Two recent papers are the closest to ours.
+\begin{itemize}
+  \item \citet{dalen2025} proposes a ``Black--Scholes for prediction markets''. It models log-odds as
+  a jump-diffusion whose drift is fixed by the martingale condition. It describes an EM
+  calibration that separates diffusion from jumps, and a layer of variance and correlation
+  derivatives. Its validation is largely on synthetic paths.
+  \item \citet{xi2026} estimate a structural volatility model on a large panel of Kalshi contracts.
+  It combines a Wright--Fisher deadline-resolution component with a Glosten--Milgrom order-flow
+  component \citep{glostenmilgrom1985}. They find that it forecasts volatility better than ARCH and
+  GARCH benchmarks, that volatility peaks near even odds and rises into resolution, and that sports
+  contracts jump while economics contracts move smoothly.
+\end{itemize}
+\citet{feilnendel2026} derive optimal market making when the price is a transformed latent-belief
+diffusion; inventory-based market making goes back to \citet{avellanedastoikov2008}. Cost-function
+market makers \citep{hanson2003} are an alternative price-formation mechanism, which Kalshi does
+not use.
+
+Relative to this work, we make five contributions.
+\begin{itemize}
+  \item We state the exact transition law of the Gaussian model and test it as a distributional
+  restriction: the standardised innovation $\ustd$ must be $\N(0,1)$ at every horizon, given the
+  clock.
+  \item We estimate information clocks, backbones, stochastic volatility and jumps by contract
+  category on out-of-sample data. At high frequency, we use simulated controls that reproduce the
+  tick grid.
+  \item We extend the framework to strips of contracts on a numeric outcome. There, implied
+  distributions, smiles, smile dynamics and a variance-swap analogue are observable.
+  \item We treat deadline contracts as a reduced-form hazard model, with implied hazard term
+  structures, theta and event timing.
+  \item We show that a common tail-and-time premium links these settings.
+\end{itemize}
+Our estimated backbone is close to the Wright--Fisher exponent of one half. This independently
+supports the specification of \citet{xi2026}.
+
+\paragraph{Option pricing, smiles and variance premia.} The model is a cash-or-nothing digital
+option under Bachelier dynamics
+\citep{bachelier1900,blackscholes1973,merton1973}. The extensions follow familiar steps:
+\begin{itemize}
+  \item jumps \citep{merton1976};
+  \item stochastic volatility \citep{heston1993};
+  \item local and stochastic smiles \citep{dupire1994,hagan2002}.
+\end{itemize}
+SABR's backbone exponent and correlation have direct counterparts in M1.
+\citet{breedenlitzenberger1978} show that a strip of option prices identifies the risk-neutral
+density; a strip of digitals does so directly. The distinction between sticky-strike and
+sticky-delta smile dynamics is due to \citet{derman1999}; \citet{gatheral2006} reviews smile
+modelling. Comparing realized with implied variance follows the variance-risk-premium literature
+\citep{carrwu2009,bollerslev2009}.
+
+\paragraph{Reduced-form credit.} A contract that pays if an event occurs by a deadline is the
+complement of a defaultable zero-coupon claim with zero recovery. Intensity models
+\citep{jarrowturnbull1995,lando1998,duffiesingleton1999} supply the implied hazard, forward
+hazards and the compensated-jump martingale. The square-root intensity of \citet{cox1985cir} is
+the natural Cox specification.
+
+\paragraph{Econometrics of volatility and jumps.} At high frequency we use:
+\begin{itemize}
+  \item volatility signature plots \citep{andersen2000signature} and the noise framework of
+  \citet{zhang2005}, to separate microstructure noise from volatility;
+  \item bipower variation \citep{barndorffnielsen2004} and threshold tests
+  \citep{leemykland2008}, to separate jumps from diffusion;
+  \item a bid--ask bounce measure \citep{roll1984} and price discreteness \citep{harris1991}, for
+  the tick grid.
+\end{itemize}
+The EM decomposition of hourly moves into diffusion and jumps follows \citet{dempster1977}.

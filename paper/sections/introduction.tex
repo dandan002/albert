@@ -1,0 +1,77 @@
+Prediction markets have become a large, regulated asset class. In the United States, an exchange
+such as Kalshi lists hundreds of thousands of binary contracts on sports, weather, entertainment,
+politics and public statements, many of them each week. Their prices are routinely read as
+probabilities \citep{wolferszitzewitz2004,wolferszitzewitz2006}. A large literature asks whether
+those probabilities are calibrated, documenting in particular the favourite--longshot bias
+\citep{griffith1949,thalerziemba1988,snowbergwolfers2010,burgi2025}.
+
+Much less is known about how these prices \emph{move}. Option pricing begins from a model of the
+dynamics; the analogue for an event contract is largely missing. Such a model is needed to price
+derivatives of prediction-market prices, to manage the risk of quoting them, to read a probability
+correctly when it has just jumped, and to say what ``volatility'' even means for a security that
+must end at 0 or 1.
+
+This paper develops such a model and calibrates it on Kalshi. The starting point is simple: the
+fair price of a binary contract is a bounded martingale that terminates at 0 or 1. Its total
+variance over its life is therefore fixed at $\pr_0(1-\pr_0)$ (\cref{lem:variance}). What a model
+must describe is \emph{when}, \emph{at which price levels} and \emph{in what shape} this fixed
+variance is released.
+
+We formalise this with a latent Gaussian score. The contract pays if the score ends above zero, so
+the price is a Bachelier digital option. It solves the Black--Scholes equation with a digital payoff
+and has an exact transition law (\cref{prop:m0}). The role of implied volatility is taken by an
+\emph{information clock}: the rate at which the remaining uncertainty is resolved. We then add a
+SABR-type stochastic volatility with a general backbone (M1) and jumps (M2). We extend the framework
+to two other contract structures that Kalshi lists at scale:
+\begin{itemize}
+  \item \emph{ladders} of contracts on one numeric outcome, such as a daily high temperature or a
+  points total. These are strips of digital options with an implied distribution, an implied
+  volatility per strike and a smile.
+  \item \emph{deadline} contracts that pay if an event occurs by a date. These are reduced-form
+  credit claims with an implied hazard term structure and a theta.
+\end{itemize}
+
+We calibrate the three branches on several data sets:
+\begin{itemize}
+  \item 4.8 million hourly quote observations on 47,500 single contracts;
+  \item 24,000 snapshots of 10,200 ladders in 9,200 events;
+  \item 26,000 priced observations of 5,900 deadline contracts;
+  \item full order-book recordings of 50 in-game sports markets.
+\end{itemize}
+Parameters are chosen on data before October 2026 and evaluated on October.
+
+Our findings can be summarised as seven stylized facts.
+\begin{enumerate}
+  \item \textbf{Prices are fair in level and in total variance.} The variance identity holds within
+  a few percent in the broad categories.
+  \item \textbf{Clocks differ sharply by contract type.} In-game sports follow Stern's Brownian game
+  almost exactly, with a uniform clock. Weather information is back-loaded into the final hours.
+  Pre-game sports learn almost nothing. Deadline contracts carry an implied hazard that rises
+  steeply into the deadline.
+  \item \textbf{Variance arrives in jumps.} Half or more of price variance comes from discrete moves,
+  even within games at the scale of seconds. Prices drift toward resolution more slowly than the
+  Gaussian model predicts. Outside sports the one-cent grid accounts for this; in sports, jumps do.
+  \item \textbf{The backbone is close to Wright--Fisher.} Price volatility scales like
+  $[\pr(1-\pr)]^\beta$ with $\beta$ between 0.3 and 0.8; the logit-normal model ($\beta=1$) is
+  rejected everywhere.
+  \item \textbf{Volatility is stochastic but short-lived,} with half-lives of 7--21 hours outside weather.
+  \item \textbf{Ladders have a smile, and it moves with the market.} The smile is sticky in moneyness
+  rather than in strike. Implied widths and skews are close to calibrated, but implied tails are
+  too heavy.
+  \item \textbf{Tails and time are overpriced.} Implied tail mass across strikes, implied hazards
+  before deadlines and implied variance before games all exceed their realized counterparts.
+  Prices of deadline contracts decay toward zero at only a third to two-thirds of the model rate.
+\end{enumerate}
+These premia are the favourite--longshot bias in its cross-sectional and term-structure forms. The
+one-cent tick and fees bound them to a few cents per contract.
+
+The paper proceeds as follows.
+\begin{itemize}
+  \item \Cref{sec:lit} reviews related work.
+  \item \Cref{sec:data} describes the market and the data.
+  \item \Cref{sec:model} develops the model.
+  \item \Cref{sec:method} describes the estimators.
+  \item \Cref{sec:results} reports the results.
+  \item \Cref{sec:discussion} discusses their interpretation and limitations.
+  \item \Cref{sec:conclusion} concludes.
+\end{itemize}

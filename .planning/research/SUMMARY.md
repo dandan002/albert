@@ -422,7 +422,7 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     but not the shape.
   - **Backbone.** β ≈ 0.3–0.8, Jacobi-like; logit-normal is rejected.
   - **Smile.** Ladders move sticky-moneyness.
-  - **Stochastic vol.** Half-life 6–20 h.
+  - **Stochastic vol.** Half-life 7–21 h within market (weather about 40 h).
   - **Microstructure.** The mid is sticky with no bid-ask bounce. The probit-drift shortfall is
     explained by the tick floor outside sports and by jumps in sports.
   - **Tails and time are overpriced.**

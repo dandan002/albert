@@ -1,0 +1,35 @@
+The three studies share a set of conventions, collected here.
+
+\paragraph{Price proxy.} The price is the mid-quote. Each study admits it only when the quoted
+spread is narrow: at most 3--5\cents, depending on the study. Away from the edges the mid is then
+within a cent or two of any reasonable estimate of the fair price. Near 0 and 1, the one-cent grid
+and the price floor make probit and logit transforms of the mid unstable. Studies therefore either
+restrict the price range or model the grid explicitly.
+
+\paragraph{Inference.} Observations within an event (one game, one city-day, one question) share
+information shocks. All standard errors are cluster-robust by event \citep{cameronmiller2015},
+and $t$-statistics are reported with event clustering unless stated otherwise. Each study reports
+the number of clusters.
+
+\paragraph{Distributional tests.} Distributional statements are tested with probability integral
+transforms (PIT) of realized outcomes under the model or implied distribution
+\citep{diebold1998}. Interval-censored outcomes, where only the settled bracket is known, are
+handled by splitting the PIT over the interval. Volatility forecasts are compared with the QLIKE
+loss, which is robust to noise in the realized-variance proxy \citep{patton2011}. MSE is reported
+alongside it.
+
+\paragraph{Microstructure controls.} Ticks, spreads and price clipping mechanically affect
+higher-moment and drift statistics. Where they could, the studies simulate the null model on the
+same one-cent grid with the observed spreads and the same filters, and report every statistic for
+both the data and this matched control. A finding is attributed to the market only where it differs
+from the control.
+
+\paragraph{Economic significance.} Some sections translate a mispricing into the return of a simple
+rule. Those rules use executable quotes (the bid or the ask, not the mid) and Kalshi's fee schedule.
+Positions are held to settlement. Thresholds are chosen on the estimation sample. These
+calculations measure the size of departures from fair pricing; they are not proposed as trading
+strategies.
+
+\paragraph{Multiple comparisons.} Results are reported across categories, horizons and leads.
+We emphasise patterns that are consistent in sign across the estimation and holdout samples, and
+across related cells, over individual significant cells.

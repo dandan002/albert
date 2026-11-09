@@ -1,0 +1,23 @@
+The fair price of a binary event contract is a bounded martingale that ends at zero or one, so
+its total variance is fixed by its initial price. We develop an option-pricing framework for such
+contracts.
+
+In the base model, the contract is a Bachelier digital option on a latent Gaussian score. Its price
+solves the Black--Scholes equation with a digital payoff and has an exact transition law. The role
+of implied volatility is played by an \emph{information clock}: the rate at which remaining
+uncertainty is resolved. We extend the model with SABR-type stochastic volatility, a general
+backbone and jumps, and adapt it to strike ladders, which are strips of digitals with an implied
+smile, and to deadline contracts, which are reduced-form hazard claims.
+
+Calibrating on Kalshi, out of sample, we use hourly quotes on 47,500 contracts, 24,000 ladder
+snapshots, 5,900 deadline contracts and full order-book recordings of in-game sports markets.
+Prices respect the variance budget, and the clock is category-specific: uniform within games, as in
+Stern's Brownian model; back-loaded for weather; nearly flat before games; and rising steeply into
+deadlines.
+
+Half or more of the variance arrives in jumps, even at the scale of seconds. Volatility scales with
+the price close to the Wright--Fisher backbone, and it is stochastic with half-lives of 7--21
+hours. Ladder smiles are convex and sticky in moneyness.
+
+Implied tail mass, implied hazards and implied variance all exceed their realized counterparts: a
+tail-and-time form of the favourite--longshot bias, bounded by the one-cent tick and fees.

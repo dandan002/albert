@@ -1,0 +1,136 @@
+\subsection{A unified description}
+
+The three studies support one description of prediction-market prices. A binary contract's fair
+price is a digital option on a latent state, written either as a score, as a numeric outcome, or as
+the waiting time to an event. The state is revealed according to an information clock, with
+short-lived random variation in the rate of revelation and a large share of discrete jumps:
+\begin{align*}
+  \text{single contract or ladder leg:}\quad &\pr_t=\Prob(Y_T>K\mid\F_t),\\
+  &\dd Y_t=\alpha_t\,s(t)\,\dd W_t+J_t\,\dd N_t,\qquad \dd\alpha_t=\nu\alpha_t\,\dd B_t,\\
+  \text{deadline contract:}\quad &\pr_t=1-\E_t\Big[e^{-\int_t^T h_u\dd u}\Big],\qquad
+  h_u=h^{\det}(T-u)\,\xi_u ,
+\end{align*}
+where $h^{\det}$ is a deterministic hazard profile that rises into the deadline and $\xi$ a
+log-diffusion. \Cref{tab:disc-facts} collects the estimates that pin down each component.
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Stylized facts by model component and contract type.}\label{tab:disc-facts}
+\small
+\begin{tabular}{@{}p{0.2\textwidth}p{0.36\textwidth}p{0.36\textwidth}@{}}
+\toprule
+Component & Estimate & Where it comes from \\
+\midrule
+Variance budget & realized variance over $\pr_0(1-\pr_0)$: 0.93--1.01 & weather, sports (\cref{sec:res-dyn}); 1.19 for deadlines (\cref{sec:res-haz}) \\
+Clock & uniform in-game; back-loaded weather; flat pre-game; hazard rising into deadline & \cref{sec:res-dyn,sec:res-lad,sec:res-haz} \\
+Backbone & $\beta\approx0.3$--$0.8$; logit-normal rejected & \cref{sec:res-dyn} \\
+Stochastic volatility & half-life 7--21\,h (weather about 40\,h), $\nu\approx0.3$--$0.5$ per $\sqrt{\text{day}}$ & \cref{sec:res-dyn} \\
+Jumps & 55--85\% of hourly variance; about half of in-game variance at 5--15\,s & \cref{sec:res-dyn,sec:res-hf} \\
+Smile & convex, sticky in moneyness; tails too heavy & \cref{sec:res-lad} \\
+Premia & implied tail mass, hazard and variance exceed realized & \cref{sec:res-lad,sec:res-haz} \\
+\bottomrule
+\end{tabular}
+\end{threeparttable}
+\end{table}
+
+\subsection{Why clocks differ}
+
+The information clock is the object that varies most across contract types, and it has a clear
+economic reading: it is the schedule on which the world reveals the answer.
+\begin{itemize}
+  \item \emph{In-game sports.} Scoring opportunities arrive roughly uniformly in game time, so a
+  uniform clock fits, exactly as in \citet{stern1994}.
+  \item \emph{Pre-game sports.} Before the start almost nothing is learned, apart from occasional
+  team news, so the clock runs at a few percent of the in-game rate.
+  \item \emph{Weather.} Daily temperature extremes are revealed by observations late in the local
+  day, giving a back-loaded clock with a pronounced time-of-day profile.
+  \item \emph{Deadline contracts.} The implied hazard rises into the deadline. Part of this is real,
+  since announcements do bunch late. But realized event timing is less concentrated than prices
+  imply, so part of the rise is a premium (\cref{sec:res-haz}).
+\end{itemize}
+
+For pricing, the clock is to a binary contract what the term structure of implied variance is to
+an option. A single contract's price carries no volatility information. A ladder's at-the-money
+term structure and a deadline strip's forward hazards do, and both can be compared with the clock
+measured from price paths.
+
+\subsection{Jumps and the limits of the Gaussian model}
+
+M0 gets the clock right and the shape wrong. Outside in-game sports, hourly standardised
+innovations have excess kurtosis from tens to hundreds. Even within games, roughly half of
+second-scale variance arrives in discrete moves. Several consequences follow.
+\begin{itemize}
+  \item \emph{Variance forecasts.} QLIKE and MSE rank the forecasting models differently: filtering
+  the volatility state helps in quiet periods and hurts across jumps.
+  \item \emph{Drift.} The outward drift of the probit price per unit of total variance falls short
+  of the Gaussian prediction, as \cref{sec:model-m2} anticipates.
+  \item \emph{Derivative pricing.} Any instrument that depends on the path, such as the
+  variance and first-passage claims proposed by \citet{dalen2025}, must model jumps explicitly.
+\end{itemize}
+
+The basketball result is a useful benchmark. In the NBA, jump sizes scale with the Stern factor
+$\varphi(\Zt)/\sqrt{\tauexp}$ almost exactly. In lower-scoring sports they scale less steeply.
+This is consistent with scores that are rarer, larger and more state-dependent, for which
+\citet{fengpolsonxu2016}'s Skellam model is the natural replacement.
+
+\subsection{Backbone and smile dynamics}
+
+The estimated backbone exponent of 0.3--0.8 places price volatility closer to the Wright--Fisher
+(Jacobi) diffusion than to the logit-normal model that is common in practice. This independently
+supports the Wright--Fisher component of \citet{xi2026}.
+
+In ladders, the smile moves with the implied median: volatility at a fixed strike shifts as the
+median moves, while at-the-money volatility does not slide along a fixed smile. In
+\citet{derman1999}'s terms, the market treats the outcome distribution as a location--scale family
+that is re-centred on news. That is natural when news shifts the expected outcome (a score, a
+forecast update) without changing the remaining uncertainty much.
+
+\subsection{A tail-and-time premium}
+
+The one systematic departure from fair pricing appears in three forms:
+\begin{itemize}
+  \item implied tails across strikes are heavier than realized tails;
+  \item implied hazards exceed realized hazards at every lead before a deadline, and prices decay
+  more slowly than the hazard model requires;
+  \item before and during games, ladders imply more variance than is subsequently realized.
+\end{itemize}
+In each case the market overprices the probability of an outcome far from the centre, or of an
+event within a short window. This is the favourite--longshot bias of \citet{snowbergwolfers2010}
+and \citet{burgi2025}, seen across strikes and across time.
+
+Three features of the venue limit how far it can be corrected.
+\begin{itemize}
+  \item \emph{Tick grid.} The one-cent grid caps the gain from selling an overpriced 1--2\cents
+  contract at about a cent.
+  \item \emph{Fees.} Per-order rounding of fees makes small orders near the edges expensive.
+  \item \emph{Collateral.} Selling a longshot requires posting nearly the full contract value as
+  collateral.
+\end{itemize}
+In line with these limits, simple rules that sell the premium earn at most a few cents per contract
+out of sample, and none is robust across samples. The premium is a stable feature of prices, not
+an exploitable inefficiency at retail scale.
+
+Two departures from the martingale property remain.
+\begin{itemize}
+  \item \emph{Weather.} Ladder medians for daily highs drift down overnight and up during the day.
+  This may reflect a forecast input that under-predicts daytime maxima until observations arrive.
+  \item \emph{Deadline contracts.} Prices fall faster than the martingale allows in their final
+  hours, as stale prices catch up with the deadline.
+\end{itemize}
+Both are localised and small.
+
+\subsection{Limitations}
+
+The sample covers February to October 2026 for quotes and November 2026 for order books, a period
+of rapid growth on the venue. Hourly candles hide intra-hour dynamics, and the base quote panel is
+weighted toward actively traded markets. The order-book study covers two evenings and 50 game
+markets.
+
+We do not observe the game clock or the score. In-game time to expiry is measured to scheduled
+settlement, which probably explains part of the cross-league dispersion. Event times of deadline
+contracts are upper bounds inferred from prices and closing times.
+
+Finally, we report many cells across categories, horizons and leads. We emphasise patterns that
+hold in sign across the estimation and holdout samples, but individual cells should be read with
+multiple testing in mind.

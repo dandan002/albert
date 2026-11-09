@@ -2313,6 +2313,37 @@ def run_drift_tail(s) -> None:
     print("done", flush=True)
 
 
+def run_backbone_cells(s) -> None:
+    """Binned price variance against p for the paper's backbone figure (estimation sample): per
+    category and p bin, mean of (dp^2 - k s^2) / c(tau bucket)^2 with c and k from the dev-fitted
+    power backbone, i.e. the empirical g(p)^2 / g(1/2)^2 -> backbone_cells.json."""
+    a = load_panel()
+    params = load_params(PARAMS_PATH)["categories"]
+    edges = np.array([0.03, 0.05, 0.08, 0.12, 0.18, 0.26, 0.36, 0.44, 0.56, 0.64, 0.74, 0.82, 0.88, 0.92, 0.95, 0.97 + 1e-9])
+    nb = len(TAU_EDGES) - 1
+    out = []
+    for name in ("Sports pre-game", "Sports in-play", "Climate and Weather", "Mentions", "Politics", "Entertainment"):
+        c = CATS.index(name)
+        cp = params[name]
+        th = np.asarray(cp["backbone_theta"])
+        inc = increments(a, c, 1)
+        dev = np.flatnonzero(inc["split"] == 0)
+        p0 = inc["p0"][dev]
+        dp2 = (inc["p1"][dev] - inc["p0"][dev]) ** 2
+        c2 = np.exp(th[tau_bucket(inc["tau"][dev])])
+        y = (dp2 - np.exp(th[nb]) * inc["spr"][dev] ** 2) / c2
+        b = np.clip(np.searchsorted(edges, p0, side="right") - 1, 0, len(edges) - 2)
+        for k in range(len(edges) - 1):
+            m = b == k
+            if m.sum() < 200:
+                continue
+            r = clustered(y[m], inc["ev"][dev][m])
+            out.append({"category": name, "p_mid": float(np.mean(p0[m])), "n": r["n"], "events": r["clusters"],
+                        "norm_var": r["mean"], "se": abs(r["mean"] / r["t"]) if r["t"] else None, "beta": cp["backbone_beta"]})
+    (OUT / "backbone_cells.json").write_text(json.dumps(_jsonable(out)))
+    print("done", flush=True)
+
+
 def run_drift_sim(s) -> None:
     """Probit-drift shortfall on the hourly panel: data vs M0 simulations -> drift_sim.json."""
     a = load_panel()
@@ -2414,6 +2445,8 @@ def main(argv: list[str]) -> None:
         run_drift_sim(s)
     if step == "drift_tail":
         run_drift_tail(s)
+    if step == "backbone_cells":
+        run_backbone_cells(s)
     if step == "hf_report":
         write_hf_report(s)
 
