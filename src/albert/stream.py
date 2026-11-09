@@ -36,7 +36,7 @@ import httpx
 import zstandard
 from websockets.asyncio.client import connect
 
-from albert.categories import kalshi_is_non_financial, pm_is_non_financial
+from albert.categories import kalshi_series_is_financial, pm_is_non_financial
 from albert.venues import kalshi as k
 from albert.venues.kalshi_auth import KalshiSigner
 
@@ -185,15 +185,18 @@ class ConnStats:
 
 # ---- universe selection -----------------------------------------------------------------------
 def select_kalshi(series_info: dict[str, dict], n: int, *, days: float = 7.0, max_spread: float = 0.25,
-                  seed: int = 0, rest: str = KALSHI_REST) -> list[dict[str, Any]]:
-    """Open non-financial markets closing within ``days`` that currently show a two-sided quote.
+                  seed: int = 0, rest: str = KALSHI_REST, min_spread: float = 0.0,
+                  vol24h: tuple[float, float] | None = None, transport=None) -> list[dict[str, Any]]:
+    """Open non-financial markets closing within ``days`` that currently show a two-sided quote
+    with ``min_spread <= spread <= max_spread`` and, if ``vol24h`` = (lo, hi) is given, a trailing
+    24 h volume (contracts, ``volume_24h_fp``) in [lo, hi]: the illiquid universe.
 
-    Selection uses only the *current* quote (no final-volume information), then a seeded random
-    sample stratified round-robin by category so one category cannot fill the universe.
+    Selection uses only the *current* quote and trailing volume (no future information), then a
+    seeded random sample stratified round-robin by category so one category cannot fill the universe.
     """
     now = datetime.now(UTC)
     rows: list[dict] = []
-    with httpx.Client(timeout=30) as http:
+    with httpx.Client(timeout=30, transport=transport) as http:
         cursor = None
         while True:
             params = {"status": "open", "mve_filter": "exclude", "limit": 1000,
@@ -208,12 +211,20 @@ def select_kalshi(series_info: dict[str, dict], n: int, *, days: float = 7.0, ma
                 time.sleep(1 + attempt)
             r.raise_for_status()
             page = r.json()
-            rows.extend(k.market_rows(page, series_info, "live"))
+            got = k.market_rows(page, series_info, "live")
+            v24 = {m["ticker"]: float(m.get("volume_24h_fp") or 0) for m in page.get("markets") or []}
+            for m in got:
+                m["volume_24h"] = v24.get(m["ticker"], 0.0)
+            rows.extend(got)
             cursor = page.get("cursor")
             if not cursor or not page.get("markets"):
                 break
-    eligible = [m for m in rows if kalshi_is_non_financial(m["category"])
-                and m["yes_bid"] and m["yes_ask"] and 0 < m["yes_ask"] - m["yes_bid"] <= max_spread]
+    eligible = [m for m in rows
+                if not kalshi_series_is_financial(m["series_ticker"], m["category"],
+                                                  series_info.get(m["series_ticker"], {}).get("title"))
+                and m["yes_bid"] and m["yes_ask"] and 0 < m["yes_ask"] - m["yes_bid"] <= max_spread + 1e-9
+                and m["yes_ask"] - m["yes_bid"] >= min_spread - 1e-9
+                and (vol24h is None or vol24h[0] <= m["volume_24h"] <= vol24h[1])]
     rng = random.Random(seed)
     by_cat: dict[str, list[dict]] = defaultdict(list)
     for m in eligible:

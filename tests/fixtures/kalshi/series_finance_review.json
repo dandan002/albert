@@ -1,0 +1,365 @@
+{
+ "_source": "trimmed from GET /series (data/tables/kalshi_series.parquet, 2026-11-07)",
+ "series": [
+  {
+   "series_ticker": "KXFEDMENTION",
+   "category": "Mentions",
+   "title": "Fed mention",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXJPOWMENTION",
+   "category": "Mentions",
+   "title": "What will Jerome Powell say?",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXPOWELLMENTION",
+   "category": "Mentions",
+   "title": "Powell Mention General ",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXBOWMANMENTION",
+   "category": "Mentions",
+   "title": "Michelle Bowman Mention",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXWALLERMENTION",
+   "category": "Mentions",
+   "title": "Waller Mention",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXBESSENTMTPMENTION",
+   "category": "Mentions",
+   "title": "What will Scott Bessent say",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXBRKEM",
+   "category": "Mentions",
+   "title": "What will Berkshire Hathaway say on their next earnings call?",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXNVDAMENTION",
+   "category": "Mentions",
+   "title": "NVIDIA Mention",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXMSFTMENTION",
+   "category": "Mentions",
+   "title": "Microsoft Mention",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXDIMONMENTION",
+   "category": "Mentions",
+   "title": "Jamie Dimon Mention",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXBTCMENTIONVANCE",
+   "category": "Mentions",
+   "title": "Vance",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXDJTDAS",
+   "category": "Mentions",
+   "title": "What will Trump say in his address to the Digital Asset Summit?",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXCRYPTOSUMMIT",
+   "category": "Mentions",
+   "title": "What will Trump say at the White House Crypto Summit?",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXEARNIGNSMENTIONJPM",
+   "category": "Mentions",
+   "title": "JPM Earnings",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXEARNINGSMENTIONORCL",
+   "category": "Mentions",
+   "title": "What will Oracle say in their earnings call",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXGDPCN",
+   "category": "World",
+   "title": "China GDP growth",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXRELEASECPI",
+   "category": "Politics",
+   "title": "Will the BLS release October CPI data?",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXTAPER",
+   "category": "World",
+   "title": "Fed tapering",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXFOMCVOTE",
+   "category": "Politics",
+   "title": "Next FOMC vote unanimous",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXFEDCHAIRNOM",
+   "category": "Politics",
+   "title": "Fed Chair nominee",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXBTCRESERVE",
+   "category": "Politics",
+   "title": "Bitcoin Reserve",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXFIRSTGTABTC",
+   "category": "Social",
+   "title": "Will GTA 6 come out before bitcoin goes below $100,000?",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXTARIFFRATEEU",
+   "category": "Politics",
+   "title": "EU tariff rate",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXDCEIL",
+   "category": "Politics",
+   "title": "Debt ceiling hike",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXSTOCKX4BLACKCAT",
+   "category": "Entertainment",
+   "title": "Will the average sales price of the XXX on StockX, be above XXX 7 days after release?",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXSECTREASURY",
+   "category": "Politics",
+   "title": "Next Secretary of the Treasury",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXNUBONDS",
+   "category": "Politics",
+   "title": "Will NU sell $250M in bonds for the Big Red Rebuild?",
+   "financial": true
+  },
+  {
+   "series_ticker": "KX50YMORTGAGE",
+   "category": "Politics",
+   "title": "Will Trump allow 50-year mortgages?",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXCHINABANKSANC",
+   "category": "Politics",
+   "title": "Will the Treasury announce sanctions on a Chinese bank?",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXTHREADGUYMENTION",
+   "category": "Mentions",
+   "title": "Threadguy Mention",
+   "financial": true
+  },
+  {
+   "series_ticker": "KXTRUMPMENTION",
+   "category": "Mentions",
+   "title": "What will Trump say?",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXTRUMPSAY",
+   "category": "Mentions",
+   "title": "What will trump say",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXVANCEMENTION",
+   "category": "Mentions",
+   "title": "Vance Says",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXLEAVITTMENTION",
+   "category": "Mentions",
+   "title": "Leavitt mention general",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXBERNIEMENTION",
+   "category": "Mentions",
+   "title": "Bernie says",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXJEFFRIESMENTION",
+   "category": "Mentions",
+   "title": "Hakeem Jeffries Mention",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXBONDIMENTION",
+   "category": "Mentions",
+   "title": "Pam Bondi ",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXBOND",
+   "category": "Entertainment",
+   "title": "Next Bond actor",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXACTORBONDGIRL",
+   "category": "Entertainment",
+   "title": "Who will be the next Bond girl",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXRTOBX",
+   "category": "Entertainment",
+   "title": "Outer Banks",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXBANKHEADDROPOUT",
+   "category": "Elections",
+   "title": "Will Alani Bankhead drop out?",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXBURBANKBALLOT",
+   "category": "Elections",
+   "title": "Will Cindy Burbank be on Nebraska\u2019s Senate ballot?",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXCORNWALLMEADOWBY",
+   "category": "Elections",
+   "title": "Cornwall\u2013Meadowbank PEI Assembly by-election",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXINDIANAPOWELL",
+   "category": "Entertainment",
+   "title": "Will actor Glen Powell star as the next Indiana Jones?",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXJCOLECBA",
+   "category": "Sports",
+   "title": "J Cole CBA",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXMVECBCHAMPIONSHIP",
+   "category": "Exotics",
+   "title": "MVE College Basketball Championship",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXGRAMBTCA",
+   "category": "Entertainment",
+   "title": "Best Traditional Country Album",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXNFLFFPTSLADDER",
+   "category": "Sports",
+   "title": "Fantasy Ladder",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXAUSSEATSLABOR",
+   "category": "Elections",
+   "title": "Labor seats",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXFEDDC",
+   "category": "Politics",
+   "title": "Will DC be federalized?",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXFEDERALCHARGE",
+   "category": "Politics",
+   "title": "Who will be charged with a federal crime",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXAZTREASR",
+   "category": "Elections",
+   "title": "Arizona State Treasurer Republican nominee?",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXTRUMPSETTLECBS",
+   "category": "Politics",
+   "title": "Trump settle with CBS",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXRECBASELINE",
+   "category": "Politics",
+   "title": "Reconciliation baseline",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXOPENSHARE",
+   "category": "Science and Technology",
+   "title": "OpenAI Market Share",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXANTHVSPEND",
+   "category": "Science and Technology",
+   "title": "Anthropic Vercel spend share",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXHIGHNY",
+   "category": "Climate and Weather",
+   "title": "Highest temperature in NYC",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXNFLGAME",
+   "category": "Sports",
+   "title": "NFL Game",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXLOWTATL",
+   "category": "Climate and Weather",
+   "title": "Low Temperature Atlanta",
+   "financial": false
+  },
+  {
+   "series_ticker": "KXBIGGESTQUAKE",
+   "category": "Climate and Weather",
+   "title": "Biggest earthquake",
+   "financial": false
+  }
+ ]
+}

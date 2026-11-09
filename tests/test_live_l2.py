@@ -13,7 +13,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from albert.backtest.l2 import Event, Quoter, SimConfig, _mark_executions, events_from_rows
+from albert.backtest.l2 import Event, Fill, Quoter, SimConfig, _mark_executions, events_from_rows
 from albert.live_l2 import BOT_PREFIX, LiveBroker, LiveGuards, LiveMaker, reconcile, run_actions
 from albert.venues import kalshi_trade as kt
 from albert.venues.kalshi_trade import (
@@ -105,14 +105,16 @@ def test_read_only_client_refuses_writes(monkeypatch):
     assert t.requests == []
 
 
-def _resting_with_bot_orders() -> dict:
-    """The recorded resting-orders page plus two copies re-labelled as bot orders."""
+def _resting_with_bot_orders(tag: str = "q") -> dict:
+    """The recorded resting-orders page plus two copies re-labelled as this maker's (``tag``)
+    leftover orders and one as the mentions bot's (``albm``) in another market."""
     page = _load("portfolio_orders_resting")
     bot = []
-    for i, coid in enumerate([f"{BOT_PREFIX}20261105T000000Z-1", f"{BOT_PREFIX}20261104T000000Z-7"]):
+    for i, (coid, ticker) in enumerate([(f"{BOT_PREFIX}{tag}20261105T000000Z-1", "KXHIGHDEN-26NOV05-B60.5"),
+                                        (f"{BOT_PREFIX}{tag}20261104T000000Z-7", "KXHIGHDEN-26NOV05-B60.5"),
+                                        ("albm20261107T000000Z-3", "KXTRUMPMENTION-26NOV09-TARIFF")]):
         o = copy.deepcopy(page["orders"][0])
-        o.update(order_id=f"0000000{i}-0000-0000-0000-000000000000", client_order_id=coid,
-                 ticker="KXHIGHDEN-26NOV05-B60.5")
+        o.update(order_id=f"0000000{i}-0000-0000-0000-000000000000", client_order_id=coid, ticker=ticker)
         bot.append(o)
     return {"cursor": "", "orders": page["orders"] + bot}
 
@@ -126,7 +128,7 @@ def test_cancel_own_never_touches_manual_orders():
         return httpx.Response(200, json={"order_id": req.url.path.rsplit("/", 1)[-1]})
 
     t = KalshiTrader("demo", _Signer(), transport=httpx.MockTransport(handler))
-    done = asyncio.run(t.cancel_own(f"{BOT_PREFIX}20261105"))
+    done = asyncio.run(t.cancel_own(f"{BOT_PREFIX}q20261105"))
     assert done == ["00000000-0000-0000-0000-000000000000"]
     deletes = [p for m, p in t.requests if m == "DELETE"]
     assert deletes == ["/portfolio/events/orders/00000000-0000-0000-0000-000000000000"]
@@ -208,6 +210,11 @@ class FakeTrader:
 
     async def queue_positions(self, tickers):
         return {}
+
+    async def get(self, path, params=None):
+        ticker = path.rsplit("/", 1)[-1]
+        self.log.append(("get", path))
+        return {"market": {"ticker": ticker, "result": getattr(self, "results", {}).get(ticker, "")}}
 
 
 def _broker(**kw) -> LiveBroker:
@@ -364,11 +371,12 @@ def test_prepare_blocks_markets_with_manual_orders_or_positions(tmp_path):
     fake = FakeTrader(resting=_resting_with_bot_orders(), positions=_load("portfolio_positions"))
     lm = LiveMaker(tmp_path, "demo", None, fake, run_id="R", strategy=Quoter(),
                    cfg=SimConfig(), guards=LiveGuards(), pairs=[])
-    ok = asyncio.run(lm.prepare(["KXIMPEACH-29-JAN20", "KXHIGHDEN-26NOV05-B60.5"]))
+    ok = asyncio.run(lm.prepare(["KXIMPEACH-29-JAN20", "KXHIGHDEN-26NOV05-B60.5",
+                                 "KXTRUMPMENTION-26NOV09-TARIFF"]))
     assert ok == ["KXHIGHDEN-26NOV05-B60.5"]
-    assert "KXIMPEACH-29-JAN20" in lm.broker.blocked and lm.broker.group
-    # leftover bot orders from earlier runs are cancelled; the manual order is not
-    assert sorted(o.client_order_id for o in fake.resting) == [""]
+    assert {"KXIMPEACH-29-JAN20", "KXTRUMPMENTION-26NOV09-TARIFF"} <= lm.broker.blocked and lm.broker.group
+    # this maker's leftover orders are cancelled; the manual and the mentions bot's orders are not
+    assert sorted(o.client_order_id for o in fake.resting) == ["", "albm20261107T000000Z-3"]
     end = asyncio.run(lm.shutdown())
     assert ("delete_group", lm.broker.group) in fake.log and end["fills"] == 0
     kinds = [json.loads(x)["kind"] for x in (tmp_path / "ledger.jsonl").read_text().splitlines()]
@@ -386,7 +394,7 @@ def test_live_maker_trades_recorded_frames_end_to_end(tmp_path):
         lm.on_frame("kalshi", r["recv_ns"], r["frame"])
         asyncio.run(run_actions(lm.broker, fake, expiry_s=900))
     creates = [x for x in fake.log if x[0] == "create"]
-    assert creates and all(c[1].startswith(f"{BOT_PREFIX}R-") for c in creates)
+    assert creates and all(c[1].startswith(f"{BOT_PREFIX}qR-") for c in creates)
     resting_ids = {o.order_id for o in fake.resting}
     local_live = {lm.broker.exch_id[o.oid] for o in lm.broker.open_orders() if o.oid in lm.broker.exch_id}
     assert resting_ids == local_live
@@ -577,3 +585,114 @@ def test_prod_signer_prefers_the_fast_ed25519_key(monkeypatch):
     assert kt.signer_for("prod").headers("GET", "/x")["KALSHI-ACCESS-KEY"] == "fast-id"
     del env["KALSHI_PRIVATE_KEY_FAST"]
     assert kt.signer_for("prod").headers("GET", "/x")["KALSHI-ACCESS-KEY"] == "rsa-id"
+
+
+# ---- several bots on one account: tags, $ budget, settlement, carried positions ----------------
+def test_maker_tags_cannot_collide_with_the_mentions_bot():
+    from albert.live_l2 import check_tag
+
+    assert check_tag("l") == "l" and check_tag("i") == "i"
+    for bad in ("m", "", "li", "L", "1"):
+        with pytest.raises(NotAllowed):
+            check_tag(bad)
+    with pytest.raises(NotAllowed):
+        LiveMaker(Path("/nonexistent"), "demo", None, FakeTrader(), run_id="R", strategy=Quoter(),
+                  cfg=SimConfig(), guards=LiveGuards(), pairs=[], tag="m")
+
+
+def test_budget_counts_fills_resting_orders_and_carried_until_settlement():
+    b = _broker(max_cost=1.0)
+    b.book.apply(_events()[0])
+    m = _events()[0].market
+    assert b.place(m, "yes", 0.60) is not None                       # $0.60 resting
+    assert b.place(m, "no", 0.50) is None and b.diag["refused_budget"] == 1
+    assert b.place(m, "no", 0.40) is not None                        # 0.60 + 0.40 = 1.00
+    b.orders[1].rem = 0.0
+    b.orders[1].status = "filled"
+    b.fills.append(Fill(0, 1, m, "yes", 0.60, 1.0, 0.01, "live"))
+    b.position[m] += 1.0
+    assert b.deployed() == pytest.approx(0.60 + 0.01 + 0.40)
+    b.carried = {"OLD-1": {"cost": 0.30, "net": -1.0}}
+    assert b.deployed() == pytest.approx(1.31) and b.gross() == pytest.approx(2.0)
+    b.settle("OLD-1", 0.0)
+    b.settle(m, 1.0)
+    assert b.gross() == 0 and b.orders[2].status == "cancel_pending"
+    assert b.deployed() == pytest.approx(0.40)        # still counted until the cancel is confirmed
+    b.on_cancelled(2)
+    assert b.deployed() == pytest.approx(0.0)
+    assert m in b.blocked and b.equity() == pytest.approx(1.0 - 0.60 - 0.01)
+    kinds = [k for k, _ in b.events]
+    assert kinds.count("settle") == 2
+
+
+def test_reconcile_ignores_settled_markets():
+    b = _broker()
+    b.book.apply(_events()[0])
+    m = _events()[0].market
+    b.by_market[m] = []
+    b.position[m] = 1.0
+    assert reconcile(b, [], {}, {})                                  # exchange dropped it
+    b.settle(m, 1.0)
+    assert reconcile(b, [], {}, {}) == []
+
+
+def test_carried_positions_from_earlier_ledgers_and_settlement_lookup(tmp_path):
+    from albert.live_l2 import carried_from_ledgers
+
+    led = tmp_path / "old" / "ledger.jsonl"
+    led.parent.mkdir()
+    rows = [{"kind": "start"},
+            {"kind": "fill", "market": "A-1", "side": "yes", "price": 0.40, "qty": 1.0, "fee": 0.01},
+            {"kind": "fill", "market": "A-1", "side": "no", "price": 0.55, "qty": 1.0, "fee": 0.01},
+            {"kind": "fill", "market": "B-1", "side": "no", "price": 0.20, "qty": 1.0, "fee": 0.0}]
+    led.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    carried = carried_from_ledgers([led])
+    assert carried["A-1"] == {"cost": pytest.approx(0.97), "net": pytest.approx(0.0)}
+    assert carried["B-1"] == {"cost": pytest.approx(0.20), "net": pytest.approx(-1.0)}
+    fake = FakeTrader()
+    fake.results = {"B-1": "no"}                                     # B settled since
+    (tmp_path / "run").mkdir()
+    lm = LiveMaker(tmp_path / "run", "demo", None, fake, run_id="R", strategy=Quoter(),
+                   cfg=SimConfig(), guards=LiveGuards(max_cost=5.0), pairs=[], tag="l", carried=carried)
+    asyncio.run(lm.prepare(["A-1"]))
+    assert lm.broker.results == {"B-1": 0.0}
+    assert lm.broker.deployed() == pytest.approx(0.97) and lm.broker.gross() == 0
+    prep = json.loads((tmp_path / "run" / "ledger.jsonl").read_text().splitlines()[0])
+    assert prep["kind"] == "prepare" and set(prep["carried"]) == {"A-1"}
+    fake.results = {"A-1": "yes"}
+    asyncio.run(lm.check_settlements())
+    assert lm.broker.deployed() == 0 and lm.broker.results["A-1"] == 1.0
+    asyncio.run(lm.shutdown())
+
+
+def test_budget_ceiling():
+    with pytest.raises(NotAllowed):
+        LiveGuards(max_cost=30.0).check()
+    LiveGuards(max_cost=5.0).check()
+
+
+def test_markets_on_a_shard_without_balance_are_blocked(tmp_path):
+    class Sharded(FakeTrader):
+        async def shards(self, tickers):
+            return {t: (3 if t.startswith("KXNBA") else 0) for t in tickers if t != "GONE-1"}
+
+    lm = LiveMaker(tmp_path, "demo", None, Sharded(), run_id="R", strategy=Quoter(),
+                   cfg=SimConfig(), guards=LiveGuards(), pairs=[], tag="i")
+    ok = asyncio.run(lm.prepare(["KXNBAAST-26NOV07ORLGSW-X", "KXHIGHDEN-26NOV05-B60.5", "GONE-1"]))
+    assert ok == ["KXHIGHDEN-26NOV05-B60.5"]
+    prep = json.loads((tmp_path / "ledger.jsonl").read_text().splitlines()[0])
+    assert prep["off_shard"] == ["GONE-1", "KXNBAAST-26NOV07ORLGSW-X"]
+    asyncio.run(lm.shutdown())
+
+
+def test_financial_series_are_never_quoted(tmp_path):
+    lm = LiveMaker(tmp_path, "demo", None, FakeTrader(), run_id="R", strategy=Quoter(),
+                   cfg=SimConfig(), guards=LiveGuards(), pairs=[], tag="l",
+                   financial_series=frozenset({"KXGDPCN"}))
+    ok = asyncio.run(lm.prepare(["KXGDPCN-26DEC31-T5", "KXHIGHDEN-26NOV05-B60.5"]))
+    assert ok == ["KXHIGHDEN-26NOV05-B60.5"] and "KXGDPCN-26DEC31-T5" in lm.broker.blocked
+    assert lm.broker.place("KXGDPCN-26DEC31-T5", "yes", 0.40) is None
+    assert lm.broker.diag["refused_blocked_market"] == 1
+    prep = json.loads((tmp_path / "ledger.jsonl").read_text().splitlines()[0])
+    assert prep["financial"] == ["KXGDPCN-26DEC31-T5"]
+    asyncio.run(lm.shutdown())

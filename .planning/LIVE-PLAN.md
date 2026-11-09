@@ -1,5 +1,45 @@
 # Live (cash) maker pilot: plan
 
+**RESTARTED 2026-11-09 ~14:30 UTC at the user's request ("run a few strats with $5 each again",
+including a mentions trial):** `albert-mentions@prod` ($5 collateral, $5 daily fill cost),
+`albert-live-maker@liquid` (back to $5: 5 contracts, -$5 halt) and `albert-live-maker@illiquid`
+($5). `KALSHI_LIVE_ENABLED=1`, kill files removed. Paper bots and the forward test stay off. Fee
+re-check: no series fee changes scheduled or effective since 2026-11-01 (`GET /series/fee_changes`);
+docs.kalshi.com fee rounding matches `fees.py`; kalshi.com's fee PDF still returns 429. Open
+issue, not fixed: a false-halt race. When an order expires, the private feed reports the cancel
+before `GET /portfolio/orders` drops it, and the reconcile grace covers only orders touched in
+the last 5 s, so about 2% of reconciles see a phantom mismatch; two in a row halt a maker (seen
+twice on 11-08, no halt). Proposed fix in `live_l2.py`: give feed-reported cancels the same grace. Account before restart: $103.72 cash,
+7 one-contract bot positions from 11-08 still open.
+Contract caps raised the same day because positions carried from 11-08 blocked quoting while
+under the $5 cash cap: liquid `--max-gross` 5 → 10; illiquid 5 → 10 → 30 (cheap positions
+filled 10 at $2.39 deployed). The $5 cash cap and the −$5 halt are unchanged for both.
+
+**STOPPED 2026-11-08 05:11 UTC at the user's request ("kill all live and paper trades").** Every
+trading service (live makers, mentions prod/paper/demo, paper makers, forward test) is stopped and
+disabled; `KALSHI_LIVE_ENABLED=0` in `.env`; kill files left in place. No bot orders rest on the
+exchange. The bots' 1-contract positions (13 markets) ride to settlement. The L2 recorder (public
+data only) still runs.
+
+**Live since 2026-11-08 00:11-00:25 UTC (user request: $5 of real money per strategy, sports
+included, fees from Kalshi's per-series API data because kalshi.com returns 429 to fetches).**
+`KALSHI_LIVE_ENABLED=1` is set in `.env`. Three systemd services on the primary account
+(subaccounts need the Advanced API tier):
+
+| Service | Tag / client ids | Budget |
+| --- | --- | --- |
+| `albert-mentions@prod` (`deploy/mentions-prod.conf`) | `albm` | $5 collateral, $5 daily fill cost |
+| `albert-live-maker@illiquid` (`deploy/live-maker-illiquid.conf`) | `albi` | $5 deployed, 5 contracts, -$5 halt |
+| `albert-live-maker@liquid` (`deploy/live-maker-liquid.conf`) | `albl` | $10 deployed, 10 contracts, -$10 halt (raised 2026-11-08 01:30) |
+
+Makers: deployed = cost of own fills in unsettled markets (also from earlier runs of the tag,
+rebuilt from `data/live/prod/<tag>/*/ledger.jsonl`) + open orders' collateral. Settled markets are
+detected each reconcile (`GET /markets/{t}`) and leave gross/deployed/reconciliation. Markets
+off shard 0 are blocked (cash is on shard 0; shard 3 = NBA rejects with
+`insufficient_shard_balance`). Liquid and illiquid universes are disjoint by 24 h volume; Mentions
+is excluded from both. A maker halted by a guard is not restarted by `deploy/live-maker-loop.sh`.
+Stop: `touch data/live/STOP` (makers), `touch data/live/mentions/STOP` (mentions, also demo).
+
 Status (2026-11-07 01:00 UTC): **demo plumbing passes 11/11** (resting order, queue position,
 cancel, post-only reject, expiry, 1-contract fill, positions, order-group trigger, cancel-own sweep;
 private WS frames parse, fixture `ws_private_demo.json`). The demo key is Ed25519 (supported).
@@ -38,6 +78,10 @@ stay in for paper; decide separately for live. Polymarket US on hold.
 
 ## Account facts (checked 2026-11-05, read-only calls)
 
+- **API tier: Advanced since 2026-11-09 ~15:47 UTC** (user request; self-serve
+  `POST /account/api_usage_level/upgrade` with an empty JSON body; permanent grant). Write
+  and read buckets refill 300 tokens/s with 900 capacity (3 s burst); Basic was 100 write /
+  200 read. Subaccounts (`POST /portfolio/subaccounts`) need Advanced, so they are now available.
 - The key in `.env` (`KALSHI_API_KEY_ID` / `KALSHI_PRIVATE_KEY`) is a **production** key:
   `GET /portfolio/balance` returns 200 on prod and 401 `NOT_FOUND` on demo. Kalshi does not share
   credentials between environments, so demo needs its own account and key.

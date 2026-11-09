@@ -447,46 +447,61 @@ def paper_l2(
     holdback_ms: float = typer.Option(500.0, help="Bookkeeping delay to pair trades with deltas"),
     min_spread: float = typer.Option(0.05),
     improve: bool = typer.Option(True),
-    cooldown_s: float = typer.Option(300.0),
+    cooldown_s: float = typer.Option(5.0, max=5.0, help="Pause after a fill, seconds (at most 5)"),
     max_pos: float = typer.Option(3.0, help="Max net contracts per market"),
     max_gross: float = typer.Option(30.0, help="Stop adding exposure above this many contracts"),
     max_loss: float = typer.Option(5.0, help="Halt when run PnL (marked to mid) < -$X"),
     pm_band: float = typer.Option(None, help="Keep bids this far inside the Polymarket fair value"),
     pm_pull: float = typer.Option(0.0, help="Pull quotes when Polymarket moved this much"),
+    skew: float = typer.Option(0.0, help="Inventory skew toward flat, $ per net contract (0 = off)"),
+    pair_edge: float = typer.Option(0.01, help="A skewed pairing bid keeps a pair this profitable"),
+    cooldown_side: bool = typer.Option(True, help="The cooldown pauses only the side that filled "
+                                       "(the pairing side keeps its place in the queue)"),
+    out: str = typer.Option("paper_l2", help="Folder under data/ for runs, STOP file and log"),
+    max_spread: float = typer.Option(0.25, help="Select: widest quoted spread"),
+    select_min_spread: float = typer.Option(0.0, help="Select: narrowest quoted spread"),
+    min_vol24h: float = typer.Option(None, help="Select: trailing 24 h volume >= this (contracts)"),
+    max_vol24h: float = typer.Option(None, help="Select: trailing 24 h volume <= this (illiquid universe)"),
 ) -> None:
     """Live paper maker: the backtest's Quoter and queue model on live WebSocket books.
-    No orders are sent. Stop with `touch data/paper_l2/STOP` or SIGTERM."""
+    No orders are sent. Stop with `touch data/<out>/STOP` or SIGTERM."""
     import asyncio
     import signal
 
     from albert.backtest.l2 import Quoter, SimConfig
     from albert.ingest import kalshi_series
-    from albert.paper_l2 import Guards, PaperMaker
+    from albert.paper_l2 import Guards, PaperMaker, market_result
     from albert.stream import select_kalshi, select_paired
     from albert.venues.kalshi_auth import KalshiSigner
 
-    s, c = _clients()
+    s, c = _clients(live_loop=True)   # settlement polls are not recorded unless ALBERT_RECORD_LIVE=1
     series = kalshi_series(s, c)
-    k_rows = select_kalshi(series, kalshi, days=days, seed=seed) if kalshi else []
+    vol = None if min_vol24h is None and max_vol24h is None else (min_vol24h or 0.0, max_vol24h if max_vol24h is not None else float("inf"))
+    k_rows = select_kalshi(series, kalshi, days=days, seed=seed, max_spread=max_spread, min_spread=select_min_spread,
+                           vol24h=vol) if kalshi else []
     pairs = select_paired(paired_days) if paired_days else []
     tickers = [m["ticker"] for m in k_rows]
     tickers += [p["kalshi_ticker"] for p in pairs if p["kalshi_ticker"] not in set(tickers)]
     tokens = sorted({p["token_id"] for p in pairs})
     run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    root = s.data_dir / "paper_l2"
+    root = s.data_dir / out
     run_dir = root / run_id
     (run_dir / "stream" / "pairs").mkdir(parents=True)
     (run_dir / "stream" / "pairs" / f"{run_id}.json").write_text(json.dumps(pairs, indent=1))
     params = {"min_spread": min_spread, "improve": improve, "cooldown_s": cooldown_s,
-              "max_pos": max_pos, "pm_band": pm_band, "pm_pull": pm_pull}
+              "max_pos": max_pos, "pm_band": pm_band, "pm_pull": pm_pull, "skew": skew,
+              "pair_edge": pair_edge, "cooldown_side": cooldown_side}
     strat = Quoter(category_of={k: v.get("category") for k, v in series.items()}, **params)
     cfg = SimConfig(latency_ms=latency_ms, fee_info=series, writes_per_s=writes_per_s or None)
     guards = Guards(max_gross=max_gross, max_loss=max_loss)
     pm = PaperMaker(run_dir, KalshiSigner.from_env(), strategy=strat, cfg=cfg, pairs=pairs,
-                    guards=guards, holdback_ms=holdback_ms, stop_file=root / "STOP")
+                    guards=guards, holdback_ms=holdback_ms, stop_file=root / "STOP",
+                    fetch_result=lambda t: market_result(
+                        c.kalshi.client.get(f"/markets/{t}", cache=False).payload.get("market", {})))
     pm.write("start", {"run_id": run_id, "minutes": minutes, "params": params,
                        "latency_ms": latency_ms, "writes_per_s": writes_per_s,
                        "holdback_ms": holdback_ms, "guards": vars(guards), "seed": seed,
+                       "select": {"days": days, "max_spread": max_spread, "min_spread": select_min_spread, "vol24h": vol},
                        "kalshi_markets": tickers, "pm_tokens": tokens, "pairs": len(pairs)})
     typer.echo(f"paper l2 {run_id}: {len(tickers)} Kalshi markets, {len(tokens)} Polymarket tokens")
 
@@ -505,13 +520,39 @@ def paper_l2(
                f"equity {end['equity']:+.2f}, halted={end['halted']}  ({run_dir})")
 
 
+@paper_app.command("mentions-report")
+def paper_mentions_report(env: str = typer.Option("paper", help="Ledger folder under data/live/mentions")) -> None:
+    """Score the mentions bot's runs: bids, simulated (paper) or real fills, settlement PnL."""
+    import polars as pl
+
+    from albert.paper_trader import ledger_report
+
+    s = settings()
+    ledgers = sorted((s.data_dir / "live" / "mentions" / env).glob("*/ledger.jsonl"))
+    df = ledger_report(s, ledgers)
+    if not df.height:
+        typer.echo(f"no orders yet in {len(ledgers)} {env} runs")
+        return
+    f = df.filter("filled")
+    settled = f.filter(pl.col("pnl").is_not_null())
+    typer.echo(f"{env}: {df.height} bids on {df['event'].n_unique()} events, {f.height} filled "
+               f"({f.height / df.height:.0%}), {settled.height} settled")
+    if settled.height:
+        typer.echo(f"settled PnL ${settled['pnl'].sum():+.2f} ({settled['pnl'].mean() * 100:+.1f}c per fill), "
+                   f"cost ${settled['price'].sum():.2f}")
+    with pl.Config(tbl_rows=50, tbl_cols=20, tbl_width_chars=160):
+        typer.echo(df.group_by("event").agg(pl.len().alias("bids"), pl.col("filled").sum().alias("fills"),
+                                            pl.col("pnl").sum().round(2).alias("pnl")).sort("event"))
+
+
 @paper_app.command("l2-report")
-def paper_l2_report(run: str = typer.Option(None, help="Run id under data/paper_l2 (default: all)")) -> None:
+def paper_l2_report(run: str = typer.Option(None, help="Run id under data/<out> (default: all)"),
+                    out: str = typer.Option("paper_l2", help="Runs folder under data/ (paper_l2_illiquid, ...)")) -> None:
     """Score live paper maker runs: markouts, mark-to-mid and settlement PnL."""
     from albert.paper_l2 import report
 
     s, c = _clients()
-    typer.echo(report(s, c, run))
+    typer.echo(report(s, c, run, out))
 
 
 @paper_app.command("reset")
@@ -656,7 +697,7 @@ def live_plumbing(market: str = typer.Option(None, help="Demo market (default: p
 
 @live_app.command("mentions")
 def live_mentions(
-    env: str = ENV_OPT,
+    env: str = typer.Option("demo", "--env", help="demo | prod | paper (prod market data, simulated fills, no orders)"),
     live: bool = typer.Option(False, "--live", help="Required for prod (with KALSHI_LIVE_ENABLED=1)"),
     minutes: float = typer.Option(1440.0),
     margin: float = typer.Option(0.12, help="NO bid at floor(1 - fair - margin)"),
@@ -665,28 +706,45 @@ def live_mentions(
     max_events: int = typer.Option(3),
     group_limit: int = typer.Option(5, help="Exchange-side: contracts matched per rolling 15 s per event"),
     poll_s: float = typer.Option(60.0),
-    force_event: str = typer.Option(None, help="Demo only: post this event now (orders expire in 15 min)"),
+    force_event: str = typer.Option(None, help="Demo/paper only: post this event now (orders expire in 15 min)"),
 ) -> None:
     """Pre-speech NO bids on Kalshi mention markets (research/mentions_history). Stop with
-    `touch data/live/mentions/STOP` or SIGTERM; every bot order carries an expiration_time."""
+    `touch data/live/mentions/STOP` or SIGTERM; every bot order carries an expiration_time.
+    `--env paper` runs the same bot on prod markets with simulated orders (albert.paper_trader);
+    its kill file is data/live/mentions/paper/STOP."""
     import asyncio
     import signal
 
     from albert.live_mentions import MentionLimits, MentionsBot
     from albert.venues.kalshi_trade import ENVS, KalshiTrader, signer_for
 
-    if force_event and env != "demo":
-        raise typer.BadParameter("--force-event is demo-only")
+    if force_event and env not in ("demo", "paper"):
+        raise typer.BadParameter("--force-event is for demo and paper only")
     s = settings()
-    trader = KalshiTrader(env, signer_for(env), allow_prod=live)
+    root = s.data_dir / "live" / "mentions"
+    stop_file = root / "STOP"
+    if env == "paper":
+        from albert.paper_trader import PaperTrader
+
+        if live:
+            raise typer.BadParameter("--live makes no sense with --env paper")
+        trader = PaperTrader(KalshiTrader("prod", signer_for("prod"), allow_prod=False))
+        data_env, stop_file = "prod", root / "paper" / "STOP"
+    else:
+        trader = KalshiTrader(env, signer_for(env), allow_prod=live)
+        data_env = env
     if not trader.writable:
         raise typer.BadParameter(f"{env} is not enabled for orders (prod needs KALSHI_LIVE_ENABLED=1 and --live)")
-    root = s.data_dir / "live" / "mentions"
     run_dir = root / env / datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     limits = MentionLimits(margin=margin, max_collateral=max_collateral, max_daily_loss=max_daily_loss,
                            max_events=max_events, group_limit=group_limit)
-    bot = MentionsBot(s, env, trader, run_dir, limits=limits, base=ENVS[env]["rest_data"], stop_file=root / "STOP",
-                      log=typer.echo)
+    def load_series() -> dict[str, dict]:
+        from albert.ingest import kalshi_series
+
+        return kalshi_series(s, _clients(live_loop=True)[1])
+
+    bot = MentionsBot(s, env, trader, run_dir, limits=limits, base=ENVS[data_env]["rest_data"], stop_file=stop_file,
+                      log=typer.echo, series_loader=load_series)
 
     async def main():
         task = asyncio.current_task()
@@ -716,21 +774,35 @@ def live_l2(
     seed: int = typer.Option(1),
     min_spread: float = typer.Option(0.05),
     improve: bool = typer.Option(True),
-    cooldown_s: float = typer.Option(300.0),
+    cooldown_s: float = typer.Option(5.0, max=5.0, help="Pause after a fill, seconds (at most 5)"),
+    cooldown_side: bool = typer.Option(True, help="The cooldown pauses only the side that filled"),
     max_pos: float = typer.Option(1.0, help="Max net contracts per market"),
     max_gross: float = typer.Option(10.0),
     max_loss: float = typer.Option(10.0, help="Halt when run PnL (marked to mid) < -$X"),
     group_limit: int = typer.Option(5, help="Exchange-side: contracts matched per rolling 15 s"),
     expiry_s: float = typer.Option(900.0, help="expiration_time on every order"),
+    tag: str = typer.Option(..., help="One letter naming this maker (client ids alb<tag>...; not "
+                            "'m', the mentions bot). Runs live in data/live/<env>/<tag>/"),
+    max_cost: float = typer.Option(5.0, help="$ deployed: unsettled fill cost (incl. earlier runs of "
+                                   "this tag) + open orders' collateral"),
+    writes_per_s: float = typer.Option(4.0, help="Order writes per second (the account's Basic "
+                                       "bucket, ~10 creates/s, is shared by every bot)"),
+    max_spread: float = typer.Option(0.25, help="Select: widest quoted spread"),
+    select_min_spread: float = typer.Option(0.0, help="Select: narrowest quoted spread"),
+    min_vol24h: float = typer.Option(None, help="Select: trailing 24 h volume >= this (contracts)"),
+    max_vol24h: float = typer.Option(None, help="Select: trailing 24 h volume <= this"),
+    exclude_category: list[str] = typer.Option(["Mentions"], help="Series categories never quoted "
+                                               "(Mentions: the mentions bot's markets)"),
 ) -> None:
     """Live maker with real orders: the paper maker's Quoter, own orders netted from the book,
-    guards and exchange-side backstops. Stop with `touch data/live/STOP` or SIGTERM."""
+    guards and exchange-side backstops. Stop with `touch data/live/STOP` (every live maker) or
+    SIGTERM."""
     import asyncio
     import signal
 
     from albert.backtest.l2 import Quoter, SimConfig
     from albert.ingest import kalshi_series
-    from albert.live_l2 import LiveGuards, LiveMaker
+    from albert.live_l2 import LiveGuards, LiveMaker, carried_from_ledgers, check_tag
     from albert.stream import select_kalshi
     from albert.venues.kalshi_trade import ENVS, KalshiTrader, signer_for
 
@@ -740,20 +812,33 @@ def live_l2(
     trader = KalshiTrader(env, signer, allow_prod=live)
     if not trader.writable:
         raise typer.BadParameter(f"{env} is not enabled for orders (prod needs KALSHI_LIVE_ENABLED=1 and --live)")
+    check_tag(tag)
+    vol = None if min_vol24h is None and max_vol24h is None else (
+        min_vol24h or 0.0, max_vol24h if max_vol24h is not None else float("inf"))
+    skip = set(exclude_category or ())
     tickers = ([t.strip() for t in markets.split(",") if t.strip()] if markets else
                [m["ticker"] for m in select_kalshi(series, kalshi, days=days, seed=seed,
-                                                   rest=ENVS[env]["rest_data"])])
+                                                   rest=ENVS[env]["rest_data"], max_spread=max_spread,
+                                                   min_spread=select_min_spread, vol24h=vol)])
+    from albert.categories import kalshi_financial_series
+
+    fin = kalshi_financial_series(series)
+    tickers = [t for t in tickers if series.get(t.split("-", 1)[0], {}).get("category") not in skip
+               and t.split("-", 1)[0] not in fin and t.split("-", 1)[0] in series]
     run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     root = s.data_dir / "live"
-    run_dir = root / env / run_id
+    tag_dir = root / env / tag
+    carried = carried_from_ledgers(sorted(tag_dir.glob("*/ledger.jsonl")))
+    run_dir = tag_dir / run_id
     run_dir.mkdir(parents=True)
-    params = {"min_spread": min_spread, "improve": improve, "cooldown_s": cooldown_s, "max_pos": max_pos}
+    params = {"min_spread": min_spread, "improve": improve, "cooldown_s": cooldown_s, "max_pos": max_pos,
+              "cooldown_side": cooldown_side}
     strat = Quoter(category_of={k: v.get("category") for k, v in series.items()}, **params)
     guards = LiveGuards(max_gross=max_gross, max_loss=max_loss, group_contracts_limit=group_limit,
-                        order_expiry_s=expiry_s)
+                        order_expiry_s=expiry_s, max_cost=max_cost)
     lm = LiveMaker(run_dir, env, signer, trader, run_id=run_id, strategy=strat,
-                   cfg=SimConfig(fee_info=series, writes_per_s=10.0), guards=guards, pairs=[],
-                   stop_file=root / "STOP")
+                   cfg=SimConfig(fee_info=series, writes_per_s=writes_per_s), guards=guards, pairs=[],
+                   stop_file=root / "STOP", tag=tag, carried=carried, financial_series=fin)
 
     async def main():
         loop = asyncio.get_running_loop()
@@ -765,8 +850,12 @@ def live_l2(
             loop.add_signal_handler(sig, on_signal, sig.name)
         try:
             ok = await lm.prepare(tickers)
-            lm.write("start", {"run_id": run_id, "env": env, "minutes": minutes, "params": params,
-                               "guards": vars(guards), "markets": ok, "seed": seed})
+            lm.write("start", {"run_id": run_id, "env": env, "tag": tag, "minutes": minutes,
+                               "params": params, "guards": vars(guards), "markets": ok, "seed": seed,
+                               "writes_per_s": writes_per_s,
+                               "select": {"kalshi": kalshi, "days": days, "max_spread": max_spread,
+                                          "min_spread": select_min_spread, "vol24h": vol,
+                                          "exclude_category": sorted(skip)}})
             typer.echo(f"live l2 {env} {run_id}: {len(ok)} markets ({len(tickers) - len(ok)} blocked)")
             await lm.run(minutes=minutes, kalshi=ok, pm_tokens=[])
         finally:
@@ -901,6 +990,12 @@ def backtest_l2_cmd(
     pm_pull: float = typer.Option(0.0, help="quote: pull when Polymarket moved this much"),
     pm_window_s: float = typer.Option(10.0, help="quote: ...within this many seconds"),
     pm_only: bool = typer.Option(False, help="quote: trade only markets with a Polymarket price"),
+    skew: float = typer.Option(0.0, help="quote: inventory skew toward flat, $ per net contract "
+                               "(raise the pairing bid, lower the adding bid; 0 = off)"),
+    pair_edge: float = typer.Option(0.01, help="quote: a skewed pairing bid keeps a YES+NO pair "
+                                    "at least this profitable"),
+    cooldown_side: bool = typer.Option(False, help="quote: the cooldown pauses only the side that "
+                                       "filled (the pairing side keeps quoting)"),
     root: str = typer.Option(None, help="Stream root to replay (default data/raw/stream; a paper "
                              "run's data/paper_l2/<run>/stream reconciles that run)"),
 ) -> None:
@@ -912,7 +1007,8 @@ def backtest_l2_cmd(
         params |= {"max_spread": max_spread, "improve": improve, "cooldown_s": cooldown_s,
                    "pull_frac": pull_frac, "categories": set(category) if category else None,
                    "pm_band": pm_band, "pm_pull": pm_pull, "pm_window_s": pm_window_s,
-                   "pm_only": pm_only}
+                   "pm_only": pm_only, "skew": skew, "pair_edge": pair_edge,
+                   "cooldown_side": cooldown_side}
     s, c = _clients()
     typer.echo(backtest_l2(s, c, start=start, end=end, strategy=strategy, latency_ms=latency_ms,
                            queue=queue, writes_per_s=writes_per_s or None, params=params,

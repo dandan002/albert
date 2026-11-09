@@ -18,8 +18,12 @@
 run), the action worker, guards and reconciliation. Guards, in order of defence:
 
 1. Strategy limits (``Quoter.max_pos``) and broker limits: per-order size, open orders, gross
-   contracts, blocked markets (any market where the account already has a position or a
-   non-bot resting order, e.g. the user's manual trades).
+   contracts in unsettled markets, deployed dollars (``max_cost``: cost of fills in unsettled
+   markets, including those carried over from earlier runs of the same tag, plus the collateral
+   of open orders), blocked markets (any market where the account already has a position or a
+   resting order that is not this tag's, e.g. the user's manual trades or another bot's).
+   Held markets are checked for a result every reconcile; a settled market leaves gross,
+   deployed and reconciliation and is not quoted again.
 2. Run guards: daily loss limit on mark-to-mid PnL, stale feed (no market data for N s: cancel
    everything and pause), sequence gaps (cancel everything, pause), foreign or taker fills in a
    bot market (halt), reconciliation against REST every minute (two consecutive mismatches halt),
@@ -29,7 +33,9 @@ run), the action worker, guards and reconciliation. Guards, in order of defence:
    order group, whose ``contracts_limit`` cancels all of its orders when exceeded.
 
 A halt cancels the bot's own orders only (by order id, then by client_order_id prefix). The bot
-never calls Cancel All Orders: the account also holds the user's manual orders.
+never calls Cancel All Orders: the account also holds the user's manual orders. Several bots share
+the account: each live maker has a one-letter ``tag`` (client ids ``alb<tag><run_id>-<n>``) and only
+ever sweeps its own tag; the mentions bot uses ``albm``, so tag ``m`` is refused.
 """
 
 import asyncio
@@ -72,7 +78,33 @@ MARKOUT_S = (10, 60, 300)
 OPEN_STATES = ("pending", "active", "cancelling", "cancel_pending")
 
 # Ceilings for the pilot. Raising them is a code change, not a flag.
-HARD_LIMITS = {"max_order_qty": 1.0, "max_gross": 30.0, "max_loss": 25.0, "max_open_orders": 80}
+HARD_LIMITS = {"max_order_qty": 1.0, "max_gross": 30.0, "max_loss": 25.0, "max_open_orders": 80,
+               "max_cost": 25.0}
+
+
+def check_tag(tag: str) -> str:
+    """A maker tag is one lowercase letter other than ``m`` (the mentions bot's ``albm``), so no
+    bot's client_order_id prefix is a prefix of another's."""
+    if len(tag) != 1 or not tag.isascii() or not tag.islower() or tag == "m":
+        raise NotAllowed(f"maker tag must be one lowercase letter other than 'm', got {tag!r}")
+    return tag
+
+
+def carried_from_ledgers(paths: list[Path]) -> dict[str, dict[str, float]]:
+    """Own fills of earlier runs per market: ``cost`` (price x qty + fees) and ``net`` YES contracts.
+    The caller drops markets that have settled since."""
+    out: dict[str, dict[str, float]] = {}
+    for path in paths:
+        for line in path.read_text().splitlines():
+            if not line.strip():
+                continue
+            r = json.loads(line)
+            if r.get("kind") != "fill":
+                continue
+            c = out.setdefault(r["market"], {"cost": 0.0, "net": 0.0})
+            c["cost"] += r["qty"] * r["price"] + r["fee"]
+            c["net"] += r["qty"] if r["side"] == "yes" else -r["qty"]
+    return out
 
 
 @dataclass
@@ -87,12 +119,13 @@ class LiveGuards:
     reconcile_grace_s: float = 5.0     # ignore orders touched this recently when reconciling
     order_expiry_s: float = 900.0      # expiration_time on every order
     group_contracts_limit: int = 5     # exchange-side: matched contracts per rolling 15 s
+    max_cost: float | None = None      # $ deployed (see module doc); no new orders above
     status_every_s: float = 60.0
     queue_every_s: float = 30.0        # sample exchange queue positions of our resting orders
 
     def check(self) -> None:
         for k, ceiling in HARD_LIMITS.items():
-            if getattr(self, k) > ceiling:
+            if getattr(self, k) is not None and getattr(self, k) > ceiling:
                 raise NotAllowed(f"{k}={getattr(self, k)} exceeds the pilot ceiling {ceiling}")
 
 
@@ -128,6 +161,8 @@ class LiveBroker:
         self._tokens_ns = 0
         self.timing = OrderTiming()
         self.shard: dict[str, int] = {}      # exchange_index per market; missing -> auto-route
+        self.results: dict[str, float] = {}  # settled market -> YES payout
+        self.carried: dict[str, dict[str, float]] = {}   # earlier runs' unsettled own fills
         self.trigger_ns: int | None = None   # recv_ns of the market-data event being processed
 
     # -- strategy API (same as Simulator) --
@@ -165,7 +200,31 @@ class LiveBroker:
         return [o for o in self.orders.values() if o.status in OPEN_STATES]
 
     def gross(self) -> float:
-        return sum(abs(q) for q in self.position.values())
+        """Open contracts in unsettled markets, this run's and carried ones."""
+        return (sum(abs(q) for m, q in self.position.items() if m not in self.results)
+                + sum(abs(c["net"]) for m, c in self.carried.items() if m not in self.results))
+
+    def deployed(self) -> float:
+        """Dollars tied up: cost of every own fill in an unsettled market (a YES+NO pair stays
+        counted until settlement), carried fills of earlier runs, and open orders' collateral."""
+        fills = sum(f.qty * f.price + f.fee for f in self.fills if f.market not in self.results)
+        carried = sum(c["cost"] for m, c in self.carried.items() if m not in self.results)
+        resting = sum(o.price * o.rem for o in self.open_orders())
+        return fills + carried + resting
+
+    def settle(self, market: str, result: float) -> None:
+        """Record a market's result: it leaves gross, deployed and reconciliation, and is blocked."""
+        if market in self.results:
+            return
+        self.results[market] = result
+        self.blocked.add(market)
+        for o in self.live_orders(market):
+            self.cancel(o.oid)
+        yes = sum(f.qty for f in self.fills if f.market == market and f.side == "yes")
+        no = sum(f.qty for f in self.fills if f.market == market and f.side == "no")
+        self.events.append(("settle", {"market": market, "result": result, "yes": yes, "no": no,
+                                       "payout": yes * result + no * (1 - result),
+                                       "carried": self.carried.get(market)}))
 
     def place(self, market: str, side: str, price: float, qty: float = 1.0) -> int | None:
         g = self.guards
@@ -174,7 +233,9 @@ class LiveBroker:
                "blocked_market" if market in self.blocked else
                "order_qty" if qty > g.max_order_qty + EPS else
                "open_orders" if len(self.open_orders()) >= g.max_open_orders else
-               "gross" if self.gross() >= g.max_gross - EPS else None)
+               "gross" if self.gross() >= g.max_gross - EPS else
+               "budget" if g.max_cost is not None and self.deployed() + price * qty > g.max_cost + EPS
+               else None)
         if why:
             self.diag[f"refused_{why}"] += 1
             return None
@@ -375,7 +436,9 @@ class LiveBroker:
             h[0 if f.side == "yes" else 1] += f.qty
             pnl -= f.qty * f.price + f.fee
         for m, (yes, no) in held.items():
-            mid = self.mid_at(m, 2**62)
+            mid = self.results.get(m)
+            if mid is None:
+                mid = self.mid_at(m, 2**62)
             if mid is None:
                 mid = self.book.mid_at(m, 2**62)
             if mid is None:
@@ -505,6 +568,8 @@ def reconcile(broker: LiveBroker, resting: list, positions: dict[str, float],
         elif lo.status == "pending":
             lo.status = "active"
     for m in broker.by_market:
+        if m in broker.results:               # settled: the exchange drops the position
+            continue
         if any(broker.touched_ns.get(i, 0) > broker.now - grace for i in broker.by_market[m]):
             continue
         ex = positions.get(m, 0.0) - baseline.get(m, 0.0)
@@ -518,13 +583,22 @@ class LiveMaker:
 
     def __init__(self, run_dir: Path, env: str, signer, trader, *, run_id: str, strategy,
                  cfg: SimConfig, guards: LiveGuards, pairs: list[dict[str, Any]],
-                 holdback_ms: float = 0.0, stop_file: Path | None = None) -> None:
+                 holdback_ms: float = 0.0, stop_file: Path | None = None, tag: str = "q",
+                 carried: dict[str, dict[str, float]] | None = None,
+                 shards_allowed: frozenset[int] = frozenset({0}),
+                 financial_series: frozenset[str] = frozenset()) -> None:
         from albert.stream import Recorder
 
         guards.check()
         self.dir, self.env, self.trader = run_dir, env, trader
         self.strategy, self.guards = strategy, guards
-        self.prefix = f"{BOT_PREFIX}{run_id}"
+        self.tag_prefix = f"{BOT_PREFIX}{check_tag(tag)}"     # every order of this maker, any run
+        self.prefix = f"{self.tag_prefix}{run_id}"
+        self.carried_in = dict(carried or {})
+        # The account's cash sits on shard 0; an order on a shard without balance is rejected
+        # (insufficient_shard_balance, e.g. NBA on shard 3), so such markets are blocked.
+        self.shards_allowed = shards_allowed
+        self.financial_series = financial_series   # never quoted, whatever the market list says
         self.broker = LiveBroker(cfg, guards, client_prefix=self.prefix)
         # No holdback live (2026-11-07): the classifier's labels only move external size between
         # chunks of a level, and the live book holds no own orders, so the level totals the
@@ -555,22 +629,54 @@ class LiveMaker:
     async def prepare(self, markets: list[str]) -> list[str]:
         """Cancel leftover bot orders, block markets the account already holds or has manual
         orders in, create the run's order group. Returns the tradable markets."""
-        stale = await self.trader.cancel_own(BOT_PREFIX)
+        stale = await self.trader.cancel_own(self.tag_prefix)
         resting = await self.trader.orders("resting")
         self.baseline = await self.trader.positions()
-        manual = {o.ticker for o in resting if not o.client_order_id.startswith(BOT_PREFIX)}
+        manual = {o.ticker for o in resting if not o.client_order_id.startswith(self.tag_prefix)}
+        self.broker.carried = dict(self.carried_in)
+        await self.check_settlements(list(self.carried_in))
+        self.broker.events.clear()   # carried markets that settled earlier are not this run's
         blocked = (manual | set(self.baseline)) & set(markets)
         self.broker.blocked |= manual | set(self.baseline)
         self.broker.shard = await self.trader.shards([m for m in markets if m not in self.broker.blocked])
+        financial = {m for m in markets if m.split("-", 1)[0] in self.financial_series}
+        self.broker.blocked |= financial
+        off_shard = {m for m in markets if m not in self.broker.blocked
+                     and self.broker.shard.get(m) not in self.shards_allowed}
+        self.broker.blocked |= off_shard
         if hasattr(self.trader, "warm"):
             await self.trader.warm(SEND_CONCURRENCY)
         self.broker.group = await self.trader.create_order_group(self.guards.group_contracts_limit)
         balance = await self.trader.balance()
         self.write("prepare", {"cancelled_stale_bot_orders": stale, "manual_order_markets": sorted(manual),
+                               "carried": {m: c for m, c in self.broker.carried.items()
+                                           if m not in self.broker.results},
+                               "deployed": self.broker.deployed(),
                                "positions_before": self.baseline, "blocked": sorted(blocked),
+                               "off_shard": sorted(off_shard), "financial": sorted(financial),
                                "order_group": self.broker.group, "balance": balance,
                                "shards": dict(sorted(Counter(self.broker.shard.values()).items()))})
         return [m for m in markets if m not in self.broker.blocked]
+
+    async def check_settlements(self, markets: list[str] | None = None) -> None:
+        """Ask the exchange for the result of every held, unsettled market (own fills this run and
+        carried ones) and settle the resolved ones. A failed lookup is retried next time."""
+        from albert.paper_l2 import market_result
+
+        b = self.broker
+        if markets is None:
+            markets = sorted(({f.market for f in b.fills} | set(b.carried)) - set(b.results))
+        for m in markets:
+            if m in b.results:
+                continue
+            try:
+                page = await self.trader.get(f"/markets/{m}")
+            except (TradeError, httpx.HTTPError) as e:
+                self.write("error", {"what": "settlement lookup", "market": m, "error": repr(e)[:200]})
+                continue
+            r = market_result((page or {}).get("market") or {})
+            if r is not None:
+                b.settle(m, r)
 
     async def shutdown(self) -> dict[str, Any]:
         b = self.broker
@@ -590,6 +696,7 @@ class LiveMaker:
         end = {"halted": b.halted, "stopped_reason": self.rec.stopped_reason,
                "equity": b.equity(), "cash": b.cash, "fills": len(b.fills), "orders": len(b.orders),
                "positions_local": {m: q for m, q in b.position.items() if abs(q) > 1e-9},
+               "results": dict(b.results), "deployed": b.deployed(),
                "positions_exchange": positions, "balance": balance,
                "cancelled_at_close": leftover, "diag": dict(b.diag),
                "classifier": dict(self.clf.stats),
@@ -715,6 +822,7 @@ class LiveMaker:
             try:
                 if mono >= next_recon:
                     next_recon = mono + g.reconcile_every_s
+                    await self.check_settlements()
                     issues = reconcile(b, await self.trader.orders("resting"),
                                        await self.trader.positions(), self.baseline)
                     self.mismatches = self.mismatches + 1 if issues else 0
@@ -735,6 +843,7 @@ class LiveMaker:
                 next_status = mono + g.status_every_s
                 self.write("status", {
                     "equity": round(eq, 4), "cash": round(b.cash, 4), "gross": b.gross(),
+                    "deployed": round(b.deployed(), 4), "settled": len(b.results),
                     "open_orders": len(b.open_orders()), "orders": len(b.orders), "fills": len(b.fills),
                     "synced": len(b.synced), "halted": b.halted, "queued_actions": len(b.actions),
                     "classifier": dict(self.clf.stats), "diag": dict(b.diag),

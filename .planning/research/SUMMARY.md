@@ -308,3 +308,99 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
   - *Forward paper test* (`forward.py`, `deploy/forward-loop.sh`, running for mentions + FCS):
     records the frozen rules' hypothetical bids each hour; `python3 -m albert.research.forward
     score all`.
+- **Paper maker: settlement, cooldown and inventory skew (2026-11-07 ~19–23 UTC).**
+  - The gross cap counted settled markets, so each 24 h run stopped quoting after ~1 h
+    (fixed de25b48: held markets polled every 5 min, settled ones leave gross).
+  - Only 8–14% of paper contracts were in YES+NO pairs (a pair pays exactly $1); pairs earned
+    +2.8c/pair liquid, +16c illiquid, the unpaired rest was noise.
+  - Follow-on fills (replay without cooldown): not worse than first fills, except same side
+    within 60 s (−1.5c at 300 s). The market-wide 300 s cooldown mostly blocked pairing fills.
+  - Replays of the 02:26–16:56 liquid paper stream (no gross cap, unsettled marked at mid):
+    cooldown 300 s both sides: 51% paired, $1.20; none: 68%, $6.15; 5 s one-sided: 66%, $4.72.
+    Skew 1c / 2c at 5 s: $2.95 / $1.70, per-event std $0.52 → $0.44 / $0.33 (worse PnL per unit
+    of std). Illiquid 3 h: 5 s ≈ no cooldown ($7.66); skew roughly neutral per unit of std.
+  - Decision (user): cooldown capped at 5 s, one-sided (8de5bd7). Skew off; `--skew` stays for
+    replays. One day of data; settled contracts per config ≈ 100 liquid, ≈ 30 illiquid.
+- **In-play rerun of the fast, risk-neutral studies (2026-11-08 ~06–08 UTC).** Window 2026-11-07
+  17 UTC → 11-08 06 UTC (Saturday CFB, NBA, NHL, CBB; 466 markets, 166 paired). Runner
+  `src/albert/research/inplay_hft.py` (outputs in `data/research/inplay_hft/`); reports `research-lead-lag-fast-inplay-20261108T073825Z`.
+  The stock loaders (`read_stream`, `arb_l2.iter_stream`, `backtest.l2.iter_events`) hold a whole
+  hour in memory (>4 GB on in-play hours); the runner streams line by line and filters markets
+  first (checked event-for-event against the originals). Each recorded hour opens with fresh
+  snapshots, so hour-aligned chunks are exact.
+  - *Structural arbitrage:* 223 in-play episodes with ≥1 contract on every leg (24 games, ~10×
+    pre-game), median life 5–7 ms, p90 13–19 ms, 72% taken by a trade. At 10 ms both legs fill on
+    36 (+0.45c), one leg on 167 (−2.9c after unwind): −2.1c per attempt; −2.4c at 25 ms. Episodes
+    lasting seconds to minutes (max "edge" 63c) are float dust in `arb_l2.Books` (levels of
+    ~4e-9 contracts left after deltas sum to zero), not liquidity.
+  - *Polymarket → Kalshi:* 1 s mid changes correlate 0.41–0.65 at lag 0 in play (≤0.013 pre-game);
+    Kalshi leading by 1 s 0.17–0.29, Polymarket leading 0.04–0.08. Kalshi follows a ≥1c PM move by
+    +0.29c at 60 s (2,630 moves, 32 games); stale Kalshi quote taken at 50 ms: −3.1 to −3.4c
+    (t −16 to −23); every edge/move/exit cell negative.
+  - *Sibling (team A book moves → take team B's stale quote):* responds in ~0.4–0.6 s, follow
+    +0.6 to +1.9c; taker −2.4 to −3.1c at edge ≥0. Best cell (move ≥3c, edge ≥2c) +0.3 to +1.1c,
+    t ≤0.7, 41 trades: noise (it was +2.8c before the 02–04 UTC hours were added).
+  - *Maker defence:* Kalshi trades preceded by a PM move with the taker (5 s) mark +0.19c for the
+    maker at 1 s vs +0.53c otherwise; still positive.
+  - **Net:** no fast, risk-neutral edge in play either. Arbitrage appears ~10× as often but lives
+    ~5 ms and is taken by faster traders; at our ~10–15 ms only one leg usually fills.
+- **Parlay (multivariate "combo") pricing (2026-11-09).** Public data only: settled combos, their
+  trades, and each leg's last complete 1-min candle before the trade (≤15 min old). Runner
+  `src/albert/research/parlays.py` (`collect OUTDIR` / `report OUTDIR`); report `research-combos-20261109T153822Z`. Samples: NBA
+  single-game 60 games (of 340, Jan–Oct 2026; 2,703 combos), NFL single-game 5 playoff games
+  (the 250-page listing cap reached only Jan 13–19), multi-game 2,000, recent cross-category
+  2,000 (Aug–Nov 2026); legs must all be Sports series. Makers pay no fee (quadratic series).
+  - *Markup over independence:* takers pay the product of the legs' mids plus 0.6–0.9c per
+    contract (t 2.5–5.3 by game), in every group.
+  - *Maker PnL vs outcome (per contract, count-weighted, t by game):* NBA +2.0c (t 0.75;
+    pre-game +5.9c t 2.0, in play −3.2c t −0.6); cross-category +0.7c (t 0.6); multi-game +0.6c
+    (t 1.3); NFL +3.3c on 5 games (unreliable). Per-trade cross-category +3.3c (t 3.1) does not
+    survive contract weighting. Combo prices predict no better than the legs' product (Brier
+    equal), so correlation pricing adds little.
+  - **Net:** no robust overpricing to harvest. Hedging the legs costs ~half their summed spread
+    (~5c) against a <1c markup; quoting needs the RFQ flow, and combos sit on shard 1 (cash on
+    shard 0). The ~7c "edge" in the first preseason look was noise.
+- **"Buy $1 of everything above 80%" (2026-11-09).** Hourly candles (`kalshi_candles`, the
+  top-volume markets per category, 45,784 with two-sided quotes, closes Aug 15–Oct 31): the first
+  hour a side's mid is above the threshold (before close), buy $1 of it at the ask (taker fee
+  exact to $0.0001), hold to settlement. Runner `src/albert/research/favourites.py`.
+  - 80%: 27,325 markets / 15,316 events, $27,325 staked, **−$1,011 (−3.7%, t −16 by event)**; win
+    88.5% at an average ask of 91.4c; fees $164 (0.6%). One bet per event −4.0%. Every ask band
+    (−2.6 to −4.5%), category (weather −1.4% … science −11%) and month (−2.9 to −4.4%) negative.
+  - Higher thresholds lose less but still lose: 85% −2.7%, 90% −1.7%, 95% −1.1% (t −6.6).
+  - A "held < 1 h" slice (+1.5%, t 3.5) is look-ahead (actual close of early-closing markets);
+    by hours to the *scheduled* expiration, known at entry, <1 h is −2.1% (t −2.0) and every
+    bucket is negative. Favourites are overpriced by about 2–3c plus the taker spread.
+- **In-play "vol ladder" and LMSR market making (2026-11-09).** Replay of both recorded in-play
+  nights (Sat 11-07 17 → 11-08 06 UTC, Sun 11-08 17 → 11-09 06; 56 games, game-winner markets
+  only while in play) through `backtest.l2.Simulator` (20 ms latency, risk-averse queue,
+  post-only, write budget 10/s Basic or 30/s Advanced), positions held to settlement, exact maker
+  fees (0.0175·P(1−P); every in-play game series has maker fees except NCAAWB). Runner
+  `src/albert/research/vol_ladder.py` (`run START END TAG [ladder|lmsr|pyramid]`; streams events, shared top-of-book history, cached
+  best price; checked fill-for-fill against the plain version); report
+  `research-vol-ladder-inplay-20261109T175400Z`.
+  - *Ladders* (several resting levels per side around a reservation price; offsets scaled by
+    σ of recent mid changes; inventory skew; optional trend lean and jump guard; 1-s and
+    sub-second (0.25 s samples, 10 s σ, 2 s trend, 1 s guard, 0.1 s requote) versions): gross
+    −0.29 to −0.34c per contract (t −2.3 to −7.9), net −0.63 to −0.65c (t −4.5 to −13.7), every
+    variant negative on both nights, 0–22% of games positive. Join-the-best 1 lot: −0.19c gross,
+    −0.52c net. Sub-second adjustment, trend lean, jump guard and the Advanced write budget change
+    nothing (all ≈ −0.33c gross). Mid 10 s after a fill −0.2 to −0.3c, exit 60 s −0.75 to −1.2c:
+    fills are adversely selected. ~99.8% of contracts paired, so losses are adverse selection plus
+    fees, not outcome risk. Ladders need ~$160–180 of resting collateral.
+  - *LMSR* (binary LMSR cost curve, 3 one-contract units per side, Advanced budget): pure LMSR
+    anchored at the first in-play mid (b=10) −0.12c gross (t −1.0), −0.46c net (t −3.8), pairs
+    +$246 but inventory −$286 (it fills to the 10-contract cap per market as games move);
+    re-centred on the live mid (b=10 / b=25) −0.19 / −0.17c gross, −0.46 / −0.48c net (t −9 /
+    −11); on a 60-s EWMA −0.20c gross, −0.50c net. Negative on both nights.
+  - **Net:** no in-play passive quoting design earns its spread at our latency; the maker fee
+    alone (~0.33c average) exceeds any gross result.
+  - *Pyramid ladders (same replay, both nights, 56 games):* 5 levels per side at 0.5/1.5/3/5/8 σ
+    units with sizes 1/2/3/5/8 (small near the mid, larger toward the extremes), max 20 net per
+    market, inventory skew on price and size; spaced in cents or in log-odds (σ on logit mid, so
+    the ladder compresses near 0/1); sizes × clip(√(60-s / 15-min traded rate), 0.5, 2); a
+    sub-second Advanced-budget version; and a far-only pyramid (3/5/8/12 σ, sizes 2/4/8/16).
+    Gross −0.29 to −0.30c per contract (t −4.2 to −5.9), net −0.61 to −0.62c (t −8.3 to −11.3),
+    2–7% of games positive; far-only −0.18c gross (t −0.7), −0.53c net (t −1.9). Every variant
+    negative on both nights; peak resting collateral $440–610. Log-odds spacing and volume
+    scaling change nothing; the larger far orders fill into moves that continue (exit 60 s −1.0c).

@@ -1,0 +1,18 @@
+[Unit]
+Description=albert: live paper maker on illiquid Kalshi markets (24 h volume 1-100, spread 5-40c; no orders)
+After=network-online.target time-sync.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/albert
+Environment=PYTHON=/home/ubuntu/albert/.venv/bin/python
+Environment=PAPER_OUT=paper_l2_illiquid
+ExecStart=/home/ubuntu/albert/deploy/paper-loop.sh --kalshi 150 --paired-days 0 --select-min-spread 0.05 --max-spread 0.40 --min-vol24h 1 --max-vol24h 100
+Restart=always
+RestartSec=60
+KillMode=control-group
+TimeoutStopSec=90
+
+[Install]
+WantedBy=multi-user.target
