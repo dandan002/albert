@@ -404,3 +404,31 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     2–7% of games positive; far-only −0.18c gross (t −0.7), −0.53c net (t −1.9). Every variant
     negative on both nights; peak resting collateral $440–610. Log-odds spacing and volume
     scaling change nothing; the larger far orders fill into moves that continue (exit 60 s −1.0c).
+- **Black-Scholes / SABR-style model of prediction-market prices (2026-11-09, academic; no edge sought).**
+  Full write-up: `.planning/research/PM-VOL-MODEL.md`. Code in `src/albert/research/`:
+  `pm_vol.py` (single-contract dynamics, hourly candles plus in-game L2),
+  `pm_smile.py` (strike ladders as digital strips) and `pm_hazard.py` (deadline contracts as
+  hazard curves). Reports:
+  - `research-pm-vol-20261109T215533Z`
+  - `research-pm-vol-hf-20261109T221912Z`
+  - `research-pm-smile-20261109T220959Z`
+  - `research-pm-hazard-20261109T222119Z`
+
+  Findings:
+  - **Martingale.** Prices are martingales with total variance p₀(1−p₀).
+  - **Information clock.** It plays the role of implied vol: uniform in-game (Stern), back-loaded
+    for weather, flat pre-game, a hazard rising into the deadline for "by date T" contracts.
+  - **Jumps.** 50–85% of variance arrives in jumps, so a Gaussian probit diffusion fits the clock
+    but not the shape.
+  - **Backbone.** β ≈ 0.3–0.8, Jacobi-like; logit-normal is rejected.
+  - **Smile.** Ladders move sticky-moneyness.
+  - **Stochastic vol.** Half-life 6–20 h.
+  - **Microstructure.** The mid is sticky with no bid-ask bounce. The probit-drift shortfall is
+    explained by the tick floor outside sports and by jumps in sports.
+  - **Tails and time are overpriced.**
+    - Implied tails 1.2–1.4 against ≈ 1.05 realized.
+    - Deadline hazards at k 0.6–0.8 of realized.
+    - Theta decays at only 0.3–0.7 of the model rate.
+    - Variance premium in-game 0.65–0.92.
+
+    All are capped by the 1c tick, and none survives fees out of sample.
