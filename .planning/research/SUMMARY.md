@@ -395,3 +395,12 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     −11); on a 60-s EWMA −0.20c gross, −0.50c net. Negative on both nights.
   - **Net:** no in-play passive quoting design earns its spread at our latency; the maker fee
     alone (~0.33c average) exceeds any gross result.
+  - *Pyramid ladders (same replay, both nights, 56 games):* 5 levels per side at 0.5/1.5/3/5/8 σ
+    units with sizes 1/2/3/5/8 (small near the mid, larger toward the extremes), max 20 net per
+    market, inventory skew on price and size; spaced in cents or in log-odds (σ on logit mid, so
+    the ladder compresses near 0/1); sizes × clip(√(60-s / 15-min traded rate), 0.5, 2); a
+    sub-second Advanced-budget version; and a far-only pyramid (3/5/8/12 σ, sizes 2/4/8/16).
+    Gross −0.29 to −0.30c per contract (t −4.2 to −5.9), net −0.61 to −0.62c (t −8.3 to −11.3),
+    2–7% of games positive; far-only −0.18c gross (t −0.7), −0.53c net (t −1.9). Every variant
+    negative on both nights; peak resting collateral $440–610. Log-odds spacing and volume
+    scaling change nothing; the larger far orders fill into moves that continue (exit 60 s −1.0c).
