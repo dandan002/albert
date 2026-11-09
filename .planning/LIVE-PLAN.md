@@ -1,5 +1,17 @@
 # Live (cash) maker pilot: plan
 
+**RESTARTED 2026-11-09 ~14:30 UTC at the user's request ("run a few strats with $5 each again",
+including a mentions trial):** `albert-mentions@prod` ($5 collateral, $5 daily fill cost),
+`albert-live-maker@liquid` (back to $5: 5 contracts, -$5 halt) and `albert-live-maker@illiquid`
+($5). `KALSHI_LIVE_ENABLED=1`, kill files removed. Paper bots and the forward test stay off. Fee
+re-check: no series fee changes scheduled or effective since 2026-11-01 (`GET /series/fee_changes`);
+docs.kalshi.com fee rounding matches `fees.py`; kalshi.com's fee PDF still returns 429. Open
+issue, not fixed: a false-halt race. When an order expires, the private feed reports the cancel
+before `GET /portfolio/orders` drops it, and the reconcile grace covers only orders touched in
+the last 5 s, so about 2% of reconciles see a phantom mismatch; two in a row halt a maker (seen
+twice on 11-08, no halt). Proposed fix in `live_l2.py`: give feed-reported cancels the same grace. Account before restart: $103.72 cash,
+7 one-contract bot positions from 11-08 still open.
+
 **STOPPED 2026-11-08 05:11 UTC at the user's request ("kill all live and paper trades").** Every
 trading service (live makers, mentions prod/paper/demo, paper makers, forward test) is stopped and
 disabled; `KALSHI_LIVE_ENABLED=0` in `.env`; kill files left in place. No bot orders rest on the
