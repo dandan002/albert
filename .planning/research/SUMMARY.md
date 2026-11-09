@@ -344,3 +344,19 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     maker at 1 s vs +0.53c otherwise; still positive.
   - **Net:** no fast, risk-neutral edge in play either. Arbitrage appears ~10× as often but lives
     ~5 ms and is taken by faster traders; at our ~10–15 ms only one leg usually fills.
+- **Parlay (multivariate "combo") pricing (2026-11-09).** Public data only: settled combos, their
+  trades, and each leg's last complete 1-min candle before the trade (≤15 min old). Runner
+  `combos.py` in the session scratchpad; report `research-combos-20261109T153822Z`. Samples: NBA
+  single-game 60 games (of 340, Jan–Oct 2026; 2,703 combos), NFL single-game 5 playoff games
+  (the 250-page listing cap reached only Jan 13–19), multi-game 2,000, recent cross-category
+  2,000 (Aug–Nov 2026); legs must all be Sports series. Makers pay no fee (quadratic series).
+  - *Markup over independence:* takers pay the product of the legs' mids plus 0.6–0.9c per
+    contract (t 2.5–5.3 by game), in every group.
+  - *Maker PnL vs outcome (per contract, count-weighted, t by game):* NBA +2.0c (t 0.75;
+    pre-game +5.9c t 2.0, in play −3.2c t −0.6); cross-category +0.7c (t 0.6); multi-game +0.6c
+    (t 1.3); NFL +3.3c on 5 games (unreliable). Per-trade cross-category +3.3c (t 3.1) does not
+    survive contract weighting. Combo prices predict no better than the legs' product (Brier
+    equal), so correlation pricing adds little.
+  - **Net:** no robust overpricing to harvest. Hedging the legs costs ~half their summed spread
+    (~5c) against a <1c markup; quoting needs the RFQ flow, and combos sit on shard 1 (cash on
+    shard 0). The ~7c "edge" in the first preseason look was noise.

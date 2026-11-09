@@ -75,6 +75,10 @@ stay in for paper; decide separately for live. Polymarket US on hold.
 
 ## Account facts (checked 2026-11-05, read-only calls)
 
+- **API tier: Advanced since 2026-11-09 ~15:47 UTC** (user request; self-serve
+  `POST /account/api_usage_level/upgrade` with an empty JSON body; permanent grant). Write
+  and read buckets refill 300 tokens/s with 900 capacity (3 s burst); Basic was 100 write /
+  200 read. Subaccounts (`POST /portfolio/subaccounts`) need Advanced, so they are now available.
 - The key in `.env` (`KALSHI_API_KEY_ID` / `KALSHI_PRIVATE_KEY`) is a **production** key:
   `GET /portfolio/balance` returns 200 on prod and 401 `NOT_FOUND` on demo. Kalshi does not share
   credentials between environments, so demo needs its own account and key.
