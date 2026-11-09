@@ -322,8 +322,8 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
   - Decision (user): cooldown capped at 5 s, one-sided (8de5bd7). Skew off; `--skew` stays for
     replays. One day of data; settled contracts per config ≈ 100 liquid, ≈ 30 illiquid.
 - **In-play rerun of the fast, risk-neutral studies (2026-11-08 ~06–08 UTC).** Window 2026-11-07
-  17 UTC → 11-08 06 UTC (Saturday CFB, NBA, NHL, CBB; 466 markets, 166 paired). Runner and outputs
-  in the session scratchpad (`inplay_hft.py`); reports `research-lead-lag-fast-inplay-20261108T073825Z`.
+  17 UTC → 11-08 06 UTC (Saturday CFB, NBA, NHL, CBB; 466 markets, 166 paired). Runner
+  `src/albert/research/inplay_hft.py` (outputs in `data/research/inplay_hft/`); reports `research-lead-lag-fast-inplay-20261108T073825Z`.
   The stock loaders (`read_stream`, `arb_l2.iter_stream`, `backtest.l2.iter_events`) hold a whole
   hour in memory (>4 GB on in-play hours); the runner streams line by line and filters markets
   first (checked event-for-event against the originals). Each recorded hour opens with fresh
@@ -346,7 +346,7 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     ~5 ms and is taken by faster traders; at our ~10–15 ms only one leg usually fills.
 - **Parlay (multivariate "combo") pricing (2026-11-09).** Public data only: settled combos, their
   trades, and each leg's last complete 1-min candle before the trade (≤15 min old). Runner
-  `combos.py` in the session scratchpad; report `research-combos-20261109T153822Z`. Samples: NBA
+  `src/albert/research/parlays.py` (`collect OUTDIR` / `report OUTDIR`); report `research-combos-20261109T153822Z`. Samples: NBA
   single-game 60 games (of 340, Jan–Oct 2026; 2,703 combos), NFL single-game 5 playoff games
   (the 250-page listing cap reached only Jan 13–19), multi-game 2,000, recent cross-category
   2,000 (Aug–Nov 2026); legs must all be Sports series. Makers pay no fee (quadratic series).
@@ -363,7 +363,7 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
 - **"Buy $1 of everything above 80%" (2026-11-09).** Hourly candles (`kalshi_candles`, the
   top-volume markets per category, 45,784 with two-sided quotes, closes Aug 15–Oct 31): the first
   hour a side's mid is above the threshold (before close), buy $1 of it at the ask (taker fee
-  exact to $0.0001), hold to settlement. Runner `fav80.py` in the session scratchpad.
+  exact to $0.0001), hold to settlement. Runner `src/albert/research/favourites.py`.
   - 80%: 27,325 markets / 15,316 events, $27,325 staked, **−$1,011 (−3.7%, t −16 by event)**; win
     88.5% at an average ask of 91.4c; fees $164 (0.6%). One bet per event −4.0%. Every ask band
     (−2.6 to −4.5%), category (weather −1.4% … science −11%) and month (−2.9 to −4.4%) negative.
@@ -376,7 +376,7 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
   only while in play) through `backtest.l2.Simulator` (20 ms latency, risk-averse queue,
   post-only, write budget 10/s Basic or 30/s Advanced), positions held to settlement, exact maker
   fees (0.0175·P(1−P); every in-play game series has maker fees except NCAAWB). Runner
-  `vol_ladder.py` in the session scratchpad (streams events, shared top-of-book history, cached
+  `src/albert/research/vol_ladder.py` (`run START END TAG [ladder|lmsr|pyramid]`; streams events, shared top-of-book history, cached
   best price; checked fill-for-fill against the plain version); report
   `research-vol-ladder-inplay-20261109T175400Z`.
   - *Ladders* (several resting levels per side around a reservation price; offsets scaled by

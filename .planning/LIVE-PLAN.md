@@ -11,6 +11,9 @@ before `GET /portfolio/orders` drops it, and the reconcile grace covers only ord
 the last 5 s, so about 2% of reconciles see a phantom mismatch; two in a row halt a maker (seen
 twice on 11-08, no halt). Proposed fix in `live_l2.py`: give feed-reported cancels the same grace. Account before restart: $103.72 cash,
 7 one-contract bot positions from 11-08 still open.
+Contract caps raised the same day because positions carried from 11-08 blocked quoting while
+under the $5 cash cap: liquid `--max-gross` 5 → 10; illiquid 5 → 10 → 30 (cheap positions
+filled 10 at $2.39 deployed). The $5 cash cap and the −$5 halt are unchanged for both.
 
 **STOPPED 2026-11-08 05:11 UTC at the user's request ("kill all live and paper trades").** Every
 trading service (live makers, mentions prod/paper/demo, paper makers, forward test) is stopped and
