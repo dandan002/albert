@@ -360,3 +360,14 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
   - **Net:** no robust overpricing to harvest. Hedging the legs costs ~half their summed spread
     (~5c) against a <1c markup; quoting needs the RFQ flow, and combos sit on shard 1 (cash on
     shard 0). The ~7c "edge" in the first preseason look was noise.
+- **"Buy $1 of everything above 80%" (2026-11-09).** Hourly candles (`kalshi_candles`, the
+  top-volume markets per category, 45,784 with two-sided quotes, closes Aug 15–Oct 31): the first
+  hour a side's mid is above the threshold (before close), buy $1 of it at the ask (taker fee
+  exact to $0.0001), hold to settlement. Runner `fav80.py` in the session scratchpad.
+  - 80%: 27,325 markets / 15,316 events, $27,325 staked, **−$1,011 (−3.7%, t −16 by event)**; win
+    88.5% at an average ask of 91.4c; fees $164 (0.6%). One bet per event −4.0%. Every ask band
+    (−2.6 to −4.5%), category (weather −1.4% … science −11%) and month (−2.9 to −4.4%) negative.
+  - Higher thresholds lose less but still lose: 85% −2.7%, 90% −1.7%, 95% −1.1% (t −6.6).
+  - A "held < 1 h" slice (+1.5%, t 3.5) is look-ahead (actual close of early-closing markets);
+    by hours to the *scheduled* expiration, known at entry, <1 h is −2.1% (t −2.0) and every
+    bucket is negative. Favourites are overpriced by about 2–3c plus the taker spread.
