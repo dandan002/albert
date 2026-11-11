@@ -469,6 +469,44 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     Forward paper candidates:
     - S1 on Politics one-offs, with the mentions ≥ 95c breaker.
     - S3 frozen as NO at T−12 h on mention-window and elimination contracts priced 2–50c.
-  - **Strike ladders** (`vol_ladders.py`): weather short-vol butterflies (implied width versus a
-    forecast width), weather median drift, and sports moneyline versus the spread-ladder
-    relative value. In progress; results are recorded when the study finishes.
+  - **Strike ladders** (`vol_ladders.py`, outputs `data/research/vol_ladders/`). **Nothing is
+    robust.**
+    - *Weather short-vol.* Buying the body and selling the wings when the implied width exceeds
+      a forecast width passes Aug–Oct only at 16:00 local time. That is when the near-certain
+      bracket at about 95c is underpriced, earning +1.8c holdout (t 2.2). It loses in November
+      (−7c), apparently a seasonal effect.
+    - *Maker version.* Its ledger makes about $0/week once resting orders count against the
+      cap.
+    - *Weather median drift.* The drift flips sign in the holdout.
+    - *Moneyline versus the spread ladder's S(0).* The ladder adds nothing (gap sd 1.2–2.2c).
+    - *Totals "over" bias.* Worth at most 2.4c, below costs.
+    - *Sharpe.* Every ladder Sharpe CI includes 0 (`data/research/vol_metrics/ladders/`).
+  - **Capacity correction and scaling** (`vol_theta.py run scale`; outputs `scale.csv`,
+    `ledgers_scale/`, metrics in `data/research/vol_metrics/scale/`).
+    - **The rule.** Maker fills are now capped at the contracts that printed strictly through
+      our level, from the first fill to the end of the order's hour.
+    - **S1 drops** from Sharpe 3.0 / $3.71 per week to **Sharpe 1.7 [−0.3, 3.9] / $1.96 per
+      week** at the $5/$20 caps; 10% of fills had at most 3 contracts of capacity. **S1 no longer
+      clears the bar.**
+    - **At $100 open per strategy:**
+      - S1 makes $2.6 / $7.7 / −$0.4 per week at $5 / $10 / $25 per event, with drawdowns of
+        $120–274. It does not scale.
+      - S3 holds about a day and has median capacity of 180–300 contracts. It scales linearly in
+        the per-event cap, and the $100 open cap never binds.
+      - The ex-post S3m L12_gap0 makes $1.6 / $3.5 / $8.2 per week at Sharpe 2.8–3.2, with
+        drawdowns of $13 / $24 / $61.
+      - The walk-forward S3 makes $0.6–2.7 per week at Sharpe 0.9–1.2, with drawdowns up to
+        $139–156.
+    - Sharpe is invariant to scale until capacity binds; $/week and drawdown scale together.
+      S3t taker fills are not depth-capped, because historical depth is unobservable.
+- **Structural arbitrage at the measured latency (2026-11-11; `inplay_hft arb START END OUT
+  LATS`, outputs `data/research/arb_latency/`).**
+  - **Latency.** Live timing records give event → engine p50 of 4.6 ms (p90 6.3 ms, 10.6k
+    creates). The earlier replays started at 10 ms.
+  - **Rerun.** Four recorded nights (11-07..11-10): 1,691 episodes, 1,578 of them in play.
+  - **All episodes.** −2.2c per attempt at 2 ms, −2.5c at 5 ms, −3.0c at 10 ms. One-leg fills
+    dominate: +0.9c per lot when both legs fill, −3.5c when only one does.
+  - **Filtered.** With the outcome-blind filter "every leg shows ≥ 1 contract" (56% of
+    episodes are sub-contract dust): −0.01c at 2 ms, −0.3c at 3 ms, −0.8c at 4 ms, −1.1c at
+    5 ms. The total 1-lot opportunity is a few dollars over four nights.
+  - **Verdict.** Faster execution narrows the loss but never makes it positive at our latency.

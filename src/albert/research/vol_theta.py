@@ -99,6 +99,7 @@ def out_dir(s) -> Path:
 
 
 def _save(df: pl.DataFrame, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     df.write_parquet(tmp)
     tmp.replace(path)
@@ -514,6 +515,8 @@ def simulate(c: pl.DataFrame, *, event_cap: float = EVENT_CAP, total_cap: float 
             legs.append((r["p2"], r["ft2"], r["mu2"]))
         unit = sum(p for p, _, _ in legs)
         n = math.floor(room / unit + 1e-9) if unit > 0 else 0
+        if r["filled"] and r.get("cap_n") is not None:
+            n = min(n, math.floor(r["cap_n"] + 1e-9))   # no more than the volume that traded through us
 
         def fee(k: int) -> float:
             return sum(kalshi_fee(k, p, maker=bool(r["maker"]), fee_type=ft or "quadratic", multiplier=mu)
@@ -801,6 +804,8 @@ def _finish(name: str, grid: list, chosen: list, oos: list, test_filled: list, v
             mo = f.group_by("fold").agg(pl.col("pnl").sum().alias("p"))
             st["months_positive"], st["months"] = int((mo["p"] > 0).sum()), mo.height
         if variant_sims is not None and v in variant_sims:
+            if LEDGER_DIR is not None and not isinstance(variant_sims, _LazySims):
+                _save(variant_sims[v], LEDGER_DIR.parent / "sims" / f"{name}_{v}.parquet")
             sm = simulate(variant_sims[v], return_trades=LEDGER_DIR is not None)
             _write_ledger(sm, name, v)
             st.update({"sim_usd_per_week": sm.get("usd_per_week"), "sim_max_dd_usd": sm.get("max_drawdown_usd"),
@@ -816,6 +821,8 @@ def _finish(name: str, grid: list, chosen: list, oos: list, test_filled: list, v
     if O.height:
         res["oos_stats"] = stats(O.filter("filled"), orders=O.height)
         res["monthly"] = monthly(O)
+        if LEDGER_DIR is not None:
+            _save(sim_frame(O), LEDGER_DIR.parent / "sims" / f"{name}_wf.parquet")
         res["sim"] = simulate(sim_frame(O), return_trades=LEDGER_DIR is not None)
         _write_ledger(res["sim"], name, "wf")
     else:
@@ -1179,6 +1186,67 @@ def write_results(d: Path, summary: dict[str, Any]) -> Path:
     return path
 
 
+# ---- scale: bigger books with capacity-limited maker fills ---------------------------------------
+SCALE_CAPS = ((5.0, 20.0), (5.0, 100.0), (10.0, 100.0), (25.0, 100.0))   # ($ per event, $ open)
+SCALE_SIMS = ("S1_wf", "S3m_wf", "S3m_L12_gap0", "S3m_L6_gap0", "S3t_wf", "S3t_L12_gap0", "S3t_L12_all")
+
+
+def through_capacity(s, f: pl.DataFrame) -> pl.DataFrame:
+    """``cap_n`` for filled maker candidates: contracts bought by YES takers at prices strictly
+    through our YES level (1 − NO bid) from our first fill to the end of that order's hour (when it
+    is re-quoted). Those takers would have hit our better-priced order first; prints at our level
+    went to orders ahead of us in the queue and are not counted."""
+    if "maker" not in f.columns or not f["maker"].any():
+        return f.with_columns(pl.lit(None, dtype=pl.Float64).alias("cap_n"))
+    x = f.with_row_index("_rid")
+    filled = x.filter("filled").select(
+        "_rid", "ticker1", "t_fill", (1 - pl.col("p1")).alias("lvl"),
+        ((pl.col("t_fill") - timedelta(microseconds=1)).dt.truncate("1h") + timedelta(hours=1)).alias("w_end"))
+    pr = (load_trades(s, filled["ticker1"].unique()).filter(pl.col("taker_side") == "yes")
+          .select(pl.col("ticker").alias("ticker1"), "trade_id", pl.col("created_time").alias("ts"),
+                  pl.col("yes_price").alias("px"), "count").unique("trade_id").collect())
+    caps = []
+    for part in filled.iter_slices(5000):
+        j = part.join(pr, on="ticker1").filter((pl.col("ts") >= pl.col("t_fill")) & (pl.col("ts") <= pl.col("w_end"))
+                                              & (pl.col("px") > pl.col("lvl") + 1e-9))
+        caps.append(j.group_by("_rid").agg(pl.col("count").sum().alias("cap_n")))
+    cap = pl.concat(caps) if caps else pl.DataFrame(schema={"_rid": pl.UInt32, "cap_n": pl.Float64})
+    return x.join(cap, on="_rid", how="left").with_columns(
+        pl.when(pl.col("filled")).then(pl.col("cap_n").fill_null(0.0)).otherwise(None).alias("cap_n")).drop("_rid")
+
+
+def scale(s) -> None:
+    """Re-run the capped book at larger caps (``SCALE_CAPS``) with maker fills limited to the volume
+    printed through our level; taker fills stay uncapped (displayed depth is not observable here).
+    Writes ledgers to ``ledgers_scale/ev{E}_tot{T}/`` for :mod:`albert.research.vol_metrics`."""
+    global LEDGER_DIR
+    d = out_dir(s)
+    rows = []
+    for key in SCALE_SIMS:
+        name, v = key.split("_", 1)
+        path = d / "sims" / f"{key}.parquet"
+        if not path.exists():
+            print(f"missing {path}; run analyze first", flush=True)
+            continue
+        f = through_capacity(s, pl.read_parquet(path))
+        if f["maker"].any():
+            fl = f.filter("filled")
+            print(f"{key}: {fl.height} fills, capacity median {fl['cap_n'].median()} p10 {fl['cap_n'].quantile(0.1)} "
+                  f"contracts", flush=True)
+        for ev_cap, tot_cap in SCALE_CAPS:
+            LEDGER_DIR = d / "ledgers_scale" / f"ev{ev_cap:g}_tot{tot_cap:g}"
+            sm = simulate(f, event_cap=ev_cap, total_cap=tot_cap, return_trades=True)
+            _write_ledger(sm, name, f"{v}_ev{ev_cap:g}_tot{tot_cap:g}")
+            rows.append({"sim": key, "event_cap": ev_cap, "total_cap": tot_cap, "capacity_limited": bool(f["maker"].any()),
+                         **{k: sm.get(k) for k in ("trades", "contracts", "skipped_cap", "pnl_usd", "usd_per_week",
+                                                   "usd_per_week_ex_top5", "max_drawdown_usd", "mean_open_usd",
+                                                   "months_positive", "months")}})
+            print(f"  ev ${ev_cap:g} / open ${tot_cap:g}: ${sm.get('usd_per_week')}/wk, open ${sm.get('mean_open_usd')}, "
+                  f"DD {sm.get('max_drawdown_usd')}", flush=True)
+    LEDGER_DIR = None
+    pl.DataFrame(rows, infer_schema_length=None).write_csv(d / "scale.csv")
+
+
 def analyze(s) -> None:
     global LEDGER_DIR
     d = out_dir(s)
@@ -1240,7 +1308,7 @@ def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(prog="albert.research.vol_theta")
     sub = ap.add_subparsers(dest="cmd", required=True)
     run = sub.add_parser("run")
-    run.add_argument("step", choices=["plan", "candles", "trades", "analyze"])
+    run.add_argument("step", choices=["plan", "candles", "trades", "analyze", "scale"])
     a = ap.parse_args(argv)
     s = settings()
     u = load_universe(s)
@@ -1255,6 +1323,8 @@ def main(argv: list[str] | None = None) -> None:
             fetch_trades(s, plan)
     if a.step == "analyze":
         analyze(s)
+    if a.step == "scale":
+        scale(s)
 
 
 if __name__ == "__main__":

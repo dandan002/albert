@@ -101,3 +101,16 @@ def test_simulation_releases_resting_orders_and_settled_positions():
     later = _cand(T0 + timedelta(hours=2), "E1", 0.9, 1.0, maker=True)
     r = V.simulate(pl.DataFrame([unfilled, later]))
     assert r["trades"] == 1 and r["contracts"] == 5        # the unfilled order's reservation was released
+
+
+def test_simulation_caps_maker_fills_at_traded_through_volume_and_writes_ledger():
+    a = {**_cand(T0, "E1", 0.4, 1.0, maker=True), "cap_n": 3.0, "ticker1": "K1", "side1": "no", "pay1": 1.0,
+         "settle1": T0 + timedelta(hours=48)}
+    b = {**_cand(T0 + timedelta(minutes=1), "E2", 0.4, 0.0, maker=True), "cap_n": None, "ticker1": "K2",
+         "side1": "no", "pay1": 0.0, "settle1": T0 + timedelta(hours=48)}
+    r = V.simulate(pl.DataFrame([a, b]), event_cap=25.0, total_cap=100.0, return_trades=True)
+    led = r["ledger_frame"].sort("ticker")
+    assert led["n"].to_list() == [3, 62]            # capped at 3 traded-through contracts; uncapped fills the $25 cap
+    assert led["side"].to_list() == ["no", "no"]
+    assert led["payoff_usd"].to_list() == pytest.approx([3.0, 0.0])
+    assert led["cost_usd"][0] == pytest.approx(3 * 0.4 + kalshi_fee(3, 0.4, maker=True))

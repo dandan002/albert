@@ -190,6 +190,7 @@ def series_stats(x: np.ndarray, bankroll: float = BANKROLL) -> dict[str, Any]:
         "ann_vol_weekly_pct": _r(100 * float(np.std(w, ddof=1)) * math.sqrt(52) / bankroll, 1) if len(w) > 2 else None,
         "sortino": _r(mu / down * math.sqrt(DAYS_PER_YEAR)) if down > 0 else None,
         "max_dd_usd": _r(dd), "calmar": _r(ann_ret * bankroll / -dd) if dd < 0 else None,
+        "min_cum_pnl_usd": _r(float(np.cumsum(x).min())) if n else None,   # <= -bankroll means ruin
         "worst_day_usd": _r(x.min()) if n else None, "worst_week_usd": _r(w.min()) if len(w) else None,
         "weeks_positive_pct": _r(100 * float((w > 0).mean()), 0) if len(w) else None,
         "skew": _r(float(np.mean(z ** 3)), 2) if n > 2 else None,
@@ -222,7 +223,7 @@ def ledger_metrics(led: pl.DataFrame, marks: pl.DataFrame, bankroll: float = BAN
 # ---- driver --------------------------------------------------------------------------------------
 DEFAULT_GLOBS = ("data/research/*/ledgers/ledger_*.parquet", "data/research/*/ledger_*.parquet")
 SHOW = ["strategy", "variant", "positions", "events", "usd_per_week", "ann_return_pct", "ann_vol_pct", "sharpe",
-        "sharpe_ci90", "p_sharpe_pos", "sharpe_weekly", "sortino", "max_dd_usd", "worst_week_usd",
+        "sharpe_ci90", "p_sharpe_pos", "sharpe_weekly", "sortino", "max_dd_usd", "min_cum_pnl_usd", "worst_week_usd",
         "weeks_positive_pct", "sharpe_ex_top5", "sharpe_settle_basis", "skew", "ex_kurt"]
 
 
