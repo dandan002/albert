@@ -34,7 +34,10 @@ See `.planning/PROJECT.md` and `.planning/ROADMAP.md`.
    (Kalshi rounds fees up per order), and respect displayed size. Re-check Kalshi's official fee page before any
    live run, because it changes.
 6. **Win rate is not edge.** Rank accounts and strategies by PnL per dollar risked and by edge
-   versus entry price, with out-of-sample persistence. Never rank by hit rate alone.
+   versus entry price, with out-of-sample persistence. Never rank by hit rate alone. Also report
+   every strategy's **Sharpe ratio and volatility**. Compute them from a capped-book ledger on the
+   $100 bankroll, with positions marked daily at the mid, using `albert.research.vol_metrics`.
+   Report them with the bootstrap CI and the Sharpe without the top-5 events.
 7. **Public information only.** Following public wallet flow is fine. Never build anything that
    trades on material non-public information or that circumvents venue rules.
 8. **Live trading is gated:** paper-trading results first, then explicit user enablement, hard
