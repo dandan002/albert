@@ -1,0 +1,23 @@
+% Wallets workstream: data. Code: src/albert/research/flb_wallets.py.
+% source: data/research/flb_wallets/summary.json:coverage, summary.json:xvenue
+Polymarket's international exchange settles on chain, so every fill names the wallet on each side. We read
+only its public APIs (Gamma for markets, the Data API for trades, account statistics and prices), cache raw
+responses unchanged, stay at or below three requests per second, and place no orders
+(\cref{app:wallets-robots}).
+\begin{itemize}
+  \item \emph{Frame.} Every resolved binary market with at least \$1{,}000 of volume whose event ended between
+    January 2024 and October 2026: 636{,}520 markets in 164{,}311 events after financial tags are excluded.
+    Sports make up 73\% of the markets and 68\% of the volume.
+  \item \emph{Sample.} A seeded stratified random draw by group $\times$ volume tier $\times$ resolution month (six
+    markets per stratum below \$100k, two at \$100k--1M, one per group and half-year at \$1M--6M), with
+    design weights $N_h/n_h$. The 1{,}340 markets above \$6M (42\% of frame volume) cost over 150 requests
+    each and are not sampled.
+  \item \emph{Trades.} The complete trade history of each sampled market, every wallet, with maker and taker
+    rows and each fill's liquidity role: 2{,}765 markets, 2{,}574{,}475 fills, 237{,}569 wallets. 72\%
+    of fills precede the information time. Account creation dates come from a pseudo-random subset of
+    wallets selected by address (5{,}144 dated wallets).
+  \item \emph{Venues.} 882 Kalshi team markets in 441 NBA, NHL, NFL, college-football and WNBA games
+    (August--October 2026) matched to the same Polymarket outcome, with Kalshi hourly bid--ask candles and
+    Polymarket's hourly price history. Polymarket US's data host disallows Anthropic's agents in its
+    \texttt{robots.txt}, so of that venue we use only its published fee schedule.
+\end{itemize}

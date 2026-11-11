@@ -1,0 +1,70 @@
+\paragraph{The favourite--longshot bias in betting markets.} The tendency of bettors to overpay for
+unlikely outcomes is one of the oldest anomalies in economics.
+\begin{itemize}
+  \item \citet{griffith1949} found it in American horse racing, and \citet{ali1977} and
+  \citet{hausch1981} documented it on large samples of parimutuel races.
+  \item \citet{thalerziemba1988} and \citet{sauer1998} survey the early evidence.
+  \item The bias is not universal. \citet{woodland1994} find a reverse bias in baseball money-line
+  betting, and its size differs between parimutuel and fixed-odds settings.
+  \item \citet{whelan2024} shows that fixed-odds markets generate the bias even with competitive
+  bookmakers once bettors are risk-averse and heterogeneous.
+  \item \citet{moskowitz2021} uses sports betting contracts as a laboratory for asset pricing and
+  finds momentum consistent with delayed overreaction.
+\end{itemize}
+
+\paragraph{Explanations.} \citet{ottaviani2008} organise the explanations into four groups.
+\begin{itemize}
+  \item \emph{Risk preference.} \citet{ali1977} infers risk-loving bettors; \citet{golec1998}
+  argue that bettors love skewness rather than variance.
+  \item \emph{Probability weighting.} \citet{jullien2000} find that cumulative prospect theory
+  \citep{kahneman1979,tversky1992} fits racetrack odds better than expected utility.
+  \citet{snowbergwolfers2010} use exotic bets to separate the two and conclude that misperception
+  of probabilities explains the bias better than risk-love.
+  \item \emph{Information.} \citet{shin1991,shin1993} model bookmakers who protect themselves
+  against insiders by shading longshot odds, yielding an estimable insider share.
+  \item \emph{Belief heterogeneity.} \citet{ali1977} and \citet{gandhi2015} show that dispersed
+  beliefs among budget-constrained bettors produce the bias even without preference distortions.
+  \citet{gandhi2015} find that a minority of noise traders with dispersed beliefs fits US
+  racetrack data better than preference-based models.
+\end{itemize}
+Our setting can tell these explanations apart in ways racetracks cannot, because we observe who
+trades, in which role, at what size and when.
+
+\paragraph{Prediction markets.} Prices in prediction markets are routinely read as probabilities
+\citep{wolferszitzewitz2004,wolferszitzewitz2006}, though \citet{manski2006} shows that, with
+heterogeneous beliefs, the price need not equal the mean belief.
+\begin{itemize}
+  \item \citet{pageclemen2013} find that Intrade prices were well calibrated for events
+  resolving soon but biased for events far in the future. They show in a model that time to
+  expiration itself pushes prices toward the bias.
+  \item \citet{rothschildsethi2016} classify trader strategies with account-level Intrade data.
+  They document a single trader who accounted for over a third of bets on one candidate and kept
+  that candidate's price above a rival exchange's.
+  \item On Kalshi, \citet{burgi2025} document a favourite--longshot bias that is stronger in
+  prices accepted by takers than by makers. They explain it with a modest overestimation of small
+  probabilities.
+\end{itemize}
+We extend this line of work in three directions:
+\begin{itemize}
+  \item across the full range of event categories and contract structures;
+  \item with all public trades classified by role, size and timing;
+  \item with identified on-chain wallets and matched markets on a second venue.
+\end{itemize}
+
+\paragraph{Lottery demand and retail trading in financial markets.} The bias has close
+analogues in securities markets.
+\begin{itemize}
+  \item \emph{Lottery-like stocks.} Individual investors overweight stocks with lottery-like
+  payoffs \citep{kumar2009}. Such stocks earn low subsequent returns \citep{bali2011}, as
+  probability weighting predicts \citep{barberis2008}.
+  \item \emph{Options.} Lottery-like equity options earn large negative returns
+  \citep{boyer2014}. Retail options traders, now a majority of volume, concentrate in cheap,
+  short-dated contracts and lose money on average \citep{bryzgalova2023}.
+  \item \emph{Attention.} Attention drives individual investors' buying \citep{barberodean2008}.
+  Attention-induced herding by app-based retail traders predicts negative returns
+  \citep{barber2022}.
+\end{itemize}
+A prediction-market longshot is the purest lottery ticket: a cheap claim that pays a large
+multiple with small probability, and that is often bought through the same retail apps. Our
+results speak to whether lottery demand, and the retail flow behind it, prices such claims in
+markets with a known payoff date and no fundamental cash-flow risk.

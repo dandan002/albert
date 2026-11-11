@@ -310,6 +310,14 @@ def ll_agg():
 
 if __name__ == "__main__":
     cmd = sys.argv[1]
+    # optional window/output/latency overrides: arb START END [OUT] [LAT,LAT,...]
+    if cmd == "arb" and len(sys.argv) >= 4:
+        START, END = sys.argv[2], sys.argv[3]
+        if len(sys.argv) > 4:
+            OUT = Path(sys.argv[4])
+        if len(sys.argv) > 5:
+            LATS = tuple(int(x) for x in sys.argv[5].split(","))
+        OUT.mkdir(parents=True, exist_ok=True)
     if cmd == "llchunk":
         ll_chunk(sys.argv[2], sys.argv[3])
     else:

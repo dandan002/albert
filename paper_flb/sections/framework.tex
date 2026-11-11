@@ -1,0 +1,146 @@
+This section defines the objects we measure and the explanations we test. Throughout, a
+contract pays \$1 if its event occurs. We work with the \emph{side price} $\q\in\{0.01,\dots,0.99\}$:
+the price paid for whichever side, YES or NO, a trader buys. Let $\won\in\{0,1\}$ indicate that
+the side paid out and let $\pi$ be its true probability.
+
+\subsection{Measuring the bias}\label{sec:framework-measures}
+
+\begin{definition}[Calibration and the favourite--longshot bias]\label{def:flb}
+The calibration function is $c(\q)=\E[\won\mid\q]$. Prices exhibit a \emph{favourite--longshot
+bias} (FLB) if $c(\q)<\q$ for small $\q$ and $c(\q)>\q$ for large $\q$: longshots are overpriced
+and favourites underpriced.
+\end{definition}
+
+We summarise the bias in three ways.
+\begin{enumerate}
+  \item \emph{Returns by price bucket.} The return per dollar of buying a side at $\q$ with fee
+  $\fee$ per contract is
+  \begin{equation}\label{eq:ret}
+    \ret=\frac{\won-\q-\fee}{\q+\fee}.
+  \end{equation}
+  We report gross ($\fee=0$) and net-of-fee returns.
+  \item \emph{Logit slope.} In the regression
+  \begin{equation}\label{eq:logit}
+    \operatorname{logit}\Prob(\won=1\mid\q)=\alpha+\beta\,\operatorname{logit}\q,
+  \end{equation}
+  $\beta>1$ indicates an FLB, $\beta<1$ a reverse bias, and $\beta=1,\alpha=0$ calibration.
+  \item \emph{Longshot--favourite spread.} The difference in mean return per dollar between
+  longshots ($\q\le 10\cents$, \LS) and favourites ($\q\ge 90\cents$, \FAV).
+\end{enumerate}
+
+A binary contract has two sides priced $\q$ and $1-\q$ at the same moment. If each observation enters with both sides, the calibration function is symmetric by construction:
+$c(1-\q)=1-c(\q)$, so $\alpha=0$ and the bias is carried entirely by $\beta$. If only the YES side
+enters, a preference for buying YES ("YES bias") appears as $\alpha<0$. We therefore report
+both the side-symmetric and the YES-only versions.
+
+\subsection{Mechanical limits: tick, fees and capital}\label{sec:framework-band}
+
+Some of the bias cannot be traded away even by a risk-neutral, fully informed arbitrageur. Three
+frictions matter.
+\begin{itemize}
+  \item \emph{Tick floor.} Prices live on a one-cent grid. A contract with $\pi<0.01$ cannot trade
+  below $1\cents$, so buyers at the floor lose at least $0.01-\pi$ per contract. The loss in the
+  lowest bucket is partly mechanical.
+  \item \emph{Fees.} A Kalshi taker pays $\fee(\q)=\theta\,\q(1-\q)$ per contract, with
+  $\theta=0.07$ times a series multiplier. Makers pay $\theta_m=0.0175$ on some series and
+  nothing on others. The fee per contract is the same for both sides of a trade, but per dollar
+  it is $\theta(1-\q)$, about 7\% for a longshot and much less for a favourite.
+  \item \emph{Capital.} Exploiting overpriced longshots means buying the opposite side at
+  $1-\q$ and holding it to resolution, a horizon of $T$ years. This ties up $1-\q$ per contract
+  at an opportunity cost $\rho$ per year.
+\end{itemize}
+
+\begin{proposition}[No-arbitrage band]\label{prop:band}
+Ignore the bid--ask spread. A risk-neutral taker buys the NO side of a longshot priced $\q$ only
+if $\q-\pi>\theta\q(1-\q)+\rho T(1-\q)$, and buys the YES side only if
+$\pi-\q>\theta\q(1-\q)+\rho T\q$. Prices are therefore consistent with no arbitrage whenever
+\begin{equation}\label{eq:band}
+  1-\theta(1-\q)-\rho T\,\frac{1-\q}{\q}\;\le\;\frac{\pi}{\q}\;\le\;1+\theta(1-\q)+\rho T .
+\end{equation}
+\end{proposition}
+\begin{proof}
+Buying NO at $1-\q$ pays $1-\pi$ in expectation and costs $(1-\q)+\theta\q(1-\q)$ plus
+$\rho T(1-\q)$ of capital. Rearranging the condition for a positive expected profit, and dividing
+by $\q$, gives the lower bound. The upper bound follows in the same way for buying YES at $\q$,
+which ties up $\q$ of capital.
+\end{proof}
+
+The lower bound has a feature that matters for longshots. Its capital term scales with
+$(1-\q)/\q$, so the band widens sharply as the price falls and as the horizon lengthens.
+\begin{itemize}
+  \item At $\q=2\cents$, $T=30$ days and $\rho=5\%$, the capital term alone allows the true
+  probability to sit about 20\% below the price.
+  \item At $\q=50\cents$, the same capital term allows less than 1\%.
+\end{itemize}
+Mechanical frictions therefore predict a bias concentrated in cheap, long-dated longshots, which
+grows with the horizon \citep{pageclemen2013}. Bid--ask spreads widen the band further.
+
+\subsection{Behavioural and informational explanations}\label{sec:framework-theories}
+
+Three classes of explanation predict a bias beyond the band. They make different predictions
+about \emph{who} buys longshots.
+
+\paragraph{Preferences: risk-love and probability weighting.} A representative bettor with
+convex utility \citep{ali1977} or skewness preference \citep{golec1998} pays a premium for
+lottery-like payoffs. Under rank-dependent or cumulative prospect theory
+\citep{kahneman1979,tversky1992,jullien2000}, prices reflect decision weights $w(\pi)$ rather than
+probabilities. With the linear-in-log-odds weighting function
+$\operatorname{logit}w(\pi)=\delta+\gamma\operatorname{logit}\pi$, inverting $\q=w(\pi)$ gives
+regression~\eqref{eq:logit} with $\beta=1/\gamma$ and $\alpha=-\delta/\gamma$. A logit slope
+above one is thus equivalent to inverse-S weighting ($\gamma<1$), and $\beta$ measures its
+strength. \citet{snowbergwolfers2010} argue that misperception of probabilities, rather than
+risk-love, best explains racetrack prices.
+
+\paragraph{Information: insiders.} In \citet{shin1991,shin1993}, a market maker who faces a share
+$\shinz$ of perfectly informed traders protects himself by shading prices. The shading is
+proportionally largest on longshots, because an insider's bet on a longshot is the most
+costly to the market maker. For an event with $n$ mutually exclusive outcomes priced
+$\q_1,\dots,\q_n$ with sum $S=\sum_j\q_j>1$, the implied probabilities are
+\begin{equation}\label{eq:shin}
+  \pi_i=\frac{\sqrt{\shinz^2+4(1-\shinz)\,\q_i^2/S}-\shinz}{2(1-\shinz)},
+\end{equation}
+with $\shinz$ chosen so that $\sum_i\pi_i=1$. The insider share $\shinz$ is a per-event measure
+of adverse selection, and it predicts that informed flow, not noise, is on the longshot.
+
+\paragraph{Heterogeneous beliefs.} When risk-neutral traders with dispersed beliefs face budget
+constraints \citep{ali1977,gandhi2015}, the most optimistic traders set the price of each outcome.
+Since optimism about a longshot moves its price proportionally more, longshots trade above their
+mean-belief probability. The bias then rises with belief dispersion and with the share of noise
+traders.
+
+\subsection{Testable implications}\label{sec:framework-hypotheses}
+
+The explanations are not mutually exclusive, but they make distinct predictions about which
+traders lose on longshots and when.
+
+\begin{hypothesis}[Mechanical]\label{hyp:mech}
+If frictions are the whole story, the bias lies inside the band~\eqref{eq:band}. It is
+concentrated at the tick floor and grows with horizon, and it shows up in gross but not net
+returns.
+\end{hypothesis}
+\begin{hypothesis}[Preference and retail demand]\label{hyp:pref}
+If the bias reflects demand for lottery-like payoffs by unsophisticated traders
+\citep{kumar2009,barberis2008}, then:
+\begin{itemize}
+  \item longshot losses fall on takers, small trades and new or inexperienced accounts;
+  \item the bias widens when retail attention is high \citep{barberodean2008,barber2022};
+  \item makers and experienced traders earn the other side.
+\end{itemize}
+\end{hypothesis}
+\begin{hypothesis}[Information]\label{hyp:info}
+If longshot prices are shaded against insiders, then:
+\begin{itemize}
+  \item longshot order flow predicts outcomes, at least for large or early trades;
+  \item the estimated $\shinz$ is higher where private information is plausible, as in
+  politics, announcements and corporate events, than where outcomes are publicly observed, as in
+  weather and game scores.
+\end{itemize}
+\end{hypothesis}
+\begin{hypothesis}[Belief dispersion]\label{hyp:beliefs}
+If belief heterogeneity drives the bias, it is larger in events with many outcomes, high
+turnover and retail-heavy participation, and smaller where a public forecast anchors beliefs.
+\end{hypothesis}
+
+\Cref{sec:res-xs} measures the bias against these benchmarks.
+\Cref{sec:res-flow,sec:res-wallets} identify who buys longshots. \Cref{sec:res-structural}
+compares the explanations directly.

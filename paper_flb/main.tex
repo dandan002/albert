@@ -1,0 +1,101 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{bm}
+\usepackage{textcomp}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{threeparttable}
+\usepackage{siunitx}
+\sisetup{group-separator={,},group-minimum-digits=4,detect-all}
+\usepackage{xcolor}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{subcaption}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{microtype}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+\usepackage[capitalise,noabbrev]{cleveref}
+
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{hypothesis}{Hypothesis}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+\input{macros}
+
+\title{Who Buys the Longshot?\\[4pt] The Favourite--Longshot Bias and Retail Flow in Prediction Markets}
+\author{[Author names]\\[2pt]\small [Affiliation]}
+\date{November 2026}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+\input{sections/abstract}
+\end{abstract}
+
+\section{Introduction}\label{sec:intro}
+\input{sections/introduction}
+
+\section{Related literature}\label{sec:lit}
+\input{sections/literature}
+
+\section{Institutional setting and data}\label{sec:data}
+\input{sections/setting_data}
+\subsection{Kalshi markets and prices}\label{sec:data-xs}
+\input{sections/data_xs}
+\subsection{Kalshi trades}\label{sec:data-flow}
+\input{sections/data_flow}
+\subsection{Polymarket wallets and matched markets}\label{sec:data-wallets}
+\input{sections/data_wallets}
+
+\section{Conceptual framework}\label{sec:framework}
+\input{sections/framework}
+
+\section{Empirical methodology}\label{sec:method}
+\input{sections/method_common}
+\subsection{Calibration and the cross-section of the bias}\label{sec:method-xs}
+\input{sections/method_xs}
+\subsection{Trade-level flow: who pays the bias}\label{sec:method-flow}
+\input{sections/method_flow}
+\subsection{Wallet-level and cross-venue analysis}\label{sec:method-wallets}
+\input{sections/method_wallets}
+\subsection{Structural decomposition}\label{sec:method-structural}
+\input{sections/method_structural}
+
+\section{Results}\label{sec:results}
+\subsection{The longshot bias across categories, horizons and contract types}\label{sec:res-xs}
+\input{sections/results_xs}
+\subsection{Who pays: takers, trade size and timing}\label{sec:res-flow}
+\input{sections/results_flow}
+\subsection{Wallets, retail traders and venues}\label{sec:res-wallets}
+\input{sections/results_wallets}
+\subsection{What explains the bias}\label{sec:res-structural}
+\input{sections/results_structural}
+
+\section{Discussion}\label{sec:discussion}
+\input{sections/discussion}
+
+\section{Conclusion}\label{sec:conclusion}
+\input{sections/conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{references,bib/xs,bib/flow,bib/wallets,bib/structural}
+
+\appendix
+\section{Additional results: calibration and the cross-section}\label{app:xs}
+\input{sections/appendix_xs}
+\section{Additional results: trade-level flow}\label{app:flow}
+\input{sections/appendix_flow}
+\section{Additional results: wallets and venues}\label{app:wallets}
+\input{sections/appendix_wallets}
+\section{Additional results: structural decomposition}\label{app:structural}
+\input{sections/appendix_structural}
+
+\end{document}

@@ -1,0 +1,107 @@
+% Introduction. Numbers are quoted from the results sections; sources are given there.
+Bettors overpay for unlikely outcomes. This favourite--longshot bias was first documented at the
+racetrack \citep{griffith1949}. It has since been found in most betting markets, and it is one of
+the most robust anomalies in the economics of risk \citep{thalerziemba1988,sauer1998,ottaviani2008}.
+Event-contract exchanges now give the old question a new setting. In the United States, Kalshi
+settles hundreds of thousands of contracts a month on sports, weather, politics, entertainment and
+what speakers will say. A large retail brokerage routes its customers' orders to it
+\citep{robinhood2025}. Polymarket runs a comparable venue outside the United States and records
+every trade on a public blockchain. These markets are often read as probability forecasts
+\citep{wolferszitzewitz2004}, so whether their prices are biased, and for whom, matters beyond the
+traders themselves.
+
+We ask three questions.
+\begin{enumerate}
+  \item How large is the favourite--longshot bias on a regulated event-contract exchange, and how
+  does it vary across event categories, horizons, contract structures, liquidity and time?
+  \item Who buys the longshots, and who bears the losses: takers or makers, small or large
+  orders, new or experienced accounts?
+  \item How much of the bias is mechanical, the result of the tick, the fees and the cost of
+  capital, and how much is preference, information or belief dispersion?
+\end{enumerate}
+
+We answer them with three data sets, each a stratified random sample with design weights
+(\cref{sec:data}):
+\begin{itemize}
+  \item bid and ask quotes at fixed leads before resolution for 19,007 settled Kalshi markets in
+  4,770 events, from 2021 to 2026;
+  \item 2.69 million public Kalshi trade prints with size, price and aggressor side, covering
+  15,329 markets in 18 strata;
+  \item 2.57 million Polymarket fills by 237,569 identified wallets in 2,765 markets, and matched
+  Kalshi and Polymarket prices for 441 games.
+\end{itemize}
+
+\paragraph{The bias is large per dollar, small per contract, and everywhere.} On Kalshi the
+calibration slope of outcomes on prices is $1.13$ ($t=6.5$ against one). Longshots, sides priced
+at 10\cents{} or less, return $-55\%$ per dollar at the mid-quote and $-75\%$ after the spread and
+the taker fee. Favourites priced at 90\cents{} or more return $+1.1\%$ at the mid. The bias:
+\begin{itemize}
+  \item appears in every event category;
+  \item does not fade as resolution approaches (the slope is 1.18 one hour ahead);
+  \item is no weaker in the most liquid markets;
+  \item has held in every quarter since 2025, while the venue grew by about three orders of
+  magnitude.
+\end{itemize}
+It is steepest in multi-outcome events and ``by date'' deadline contracts. Pre-game sports prices
+with a known start time are close to calibrated.
+
+\paragraph{Small traders buy the longshots, and the price of immediacy falls on them.} In
+Kalshi's trade prints:
+\begin{itemize}
+  \item 39\% of the contracts bought in taker orders of at most \$10 are longshots, against 1.2\%
+  in orders above \$1,000. This holds in all 18 strata.
+  \item In the median stratum, longshot positions lose for both liquidity roles. Takers lose
+  more, in 13 of 18 strata,
+  because they pay a half-spread and fee that together come to 14\% of a longshot's stake.
+  \item Averaged over all prices, takers and makers earn about the same.
+  \item The per-dollar longshot loss is similar at every order size, so small traders bear most
+  of it because they hold most longshots, not because they trade at worse prices.
+\end{itemize}
+On Polymarket, where wallets are identified, retail wallets are the only significant net buyers of
+longshots and account for 86\% of net longshot buying. No class of professional sellers takes the
+other side: the flow is absorbed by many counterparties. Profits are extremely concentrated, with
+the top 1\% of wallets taking 85\% of all gains, but wallet skill does not persist from one half of
+the sample to the next.
+
+\paragraph{Mechanics bound the bias; demand keeps prices at the bound.} Mechanics explain part of
+the bias.
+\begin{itemize}
+  \item About half of the loss in the cheapest price bucket is the one-cent tick floor: contracts
+  worth a tenth of a cent cannot be quoted lower.
+  \item Averaged across markets, the longshot overpricing lies inside the no-arbitrage band set by
+  the spread and the fee, so an arbitrageur taking the other side as a taker earns nothing.
+\end{itemize}
+But mechanics do not explain why prices sit near the edge of that band. The slope is unchanged
+without the tick-floor buckets, and the bias does not shrink at short horizons, where capital
+costs vanish. In the most heavily traded markets it exceeds the band.
+An insider explanation fits poorly: Shin's insider share is small, and the field of longshots in
+multi-outcome events stays overpriced after the Shin adjustment.
+Proxies for belief dispersion, such as the number of outcomes, turnover and the presence of an
+external forecast, do not predict where the bias is steeper. A single mild inverse-S
+probability-weighting function, with the same curvature ($\gamma\approx0.89$) in every category,
+describes prices well. Fitted on the first half of the sample, it removes 61\% of the longshot
+overpricing in the second.
+The evidence points to demand for lottery-like payoffs by small traders, met by liquidity
+suppliers at prices that just cover their costs.
+
+\paragraph{Contributions.} We contribute to three literatures.
+\begin{itemize}
+  \item \emph{The favourite--longshot bias.} We measure it on an order-book exchange across
+  categories, horizons and four contract structures. We also separate the part that the tick and
+  fees impose mechanically from the part that does not. Racetrack data rarely allow this
+  \citep{snowbergwolfers2010,gandhi2015}.
+  \item \emph{Prediction markets.} We extend \citet{burgi2025}, who document the bias in Kalshi
+  trade prices and its stronger form for takers, to a volume-blind sample of all non-financial
+  categories. We add complete trade histories classified by size and timing, and identified
+  wallets on a second venue \citep{rothschildsethi2016,akey2026}.
+  \item \emph{Retail lottery demand.} The longshot is the purest lottery ticket. The concentration
+  of longshot buying in small accounts mirrors the evidence on lottery stocks and retail options
+  trading \citep{kumar2009,bali2011,bryzgalova2023}. Here the claim has a fixed payoff date and no
+  cash-flow risk, so its mispricing can be measured exactly.
+\end{itemize}
+
+The rest of the paper is organised as follows. \Cref{sec:lit} reviews related work and
+\cref{sec:data} describes the venues and data. \Cref{sec:framework} sets out the measures, the
+no-arbitrage band and the hypotheses. \Cref{sec:method} describes the methods and \cref{sec:results}
+reports the results. \Cref{sec:discussion} discusses their interpretation and limits, and
+\cref{sec:conclusion} concludes.

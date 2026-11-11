@@ -1,0 +1,32 @@
+All workstreams share the definitions of \cref{sec:framework} and a common set of conventions.
+\begin{itemize}
+  \item \emph{Side price and outcome.} Every observation is a side bought at price $\q$, with
+  outcome $\won$. Buying YES at YES price $p$ gives $\q=p$; buying NO gives $\q=1-p$.
+  \item \emph{Price buckets.} We use twelve buckets of $\q$: $1$--$2$, $3$--$5$, $6$--$10$,
+  $11$--$20$, $21$--$35$, $36$--$50$, $51$--$65$, $66$--$80$, $81$--$90$, $91$--$95$, $96$--$98$
+  and $99\cents$. Longshots (\LS) are $\q\le10\cents$ and favourites (\FAV) $\q\ge90\cents$.
+  \item \emph{Returns.} Returns per contract are $\won-\q-\fee$, and returns per dollar
+  follow~\eqref{eq:ret}.
+  \item \emph{Fees.} Unless stated otherwise, fees are Kalshi's exact schedule: $0.07$ times the
+  series multiplier times $\q(1-\q)$ for takers, and $0.0175\,\q(1-\q)$ for makers on series that
+  charge makers. Kalshi computes fees per fill to \$0.000001 and rebates rounding over-payment
+  \citep{kalshirounding}, so exact fees are the fees paid.
+  \item \emph{Categories.} Kalshi series are grouped into Sports, Weather, Politics (including
+  elections and world affairs), Entertainment, Mentions, Science \& Tech, and Other. Polymarket
+  markets are mapped to the same groups from their tags. Financial contracts (crypto prices,
+  equity indices, interest rates, economic releases and company metrics) are outside the scope
+  of this study and are excluded throughout.
+  \item \emph{Timing.} Prices used for calibration are observed before the outcome is known:
+  \begin{itemize}
+    \item at fixed leads before the scheduled resolution;
+    \item before the start for sports, except where in-play prices are studied explicitly;
+    \item and never after settlement.
+  \end{itemize}
+  Markets that closed early because the event occurred are timed by their scheduled, not
+  realised, close.
+  \item \emph{Inference.} Outcomes within an event, such as the legs of a ladder or the teams in
+  a game, are dependent. Standard errors are therefore clustered by event
+  \citep{cameronmiller2015}, and we report the number of clusters.
+  \item \emph{Robustness.} Every main result is shown both market-weighted and volume-weighted
+  where the two differ, and separately for the two halves of the sample.
+\end{itemize}

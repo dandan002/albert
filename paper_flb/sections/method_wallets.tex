@@ -1,0 +1,137 @@
+% Wallets workstream: methodology. Code: src/albert/research/flb_wallets.py
+Polymarket records every fill on chain with the wallet on each side, so we can follow identified
+traders. This subsection defines the Polymarket return measures, the exact wallet accounting, the
+wallet classes, and the tests of concentration, persistence, retail dynamics and cross-venue
+pricing. Notation follows \cref{sec:method}: $\q$ is the price of the side bought, $\won$ is 1 if
+that side pays out, $\fee$ is the fee per contract and $\ret=(\won-\q-\fee)/(\q+\fee)$ is the return
+per dollar of holding to settlement.
+
+\paragraph{Information cut-off.}
+For each market we fix an information time $t^{\mathrm{info}}$ that does not depend on the
+outcome. For a sports game it is the scheduled start (\texttt{gameStartTime}); otherwise it is the
+scheduled end date. If a market closed before that schedule, the event happened early, and we set
+$t^{\mathrm{info}}$ to 24 hours before the close. Unless stated otherwise, all calibration and
+trade-level return measures use only fills and prices strictly before $t^{\mathrm{info}}$, so
+in-play sports trading and post-outcome sweeps at 99.9\cents\ are excluded.
+
+\paragraph{Calibration from prices at fixed leads.}
+For a lead $L\in\{1\text{ h}, 24\text{ h}, 7\text{ d}\}$, the price of market $m$ is the last
+trade at or before $t^{\mathrm{info}}_m-L$, expressed in units of outcome 0 (``YES''): a trade in
+outcome 1 at price $p$ is a YES price of $1-p$. Each market contributes both sides, YES at $p$ and NO
+at $1-p$. We report the mean of $\ret$ by side-price bucket, with weights equal to the design weight
+of the market (``market-weighted'') or the design weight times market volume
+(``volume-weighted''). The calibration slope $\beta$ is the coefficient of the logistic regression
+\eqref{eq:logit} estimated on the outcome-0 side of each market (the other side duplicates it); with
+$\beta>1$ prices are too close to $\tfrac12$, longshots too dear and favourites too cheap.
+
+\paragraph{Trade-level returns.}
+A buy fill of outcome $k$ at price $p$ has $\q=p$ and $\won=\ind{k \text{ wins}}$. Polymarket
+charges takers $\fee=\theta_m\q(1-\q)$ per share on fee-enabled markets, where $\theta_m$ is the
+market's published rate (mostly 0.03--0.05 by category, 0 for geopolitics); makers pay nothing. We use
+the rate in each market's fee schedule, and $\fee=0$ for maker fills and for markets without fees,
+which covers almost every market before March 2026 (\cref{app:wallets-fees}). Each table states whether returns are
+gross ($\fee=0$) or net.
+Fill-level means are either ``dollar-weighted'' (weight = notional $\times$ design weight) or
+``fill-weighted'' (weight = design weight).
+
+\paragraph{Exact wallet accounting.}
+We express each fill in YES-equivalent units. Buying $s$ shares of outcome 0 at $p$ adds $+s$ to
+exposure $e$ and $-sp$ to cash $c$; selling reverses both signs. Buying outcome 1 at $p$ pays
+$s(1-Y)$ at settlement, so it adds $-s$ to $e$ and $+s(1-p)$ to $c$. The PnL of wallet $i$ in market $m$
+is then
+\begin{equation}\label{eq:wallets-pnl}
+  \pi_{im}=\textstyle\sum_{j\in(i,m)} c_j+Y_m\sum_{j\in(i,m)} e_j-\sum_{j\in(i,m)}\fee_j s_j ,
+\end{equation}
+where $Y_m=1$ if outcome 0 wins. In these units a split (\$1 for one share of each outcome) or a
+merge is PnL-neutral, so \eqref{eq:wallets-pnl} is exact from trades alone. Each fill appears once
+for the taker and once for every maker it matched. In a fully observed fee-free market, therefore,
+$\sum_i e_{im}=0$ and $\sum_i\pi_{im}=0$. We use this identity to check the data. Where fees apply,
+Polymarket takes the taker's fee in shares on buys, and the identity holds up to those shares.
+
+\paragraph{Wallet classes.}
+Following \citet{rothschildsethi2016}, who group Intrade accounts by their trading behaviour, we classify
+traders by observable conduct rather than by identity. Each fill is classified from the wallet's own
+history in the sample strictly before the fill.
+Let $n$ be its earlier fills, $\mu$ the share of those that were maker fills, $\tau$ the share of
+the markets it had entered that it had already traded in both YES-equivalent directions, and
+$\tilde v$ the median notional of its last 200 fills, including the current one. Classes are
+assigned in this order:
+\begin{enumerate}
+  \item \textbf{Market maker (MM):} $n\geq 20$, $\mu\geq 0.7$ and $\tau\geq 0.5$.
+  \item \textbf{Whale:} $\tilde v\geq\$1{,}000$.
+  \item \textbf{Active retail:} $\tilde v\leq\$100$ and $n\geq 20$.
+  \item \textbf{Retail:} $\tilde v\leq\$100$ and $n<20$.
+  \item \textbf{Mid:} all other fills ($\$100<\tilde v<\$1{,}000$).
+\end{enumerate}
+Account age, which separates new from established retail, comes from the creation date
+(\texttt{join\_date}) that Polymarket reports for each wallet. Age is measured at the fill, so it
+is known at trade time. Leaderboard rank and lifetime counters are measured today, after the fact,
+and are used only descriptively. The robustness grid moves one cut-off at a time (small size \$50
+or \$250; whale size \$500 or \$5{,}000; active at 10 or 50 earlier fills; looser or stricter MM
+criteria). \Cref{tab:wallets-robust} reports the results.
+
+\paragraph{Who buys and who sells longshots.}
+Besides the longshot share of each class's buying, we measure net longshot flow. A fill in a token
+priced at most 10\cents\ counts as a longshot purchase or sale at its notional. A fill in a token
+priced at least 90\cents\ counts as the opposite trade in the complementary longshot, at that
+longshot's cost $s(1-p)$. Net flows sum to zero across all participants, so the classes that buy
+longshots on net are matched by the classes that sell them. For positions opened by a buy before
+$t^{\mathrm{info}}$, the exit value added
+$(\text{proceeds}-\text{shares sold}\times\won)/\text{cost}$ compares the PnL actually realised
+with that of holding every share to settlement.
+
+\paragraph{Concentration and persistence.}
+Wallet PnL sums \eqref{eq:wallets-pnl} over the sampled markets. We report the share of all gains (losses)
+held by the top $x$\% of winning (losing) wallets, which is the Lorenz curve read from the top, and the
+corresponding Gini coefficients. For persistence,
+the sample is split by resolution date into H1 (January 2024 to May 2025) and H2 (June 2025 to
+October 2026). Wallets with at least five markets and \$50 bought in each half are ranked on the
+shrunk H1 return
+\begin{equation}\label{eq:wallets-shrink}
+  \tilde R_i^{\mathrm{H1}}=\frac{\sum_{m\in\mathrm{H1}}\pi_{im}}{\sum_{m\in\mathrm{H1}}B_{im}+K},
+\end{equation}
+where $B_{im}$ is the amount bought and $K$ is the median amount bought per wallet-half. They are
+then evaluated on their raw H2 return, using the Spearman rank correlation with a wallet bootstrap and
+the H2 return of the top minus the bottom H1 quintile. Two controls separate skill from luck and style:
+\begin{itemize}
+  \item \textbf{Edge versus entry price.} The wallet's mean buy return minus the mean return of all
+    buys in the same price bucket and half. This removes persistence that comes only from buying
+    favourites rather than longshots.
+  \item \textbf{Luck placebo.} We redraw each market's outcome as
+    $\tilde Y_m\sim\text{Bernoulli}(p_m^{\mathrm{close}})$, where $p_m^{\mathrm{close}}$ is the last
+    price before $t^{\mathrm{info}}$, and recompute \eqref{eq:wallets-pnl} with the same trades.
+    Under the placebo, prices are calibrated and no wallet can forecast outcomes beyond
+    $p^{\mathrm{close}}$, but wallets keep the execution advantage of trading at better prices than
+    the close.
+\end{itemize}
+
+\paragraph{Retail dynamics and herding.}
+Account creation dates are looked up for a pseudo-random subset of sampled wallets: those whose address is
+divisible by eight, in address order. Inflow is the weekly count of creations among them. Around five salient events
+fixed in advance (the 2024 US presidential election, Super Bowls LIX and LX, the 2025 papal
+conclave and the 2025 New York City mayoral election), we compare creations in the 14 days centred
+on the event with a baseline four to eight weeks earlier. Herding of small wallets is measured in
+one-hour windows with at least five small (at most \$100) taker buys by retail or active-retail
+wallets, using the measure of
+\citet{lakonishok1992}:
+\begin{equation}\label{eq:wallets-lsv}
+  H_{mt}=\Bigl|\tfrac{k_{mt}}{n_{mt}}-\bar p_m\Bigr|-\E\Bigl|\tfrac{K}{n_{mt}}-\bar p_m\Bigr|,\qquad K\sim\mathrm{Bin}(n_{mt},\bar p_m).
+\end{equation}
+Here $k_{mt}$ counts YES-side buys in the window and $\bar p_m$ is the market's average YES share of
+small buys. $H>0$ means buys cluster on one side more than independent orders would. To test for
+reversal, we regress the YES-price change over the next $h\in\{1,6,24\}$ hours on the window's
+dollar imbalance $I_{mt}\in[-1,1]$ and on the previous hour's price change, using only windows that
+end before $t^{\mathrm{info}}$.
+
+\paragraph{Cross-venue comparison.}
+For Kalshi game markets matched one-to-one to Polymarket outcomes (\cref{sec:data-wallets}), we
+compare synchronous hourly prices at leads of 1--24 hours before the scheduled start. The Kalshi
+price is the bid--ask midpoint of the hourly candle and the Polymarket price is the hourly price
+history. The gap is $g=p^{\mathrm{PM}}-p^{\mathrm{K}}$, grouped by the two venues' average side
+price. A gap exceeds fees if $|g|$ is larger than the sum of the two taker fees at the observed
+prices, $0.07\,p^{\mathrm{K}}(1-p^{\mathrm{K}})$ on Kalshi and $\theta_m p^{\mathrm{PM}}(1-p^{\mathrm{PM}})$
+on Polymarket. The comparison is descriptive.
+
+\paragraph{Inference.}
+Standard errors are clustered by event (Polymarket event id, or game for the cross-venue tests), as
+in \cref{sec:method}. Population estimates use the design weights of the stratified sample.

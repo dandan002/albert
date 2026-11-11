@@ -469,6 +469,101 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     Forward paper candidates:
     - S1 on Politics one-offs, with the mentions ≥ 95c breaker.
     - S3 frozen as NO at T−12 h on mention-window and elimination contracts priced 2–50c.
-  - **Strike ladders** (`vol_ladders.py`): weather short-vol butterflies (implied width versus a
-    forecast width), weather median drift, and sports moneyline versus the spread-ladder
-    relative value. In progress; results are recorded when the study finishes.
+  - **Strike ladders** (`vol_ladders.py`, outputs `data/research/vol_ladders/`). **Nothing is
+    robust.**
+    - *Weather short-vol.* Buying the body and selling the wings when the implied width exceeds
+      a forecast width passes Aug–Oct only at 16:00 local time. That is when the near-certain
+      bracket at about 95c is underpriced, earning +1.8c holdout (t 2.2). It loses in November
+      (−7c), apparently a seasonal effect.
+    - *Maker version.* Its ledger makes about $0/week once resting orders count against the
+      cap.
+    - *Weather median drift.* The drift flips sign in the holdout.
+    - *Moneyline versus the spread ladder's S(0).* The ladder adds nothing (gap sd 1.2–2.2c).
+    - *Totals "over" bias.* Worth at most 2.4c, below costs.
+    - *Sharpe.* Every ladder Sharpe CI includes 0 (`data/research/vol_metrics/ladders/`).
+  - **Capacity correction and scaling** (`vol_theta.py run scale`; outputs `scale.csv`,
+    `ledgers_scale/`, metrics in `data/research/vol_metrics/scale/`).
+    - **The rule.** Maker fills are now capped at the contracts that printed strictly through
+      our level, from the first fill to the end of the order's hour.
+    - **S1 drops** from Sharpe 3.0 / $3.71 per week to **Sharpe 1.7 [−0.3, 3.9] / $1.96 per
+      week** at the $5/$20 caps; 10% of fills had at most 3 contracts of capacity. **S1 no longer
+      clears the bar.**
+    - **At $100 open per strategy:**
+      - S1 makes $2.6 / $7.7 / −$0.4 per week at $5 / $10 / $25 per event, with drawdowns of
+        $120–274. It does not scale.
+      - S3 holds about a day and has median capacity of 180–300 contracts. It scales linearly in
+        the per-event cap, and the $100 open cap never binds.
+      - The ex-post S3m L12_gap0 makes $1.6 / $3.5 / $8.2 per week at Sharpe 2.8–3.2, with
+        drawdowns of $13 / $24 / $61.
+      - The walk-forward S3 makes $0.6–2.7 per week at Sharpe 0.9–1.2, with drawdowns up to
+        $139–156.
+    - Sharpe is invariant to scale until capacity binds; $/week and drawdown scale together.
+      S3t taker fills are not depth-capped, because historical depth is unobservable.
+- **Greek trades on strike ladders (2026-11-11; `vol_greeks.py`, outputs `data/research/vol_greeks/`,
+  read `verdict.md`).** Delta-hedged positions use model greeks from the hourly-fitted ladder
+  (F, σ). Execution is taker at the candle bid/ask with fees, and each order is ≤ 25% of the leg's
+  trailing-3 h volume. Dev runs to Sep 30, the holdout is October, and weather is also tested on
+  Nov 1–9. **Nothing clears the bar, and hedging does not help.**
+  - *Short strangles* (sell both wings) lose after costs in every group. Holdout: weather −1.9c,
+    sports totals −2.2c, spreads −2.7c, team totals −2.9c per contract. In sports the wing
+    premium is paid back almost exactly in tail payouts.
+  - *Delta-hedging* earns +0.25 to +0.7c at mid on dev and about 0 on holdout. It costs 0.1–1.8c in
+    spreads and fees and lowers Sharpe in every group: weather from −0.9 to −1.5, spreads from −3.3
+    to −5.4. At $5 per event most hedges round to zero contracts.
+  - *Vega* (long when the NBM or forecast σ ≥ 1.05–1.15 × σ_ATM). Sports flips sign in the
+    holdout (t −2.1 to −2.5). Weather 16 h is positive in all three splits but has t 0.7 / 1.2 / 0.1
+    and Sharpe ex top-5 −0.9.
+  - *Gamma scalping*. Weather 12→8 h realized/implied variance is 1.36–1.57. The long strangle
+    gains about +1c at mid, but taker round trips cost 2–3.5c, and two variants lost the whole
+    $100 in dev.
+  - *Capacity*: only 0–31% of sports entries can trade at all, because the thin wing leg's median
+    volume is 0.
+  - Forward-monitor ideas only: weather long vega at 16 h; weather 12→8 h long gamma as an
+    unhedged maker (untested).
+- **Structural arbitrage at the measured latency (2026-11-11; `inplay_hft arb START END OUT
+  LATS`, outputs `data/research/arb_latency/`).**
+  - **Latency.** Live timing records give event → engine p50 of 4.6 ms (p90 6.3 ms, 10.6k
+    creates). The earlier replays started at 10 ms.
+  - **Rerun.** Four recorded nights (11-07..11-10): 1,691 episodes, 1,578 of them in play.
+  - **All episodes.** −2.2c per attempt at 2 ms, −2.5c at 5 ms, −3.0c at 10 ms. One-leg fills
+    dominate: +0.9c per lot when both legs fill, −3.5c when only one does.
+  - **Filtered.** With the outcome-blind filter "every leg shows ≥ 1 contract" (56% of
+    episodes are sub-contract dust): −0.01c at 2 ms, −0.3c at 3 ms, −0.8c at 4 ms, −1.1c at
+    5 ms. The total 1-lot opportunity is a few dollars over four nights.
+  - **Verdict.** Faster execution narrows the loss but never makes it positive at our latency.
+- **Favourite–longshot bias and retail flow: academic study (2026-11-11; paper `paper_flb/`,
+  code `flb_{common,xs,flow,wallets,structural}.py`, outputs `data/research/flb_*/`).** This is a
+  descriptive study, not a strategy test.
+  - *Cross-section* (19,007 Kalshi markets, 4,770 events, 2021-07..2026-10, quotes at 1 h–30 d
+    leads).
+    - Calibration slope 1.13 (t 6.5 vs 1); volume-weighted 1.48.
+    - Longshots (≤10c) return −55% per $ at the mid and −75% net of spread and taker fee.
+      Favourites +1.1% at the mid, −0.7% net.
+    - Present in every group and in both halves. Flat across liquidity terciles. Steepest in
+      multi-outcome (1.28) and deadline (1.22) contracts. Does not fade at 1 h (1.18). Pre-game
+      sports with an exact start are near calibrated.
+  - *Kalshi trades* (2.69M prints, 18 strata, Aug–Oct 2026).
+    - Small orders hold the longshots: 39% of contracts in ≤$10 taker orders are longshots,
+      against 1.2% in >$1k orders (18/18 strata).
+    - Taker longshot positions lose in 14/18 strata, and takers do worse than makers in 13/18.
+      The immediacy cost (0.51c half-spread + 0.33c fee) is 14% of the stake.
+    - No overall taker–maker gap, and no size class predicts outcomes.
+    - Pooled per-$ longshot means are heavy-tailed: one MLB HR-prop event is 40% of the weighted
+      profit. Use per-stratum estimates and sign tests.
+  - *Polymarket wallets* (2.57M fills, 237,569 wallets).
+    - Retail wallets make 86% of net longshot buying. No professional seller class.
+    - The top 1% of wallets take 85% of gains, with no persistence (rank correlation 0.02).
+    - Kalshi and Polymarket game prices match within 0.40c.
+    - `gateway.polymarket.us` robots.txt disallows ClaudeBot/anthropic-ai/Claude-Web, so no
+      Polymarket US prices were used. The older `albert ingest pmus` command uses that host;
+      this is flagged to the user.
+  - *Structural.*
+    - Market-weighted, the longshot gap is inside the taker no-arbitrage band; volume-weighted it
+      exceeds the band by 0.79c (t 2.7).
+    - The tick floor is ~half of the 1–2c loss.
+    - LLO γ = 0.89, below 1 in every group; fitted on H1 it removes 61% of the H2 longshot gap.
+    - Shin z is mostly the spread. Belief-dispersion proxies are not supported.
+    - Verdict: frictions bound the bias; lottery demand by small traders is the best-supported
+      source.
+  - Fee note: Kalshi charges fees per fill to $0.000001 and rebates rounding over-payment
+    (docs.kalshi.com/getting_started/fee_rounding), so exact fees are the fees paid.
