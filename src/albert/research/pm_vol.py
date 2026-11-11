@@ -1669,7 +1669,11 @@ def write_report(s) -> Path:
 # =============================================================================================================
 # High-frequency follow-up: recorded L2 for two in-play nights (descriptive / modelling only, no trading tests)
 # =============================================================================================================
-HF_NIGHTS = (("2026-11-07T17", "2026-11-08T06", "sat"), ("2026-11-08T17", "2026-11-09T06", "sun"))
+HF_NIGHTS = (("2026-11-07T17", "2026-11-08T06", "sat"), ("2026-11-08T17", "2026-11-09T06", "sun"),
+             ("2026-11-09T17", "2026-11-10T06", "mon"), ("2026-11-10T17", "2026-11-11T06", "tue"))
+# Night sets: "orig" is the published sample (hf_results.json, paper); "new" is the out-of-sample
+# replication on nights recorded afterwards; "all" pools them. Outputs: hf_results_<set>.json.
+HF_SETS = {"orig": ("sat", "sun"), "new": ("mon", "tue"), "all": ("sat", "sun", "mon", "tue")}
 HF_DIR = OUT / "hf"
 HF_H = (1, 5, 15, 60, 300)                     # seconds, M0 test horizons
 SIG_H = (1, 2, 5, 10, 15, 30, 60, 120, 300, 600)
@@ -1769,7 +1773,8 @@ def hf_games(s) -> pl.DataFrame:
 
     tick = set()
     for _, _, tag in HF_NIGHTS:
-        tick |= set(pl.read_parquet(HF_DIR / f"quotes_{tag}.parquet", columns=["ticker"])["ticker"].unique().to_list())
+        if (HF_DIR / f"quotes_{tag}.parquet").exists():
+            tick |= set(pl.read_parquet(HF_DIR / f"quotes_{tag}.parquet", columns=["ticker"])["ticker"].unique().to_list())
     cache = HF_DIR / "markets_meta.json"
     shared = s.data_dir / "cache" / "volatile_markets.json"
     if not cache.exists() and shared.exists():           # seed from the shared cache, never write it
@@ -1785,13 +1790,15 @@ def hf_games(s) -> pl.DataFrame:
     return g.unique("event", keep="first", maintain_order=True)
 
 
-def hf_paths(s) -> list[dict[str, Any]]:
+def hf_paths(s, tags: tuple[str, ...] = HF_SETS["orig"]) -> list[dict[str, Any]]:
     """Per game leg and night: quote change times and bid/ask inside the in-play window, cut at the
     first decided quote (mid <= 2c or >= 98c with spread <= 10c, observable at that time) and at
     T - 10 min."""
     games = hf_games(s)
     out = []
     for start, end, tag in HF_NIGHTS:
+        if tag not in tags:
+            continue
         q = pl.read_parquet(HF_DIR / f"quotes_{tag}.parquet")
         w0 = int(datetime.fromisoformat(start + ":00:00+00:00").timestamp() * 1e9)
         w1 = int(datetime.fromisoformat(end + ":00:00+00:00").timestamp() * 1e9)
@@ -2230,9 +2237,10 @@ def run_hf_extract(s) -> None:
         print(hf_extract(s, start, end, tag), flush=True)
 
 
-def run_hf(s) -> None:
-    """All HF analyses -> data/research/pm_vol/hf_results.json."""
-    paths = hf_paths(s)
+def run_hf(s, which: str = "orig") -> None:
+    """All HF analyses on the nights of ``HF_SETS[which]`` -> data/research/pm_vol/hf_results_<which>.json
+    (the published two-night file hf_results.json is left as it is)."""
+    paths = hf_paths(s, HF_SETS[which])
     print(f"{len(paths)} in-play game legs", flush=True)
     res: dict[str, Any] = {"games": [{"ticker": p["ticker"], "series": p["series"], "night": p["night"],
                                       "minutes": (p["stop"] - p["lo"]) / 6e10, "quote_changes": len(p["ns"])} for p in paths]}
@@ -2252,14 +2260,14 @@ def run_hf(s) -> None:
     res["jumps"] = jrows[:-1]
     res["stern"] = jrows[-1]["stern"]
     if jumps:
-        pl.DataFrame(jumps).write_parquet(HF_DIR / "jumps.parquet")
+        pl.DataFrame(jumps).write_parquet(HF_DIR / f"jumps_{which}.parquet")
     jsim, jumps_sim = hf_jumps(sims)
     res["jumps_sim"] = jsim[:-1]
     res["n_jumps_sim_10s"] = len(jumps_sim)
     print("== leverage", flush=True)
     res["leverage"] = hf_leverage(paths)
     res["leverage_sim"] = hf_leverage(sims)
-    (OUT / "hf_results.json").write_text(json.dumps(_jsonable(res)))
+    (OUT / f"hf_results_{which}.json").write_text(json.dumps(_jsonable(res)))
     print("done", flush=True)
 
 
@@ -2353,17 +2361,19 @@ def run_drift_sim(s) -> None:
     print("done", flush=True)
 
 
-def write_hf_report(s) -> Path:
+def write_hf_report(s, which: str | None = None) -> Path:
+    """Report for ``hf_results_<which>.json``; ``which=None`` re-renders the published two-night file."""
     from albert.reports import Report
 
-    res = json.loads((OUT / "hf_results.json").read_text())
+    res = json.loads((OUT / (f"hf_results_{which}.json" if which else "hf_results.json")).read_text())
     dsim = json.loads((OUT / "drift_sim.json").read_text()) if (OUT / "drift_sim.json").exists() else []
-    rep = Report(s.reports_dir, "research-pm-vol-hf")
-    if (OUT / "hf_verdict.md").exists():
+    rep = Report(s.reports_dir, f"research-pm-vol-hf-{which}" if which else "research-pm-vol-hf")
+    if not which and (OUT / "hf_verdict.md").exists():
         rep.text("Summary", (OUT / "hf_verdict.md").read_text())
+    nights = "; ".join(f"{tag} {a} -> {b} UTC" for a, b, tag in HF_NIGHTS if tag in HF_SETS[which or "orig"])
     rep.text("Data and definitions", (
-        "Recorded Kalshi L2 (public market-data websocket) replayed to top of book, nights Sat 2026-11-07 17 -> "
-        "11-08 06 UTC and Sun 11-08 17 -> 11-09 06 UTC. Game-winner series of `volatile.GAME_SERIES`, one leg per "
+        f"Recorded Kalshi L2 (public market-data websocket) replayed to top of book, nights {nights}. "
+        "Game-winner series of `volatile.GAME_SERIES`, one leg per "
         "game (first alphabetical non-TIE leg), inside the scheduled in-play window of `volatile._in_play_bounds` "
         "(expected_expiration - league game length .. expected_expiration + 1 h), cut at the first decided quote "
         "(mid <= 2c or >= 98c, spread <= 10c) and 10 min before the scheduled end T = expected_expiration_time. "
@@ -2414,7 +2424,7 @@ def write_hf_report(s) -> Path:
             "jumps": res["jumps"], "stern": res["stern"], "leverage": res["leverage"],
             "control": {"m0": [r for r in res.get("m0_sim", []) if "series" not in r], "signature_fit": res.get("signature_fit_sim"),
                         "jumps": res.get("jumps_sim"), "leverage": res.get("leverage_sim")}}
-    (OUT / "hf_summary.json").write_text(json.dumps(_jsonable(summ), indent=1))
+    (OUT / (f"hf_summary_{which}.json" if which else "hf_summary.json")).write_text(json.dumps(_jsonable(summ), indent=1))
     print(path)
     return path
 
@@ -2440,7 +2450,7 @@ def main(argv: list[str]) -> None:
     if step == "hf_extract":
         run_hf_extract(s)
     if step == "hf":
-        run_hf(s)
+        run_hf(s, argv[1] if len(argv) > 1 else "orig")
     if step == "drift_sim":
         run_drift_sim(s)
     if step == "drift_tail":
@@ -2448,7 +2458,7 @@ def main(argv: list[str]) -> None:
     if step == "backbone_cells":
         run_backbone_cells(s)
     if step == "hf_report":
-        write_hf_report(s)
+        write_hf_report(s, argv[1] if len(argv) > 1 else None)
 
 
 if __name__ == "__main__":

@@ -271,6 +271,44 @@ The control shows what ticks and spreads alone produce.
    - The price-unit negative values are reproduced by the control: φ(Z) rises toward ½.
    - So the hourly in-game ρ < 0 from §6.1 is an hour-scale effect.
 
+**Replication on two later nights (2026-11-11; reports `research-pm-vol-hf-new-20261111T140106Z`,
+`research-pm-vol-hf-all-20261111T140107Z`; `python -m albert.research.pm_vol hf {orig,new,all}`).**
+- *Determinism.* Rerunning the original two nights reproduces every number above exactly.
+- *New sample.* Mon 11-09 and Tue 11-10 nights: 23 legs, 42 in-game hours (NBA 12, NHL 8,
+  NCAAMB 2, NCAAWB 1). These are every in-game leg the old recorder held: it took only games with
+  a Polymarket pair, and there was no football. Pooled: 73 legs, 158 hours.
+
+| Statistic | Original (Sat, Sun) | New (Mon, Tue) | Pooled |
+|---|---|---|---|
+| var(u), 5 s / 60 s / 300 s | 0.77 / 0.73 / 0.77 | 0.99 / 0.92 / 0.87 | 0.83 / 0.79 / 0.80 |
+| t of var(u) − 1, 5 s / 60 s | −3.6 / −4.4 | −0.1 / −0.8 | −3.1 / −4.1 |
+| Excess kurtosis, 1 s → 300 s | 151 → 2 | 186 → 3 | 167 → 2 |
+| Realized-variance signature: fitted noise η | 0 | 0 | 0 |
+| Bipower jump share, 5 / 10 / 15 s (control) | 0.59 / 0.53 / 0.48 (0.16 / 0.09 / 0.08) | 0.65 / 0.55 / 0.44 (0.16 / 0.09 / 0.06) | 0.62 / 0.53 / 0.47 |
+| Stern slope, NBA | 1.08 ± 0.09 | 1.04 ± 0.07 | 1.06 ± 0.07 |
+| Stern slope, NHL | 0.65 ± 0.16 | 0.52 ± 0.41 | 0.62 ± 0.16 |
+| var(u) NBA, 60 s | 1.26 | 1.05 | 1.16 |
+| Probit drift slope, 60 s (t vs 1) | 0.46 ± 0.21 (−2.6) | 0.82 ± 0.43 (−0.4) | 0.54 ± 0.19 (−2.4) |
+| E[sgn(Z)·Δp], 60 s | −0.004c (t −0.1) | +0.048c (t 0.9) | +0.012c (t 0.3) |
+| Leverage ρ, 1 / 2 / 5 min (probit) | +0.016 / +0.003 / +0.045 | +0.012 / +0.033 / +0.052 | +0.015 / +0.014 / +0.047 (all \|t\| ≤ 1.7) |
+
+- **Replicates:**
+  - variance is flat across horizons;
+  - kurtosis falls from about 150 at 1 s to 2–3 at 5 min;
+  - there is no microstructure noise;
+  - about 40–50 points of jump variance above the tick-grid control;
+  - NBA scores are Brownian (Stern slope ≈ 1);
+  - the price is a martingale;
+  - there is no minute-scale leverage.
+- **Does not replicate as a level:** var(u) below 1. On the weekday NBA/NHL nights var(u) is
+  0.87–0.99 and not different from 1. Football (NFL 0.57–0.64, NCAAF 0.47–0.54) drives the low
+  pooled value. NBA's own level moved from 1.26 to 1.05. League levels are not yet stable, and the
+  clock to scheduled settlement (§8, game clock) remains the suspect.
+- **Weaker:** the probit-drift shortfall. It is 0.82 ± 0.43 on the new nights, consistent with
+  both 1 and the original 0.46. The pooled value is still 0.54 (t −2.4 vs 1). The football-heavy
+  original nights carry it, so it needs the weekend games that `albert-record-vol` now records in
+  full.
+
 ### 6.3 Strike ladders: smile, its dynamics, calibration (`pm_smile.py`, report `research-pm-smile-20261109T220959Z`)
 
 **Sample and method.**
