@@ -42,7 +42,8 @@ first (ground rules, binding), then `.planning/research/SUMMARY.md` (every study
 ## What is running here (systemd; `sudo systemctl status 'albert-*'`, logs via journalctl)
 | Unit | What | Output | Stop |
 |---|---|---|---|
-| `albert-record` | Kalshi + Polymarket WebSocket L2 recorder (`deploy/record-loop.sh --paired-days 3`) | `data/raw/stream/` | `touch data/record.stop` |
+| `albert-record` | Kalshi + Polymarket WebSocket L2 recorder: random sample + PM intl (`deploy/record-loop.sh --paired-days 3 --skip-vol`) | `data/raw/stream/` (`k<n>`, `p<n>`) | `touch data/record.stop` |
+| `albert-record-vol` | Kalshi L2 of complete vol-study events: game and first-half winners, game spread/total/team-total ladders, weather ladders, expiring within 48 h; new markets added hourly in-run (`RECORD_CMD=record-vol deploy/record-loop.sh`) | `data/raw/stream/` (`v<n>`) | `touch data/record-vol.stop` |
 | `albert-paper` | paper maker on live books, no orders (`deploy/paper-loop.sh`) | `data/paper_l2/` | `touch data/paper_l2/STOP` |
 | `albert-forward` | hourly forward paper test of 3 leads, no orders (`deploy/forward-loop.sh`, LEADS="mentions fcs rain") | `data/cache/forward/` | `touch data/cache/forward/STOP` |
 | `albert-mentions@demo` | mentions NO-bid bot on Kalshi DEMO (args `deploy/mentions-demo.conf`) | `data/live/mentions/demo/` | `touch data/live/mentions/STOP` |

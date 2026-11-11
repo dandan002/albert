@@ -878,14 +878,18 @@ def compact_raw_cmd(min_age: float = typer.Option(60.0, help="Skip files younger
 
 
 @app.command()
-def capture(out: str = typer.Option("tests/fixtures", help="Fixture root directory")) -> None:
+def capture(out: str = typer.Option("tests/fixtures", help="Fixture root directory"),
+            only: str = typer.Option("", help="Capture one group only: 'vol' (record-vol pages)")) -> None:
     """Record trimmed real API responses as test fixtures."""
     from pathlib import Path
 
     from albert.capture import capture as run
+    from albert.capture import capture_vol
 
     s, c = _clients()
-    for path in run(s, c, Path(out)):
+    if only not in ("", "vol"):
+        raise typer.BadParameter("--only must be '' or 'vol'")
+    for path in (capture_vol if only == "vol" else run)(s, c, Path(out)):
         typer.echo(path)
 
 
@@ -902,6 +906,8 @@ def record_cmd(
     min_free_gb: float = typer.Option(10.0, help="Stop when free disk space drops below this"),
     paired_days: float = typer.Option(0.0, help="Also record Kalshi game moneylines played within "
                                       "N days and their Polymarket intl moneyline (0 = off)"),
+    skip_vol: bool = typer.Option(False, help="Leave every vol-study family (stream.vol_family) to "
+                                  "`albert record-vol`: none in the sample, no Kalshi legs of pairs"),
 ) -> None:
     """Record live order books and trades over WebSocket into data/raw/stream (append-only)."""
     import asyncio
@@ -911,16 +917,17 @@ def record_cmd(
 
     from albert.ingest import kalshi_series
     from albert.store import write_manifest
-    from albert.stream import Recorder, record, select_kalshi, select_paired, select_pm
+    from albert.stream import Recorder, record, select_kalshi, select_paired, select_pm, vol_family
     from albert.venues.kalshi_auth import KalshiSigner
 
     s, c = _clients()
-    k_rows = select_kalshi(kalshi_series(s, c), kalshi, days=days, seed=seed) if kalshi else []
+    k_rows = select_kalshi(kalshi_series(s, c), kalshi, days=days, seed=seed, skip_vol=skip_vol) if kalshi else []
     pm_rows = select_pm(pm) if pm else []
     pairs = select_paired(paired_days) if paired_days else []
     have_k, have_pm = {m["ticker"] for m in k_rows}, {m["token_id"] for m in pm_rows}
     k_rows += [{"ticker": p["kalshi_ticker"], "event_ticker": p["kalshi_ticker"].rsplit("-", 1)[0],
-                "category": "Sports"} for p in pairs if p["kalshi_ticker"] not in have_k]
+                "category": "Sports"} for p in pairs if p["kalshi_ticker"] not in have_k
+               and not (skip_vol and vol_family(p["kalshi_ticker"].split("-", 1)[0], "Sports"))]
     for p in pairs:
         if p["token_id"] not in have_pm:
             have_pm.add(p["token_id"])
@@ -948,14 +955,15 @@ def record_cmd(
             loop.add_signal_handler(sig, on_signal, sig.name)
         await record(rec, minutes=minutes, kalshi_markets=[m["ticker"] for m in k_rows],
                      pm_tokens=[m["token_id"] for m in pm_rows], chunk=chunk,
-                     check_every=check_every, check_sample=check_sample)
+                     check_every=check_every, check_sample=check_sample, min_free_gb=min_free_gb)
 
     asyncio.run(main())
     files = rec.close()
     stats = {conn: st.as_dict() for conn, st in rec.stats.items()}
     checks = rec.checks
     path = write_manifest(s.data_dir, "record", {
-        "minutes": minutes, "days": days, "min_free_gb": min_free_gb, "chunk": chunk, "seed": seed, "started_at": started,
+        "minutes": minutes, "days": days, "min_free_gb": min_free_gb, "chunk": chunk, "seed": seed,
+        "skip_vol": skip_vol, "started_at": started,
         "kalshi_markets": [{k: m[k] for k in ("ticker", "event_ticker", "category")} for m in k_rows],
         "pm_tokens": pm_rows, "pairs": pairs,
     }, {"files": [asdict(f) for f in files], "stats": stats, "book_checks": checks,
@@ -967,6 +975,88 @@ def record_cmd(
     typer.echo(f"{len(files)} files, {total / 1e6:.1f} MB compressed, "
                f"{sum(st['frames'] for st in stats.values())} frames, {gaps} seq gaps, "
                f"book checks {matched}/{len(checks)} matched")
+    typer.echo(f"manifest: {path}")
+
+
+@app.command("record-vol")
+def record_vol_cmd(
+    minutes: float = typer.Option(1440.0, help="How long to record"),
+    hours: float = typer.Option(48.0, help="Markets whose expected expiration is within N hours "
+                                "(48 h covers the longest lead in pm_smile)"),
+    families: str = typer.Option("game,half,ladder,weather",
+                                 help="Comma-separated vol families (stream.VOL_FAMILIES)"),
+    refresh_min: float = typer.Option(60.0, help="Minutes between re-selections (new markets only)"),
+    ladder_interval_ms: int = typer.Option(0, help="Conflate ladder books (100 or 1000 ms; 0 = real-time)"),
+    chunk: int = typer.Option(100, help="Markets per WebSocket connection"),
+    check_every: float = typer.Option(600.0, help="Seconds between REST book cross-checks"),
+    check_sample: int = typer.Option(5, help="Markets per REST cross-check (0 = off)"),
+    min_free_gb: float = typer.Option(20.0, help="Stop when free disk drops below this (above "
+                                      "`albert record`'s 10 GB, so this recorder stops first)"),
+) -> None:
+    """Record complete vol-study events (game winners, first-half winners, game ladders, weather
+    ladders) into data/raw/stream, adding newly listed markets every hour without restarting.
+    Run `albert record --skip-vol` alongside so no market is recorded twice."""
+    import asyncio
+    import signal
+    from collections import Counter
+    from dataclasses import asdict
+    from pathlib import Path
+
+    from albert.ingest import kalshi_series
+    from albert.store import write_manifest
+    from albert.stream import VOL_FAMILIES, Recorder, VolUniverse, record_vol, select_vol
+    from albert.venues.kalshi_auth import KalshiSigner
+
+    fams = tuple(f.strip() for f in families.split(",") if f.strip())
+    if bad := [f for f in fams if f not in VOL_FAMILIES]:
+        raise typer.BadParameter(f"unknown families {bad}; choose from {VOL_FAMILIES}")
+    if ladder_interval_ms not in (0, 100, 1000):
+        raise typer.BadParameter("ladder-interval-ms must be 0, 100 or 1000")
+    s, c = _clients()
+    info = kalshi_series(s, c)
+
+    def select() -> list[dict]:
+        return select_vol(info, hours, families=fams)
+
+    started = datetime.now(UTC)
+    initial = select()
+    typer.echo(f"recording {len(initial)} vol markets ({dict(Counter(r['family'] for r in initial))}) "
+               f"for {minutes:g} min, refreshing every {refresh_min:g} min")
+    if not initial:
+        raise typer.Exit("no vol markets in the window")
+    rec = Recorder(s.raw_dir / "stream", KalshiSigner.from_env())
+    uni = VolUniverse(chunk=chunk, ladder_interval_ms=ladder_interval_ms)
+
+    async def main():
+        loop = asyncio.get_running_loop()
+
+        def on_signal(name: str) -> None:
+            rec.stopped_reason = f"signal {name}"
+            rec.stop.set()
+
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, on_signal, sig.name)
+        await record_vol(rec, uni, minutes=minutes, initial=initial, select=select,
+                         refresh_every=refresh_min * 60, check_every=check_every,
+                         check_sample=check_sample, min_free_gb=min_free_gb)
+
+    asyncio.run(main())
+    files = rec.close()
+    stats = {conn: st.as_dict() for conn, st in rec.stats.items()}
+    checks = rec.checks
+    path = write_manifest(s.data_dir, "record-vol", {
+        "minutes": minutes, "hours": hours, "families": list(fams), "refresh_min": refresh_min,
+        "ladder_interval_ms": ladder_interval_ms, "chunk": chunk, "min_free_gb": min_free_gb,
+        "started_at": started, "kalshi_markets": uni.markets, "conns": uni.conns,
+    }, {"files": [asdict(f) for f in files], "stats": stats, "book_checks": checks,
+        "refreshes": uni.refreshes, "stopped_reason": rec.stopped_reason},
+        [Path(f.path) for f in files])
+    total = sum(f.bytes for f in files)
+    gaps = sum(len(st["gaps"]) for st in stats.values())
+    matched = sum(ch["match"] for ch in checks)
+    typer.echo(f"{len(uni.markets)} markets on {len(uni.conns)} connections, {len(files)} files, "
+               f"{total / 1e6:.1f} MB compressed, {sum(st['frames'] for st in stats.values())} frames, "
+               f"{gaps} seq gaps, book checks {matched}/{len(checks)} matched")
     typer.echo(f"manifest: {path}")
 
 

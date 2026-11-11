@@ -561,7 +561,12 @@ places:
   scheduled settlement. This should explain the league differences in §6.2 and test the
   Stern/Skellam jump laws directly.
 - **More in-game data.** Two nights and 50 games is small. Rerun the high-frequency study as
-  recording continues.
+  recording continues. Since 2026-11-11 `albert-record-vol` records complete events in L2:
+  every game- and first-half-winner leg of the `volatile.GAME_SERIES` leagues (not only games
+  with a Polymarket pair), full-game spread/total/team-total ladders, and every weather
+  high/low ladder, from 48 h before expected expiration. This adds an L2 version of §6.3–6.4
+  (smile dynamics and implied-vs-realized variance at minute scale), a calendar test (first half
+  vs full game) and the weather clock from books instead of hourly candles.
 - **Why theta is sticky.** Who holds overpriced deadline longshots into the last day? Possible
   explanations are lottery preference, inattention, and Kalshi fees making the NO side
   unattractive at 97–99c. Testable with trade-side data (`taker_side`).

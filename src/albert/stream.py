@@ -6,9 +6,19 @@ Layout (see .planning/research/data-and-backtesting.md section 2.2)::
         one line per received frame: {"recv_ns": ..., "conn": ..., "frame": "<verbatim text>"}
         written as ``<name>.part``, flushed every few seconds, closed at the end of the UTC
         hour, fsync'd and renamed. A closed file is never touched again.
-    data/runs/<ts>-record.json
+    data/runs/<ts>-record.json, data/runs/<ts>-record-vol.json
         manifest: params, market lists, closed files (sha256, lines), seq gaps, reconnects,
         REST cross-checks of the rebuilt book.
+
+Two recorder processes share this tree and never record the same market:
+- ``albert record`` (connections ``k<n>``, REST checks ``rest``): a stratified random sample
+  plus Polymarket intl. With ``--skip-vol`` it leaves every vol-study family to the other process.
+- ``albert record-vol`` (connections ``v<n>`` real-time, ``c<n>`` conflated, REST checks
+  ``rest_vol``): complete events of the vol-study families (``vol_family``), re-selected every
+  hour without restarting. A ``c<n>`` connection subscribes with Kalshi's ``update_interval_ms``
+  (net change per price level per window; ``seq`` stays contiguous); its interval is in the
+  manifest's ``conns``.
+So "each market lives on one connection" holds across the whole tree, as replays assume.
 
 Kalshi: one ``orderbook_delta`` subscription per connection (a documented limit), so markets
 are split into chunks across connections. Each connection also subscribes to ``trade`` for the
@@ -186,10 +196,12 @@ class ConnStats:
 # ---- universe selection -----------------------------------------------------------------------
 def select_kalshi(series_info: dict[str, dict], n: int, *, days: float = 7.0, max_spread: float = 0.25,
                   seed: int = 0, rest: str = KALSHI_REST, min_spread: float = 0.0,
-                  vol24h: tuple[float, float] | None = None, transport=None) -> list[dict[str, Any]]:
+                  vol24h: tuple[float, float] | None = None, skip_vol: bool = False,
+                  transport=None) -> list[dict[str, Any]]:
     """Open non-financial markets closing within ``days`` that currently show a two-sided quote
     with ``min_spread <= spread <= max_spread`` and, if ``vol24h`` = (lo, hi) is given, a trailing
     24 h volume (contracts, ``volume_24h_fp``) in [lo, hi]: the illiquid universe.
+    ``skip_vol`` drops every series that ``vol_family`` assigns to ``albert record-vol``.
 
     Selection uses only the *current* quote and trailing volume (no future information), then a
     seeded random sample stratified round-robin by category so one category cannot fill the universe.
@@ -224,7 +236,8 @@ def select_kalshi(series_info: dict[str, dict], n: int, *, days: float = 7.0, ma
                                                   series_info.get(m["series_ticker"], {}).get("title"))
                 and m["yes_bid"] and m["yes_ask"] and 0 < m["yes_ask"] - m["yes_bid"] <= max_spread + 1e-9
                 and m["yes_ask"] - m["yes_bid"] >= min_spread - 1e-9
-                and (vol24h is None or vol24h[0] <= m["volume_24h"] <= vol24h[1])]
+                and (vol24h is None or vol24h[0] <= m["volume_24h"] <= vol24h[1])
+                and not (skip_vol and vol_family(m["series_ticker"], m["category"]))]
     rng = random.Random(seed)
     by_cat: dict[str, list[dict]] = defaultdict(list)
     for m in eligible:
@@ -314,6 +327,73 @@ def select_pm(n: int, *, events: int = 200) -> list[dict[str, Any]]:
     return out
 
 
+# ---- vol-study universe (albert record-vol) ---------------------------------------------------
+# Leagues whose game-winner series has an in-play duration in research.volatile.GAME_SERIES (the
+# HF study needs it; a test keeps the two lists in step). Families per league, by series suffix:
+VOL_LEAGUES = ("NBA", "NHL", "NFL", "NCAAF", "NCAAMB", "NCAAWB", "WNBA", "MLB",
+               "EPL", "UCL", "LALIGA", "SERIEA", "BUNDESLIGA", "LIGUE1", "MLS")
+VOL_SPORT_SUFFIXES = {"GAME": "game", "1H": "half", "1P": "half",
+                      "SPREAD": "ladder", "TOTAL": "ladder", "TEAMTOTAL": "ladder"}
+VOL_FAMILIES = ("game", "half", "ladder", "weather")
+_VOL_SPORT_SERIES = {f"KX{lg}{suf}": fam for lg in VOL_LEAGUES for suf, fam in VOL_SPORT_SUFFIXES.items()}
+
+
+def vol_family(series: str, category: str | None) -> str | None:
+    """The vol-study family a series belongs to, or None.
+
+    - ``game``: full-game winner of a ``VOL_LEAGUES`` league (in-game dynamics, section 6.2);
+    - ``half``: first-half / first-period winner (a second maturity on the same game);
+    - ``ladder``: full-game spread, total and team-total strike ladders (smile, section 6.3-6.4);
+    - ``weather``: daily high / low temperature ladders (``KXHIGH*`` / ``KXLOWT*`` in Climate and
+      Weather; other categories that reuse the prefix, such as inflation, are not weather).
+    """
+    if series.startswith(("KXHIGH", "KXLOWT")):
+        return "weather" if category == "Climate and Weather" else None
+    return _VOL_SPORT_SERIES.get(series) if category == "Sports" else None
+
+
+def select_vol(series_info: dict[str, dict], hours: float, *, families: tuple[str, ...] = VOL_FAMILIES,
+               rest: str = KALSHI_REST, now: datetime | None = None, pause: float = 0.05,
+               transport=None) -> list[dict[str, Any]]:
+    """Every open market of every vol-family series whose ``expected_expiration_time`` falls in
+    [now, now + ``hours``]: whole events, every leg, whatever its quote (a ladder or a game is
+    studied as a unit; quiet legs cost almost nothing to record).
+
+    Game markets close days after the game, so they are listed by series, not by close time. Uses
+    only the current listing (no future information)."""
+    now = now or datetime.now(UTC)
+    hi = now + timedelta(hours=hours)
+    out: list[dict[str, Any]] = []
+    series = sorted((st, fam) for st, info in series_info.items()
+                    if (fam := vol_family(st, info.get("category"))) and fam in families)
+    with httpx.Client(timeout=30, transport=transport) as http:
+        for st, fam in series:
+            cursor = None
+            while True:
+                params = {"series_ticker": st, "status": "open", "limit": 1000}
+                if cursor:
+                    params["cursor"] = cursor
+                for attempt in range(6):
+                    r = http.get(f"{rest}/markets", params=params)
+                    if r.status_code != 429:
+                        break
+                    time.sleep(1 + attempt)
+                r.raise_for_status()
+                page = r.json()
+                for m in page.get("markets") or []:
+                    exp = m.get("expected_expiration_time")
+                    if exp and now <= datetime.fromisoformat(exp) <= hi:
+                        out.append({"ticker": m["ticker"], "event_ticker": m["event_ticker"],
+                                    "series_ticker": st, "category": series_info[st].get("category"),
+                                    "family": fam, "expected_expiration_time": exp})
+                cursor = page.get("cursor")
+                if not cursor or not page.get("markets"):
+                    break
+            if pause:
+                time.sleep(pause)
+    return out
+
+
 # ---- recorders ------------------------------------------------------------------------------
 class Recorder:
     def __init__(self, root: Path, signer: KalshiSigner | None,
@@ -348,7 +428,7 @@ class Recorder:
         st.bytes += len(frame)
         st.first_ns = st.first_ns or recv_ns
         st.last_ns = recv_ns
-        if self.on_frame is not None and conn != "rest":
+        if self.on_frame is not None and not conn.startswith("rest"):
             self.on_frame(venue, recv_ns, frame)
         return recv_ns
 
@@ -358,7 +438,9 @@ class Recorder:
         except TimeoutError:
             pass
 
-    async def kalshi_conn(self, conn: str, tickers: list[str]) -> None:
+    async def kalshi_conn(self, conn: str, tickers: list[str], update_interval_ms: int = 0) -> None:
+        """Record ``orderbook_delta`` and ``trade`` for ``tickers`` on one connection.
+        ``update_interval_ms`` (100 or 1000) asks Kalshi to conflate book deltas; 0 is real-time."""
         self._writer("kalshi", conn)
         st = self.stats[conn]
         backoff = 1.0
@@ -376,7 +458,10 @@ class Recorder:
                         cmd_id += 1
                         await ws.send(json.dumps({"id": cmd_id, "cmd": cmd, "params": params}))
 
-                    await send("subscribe", {"channels": ["orderbook_delta"], "market_tickers": tickers})
+                    book_params: dict[str, Any] = {"channels": ["orderbook_delta"], "market_tickers": tickers}
+                    if update_interval_ms:
+                        book_params["update_interval_ms"] = update_interval_ms
+                    await send("subscribe", book_params)
                     await send("subscribe", {"channels": ["trade"], "market_tickers": tickers})
                     last_seq: dict[int, int] = {}
                     book_sid: int | None = None
@@ -522,7 +607,7 @@ class Recorder:
                 await self._sleep_or_stop(backoff)
                 backoff = min(backoff * 2, 60.0)
 
-    async def book_checks(self, every: float, sample: int, depth: int = 5) -> None:
+    async def book_checks(self, every: float, sample: int, depth: int = 5, conn: str = "rest") -> None:
         """Every ``every`` seconds compare the rebuilt book with REST ``/orderbook`` for a few
         markets. The REST response is recorded too. A mismatch can be a race (a delta in flight),
         so each market is re-checked once after a short pause before it counts as a mismatch."""
@@ -541,7 +626,7 @@ class Recorder:
                         except httpx.HTTPError as exc:
                             result["error"] = str(exc)[:200]
                             break
-                        self._record("kalshi", "rest", json.dumps(
+                        self._record("kalshi", conn, json.dumps(
                             {"type": "rest_orderbook", "ticker": t, "status": r.status_code,
                              "body": r.text}))
                         if r.status_code != 200:
@@ -595,3 +680,76 @@ async def record(rec: Recorder, *, minutes: float, kalshi_markets: list[str],
         rec.stop.set()
 
     await asyncio.gather(timer(), *tasks)
+
+
+@dataclass
+class VolUniverse:
+    """What ``record_vol`` subscribed, for the manifest: every market once, with its connection."""
+    chunk: int
+    ladder_interval_ms: int = 0
+    markets: list[dict[str, Any]] = field(default_factory=list)
+    conns: list[dict[str, Any]] = field(default_factory=list)
+    refreshes: list[dict[str, Any]] = field(default_factory=list)
+    _seen: set[str] = field(default_factory=set)
+    _next: dict[str, int] = field(default_factory=lambda: {"v": 0, "c": 0})
+
+    def assign(self, rows: list[dict[str, Any]], at: datetime) -> list[tuple[str, list[str], int]]:
+        """New markets only (a market is never subscribed twice), chunked into new connections:
+        ``v<n>`` real-time, ``c<n>`` conflated (ladders, when ``ladder_interval_ms`` > 0)."""
+        groups: dict[int, list[dict[str, Any]]] = defaultdict(list)
+        for r in rows:
+            if r["ticker"] in self._seen:
+                continue
+            self._seen.add(r["ticker"])
+            groups[self.ladder_interval_ms if r["family"] == "ladder" else 0].append(r)
+        out = []
+        for interval, rs in sorted(groups.items()):
+            prefix = "c" if interval else "v"
+            for i in range(0, len(rs), self.chunk):
+                part = rs[i:i + self.chunk]
+                conn = f"{prefix}{self._next[prefix]}"
+                self._next[prefix] += 1
+                self.conns.append({"conn": conn, "update_interval_ms": interval, "opened_at": at.isoformat(),
+                                   "markets": len(part)})
+                self.markets.extend({**r, "conn": conn, "added_at": at.isoformat()} for r in part)
+                out.append((conn, [r["ticker"] for r in part], interval))
+        return out
+
+
+async def record_vol(rec: Recorder, uni: VolUniverse, *, minutes: float, initial: list[dict[str, Any]],
+                     select: Callable[[], list[dict[str, Any]]], refresh_every: float,
+                     check_every: float, check_sample: int, min_free_gb: float) -> None:
+    """Record ``initial`` and, every ``refresh_every`` seconds, whatever new markets ``select()``
+    returns, each on new connections, until ``minutes`` pass or ``rec.stop`` is set. No restart,
+    so games in progress are never cut."""
+
+    async with asyncio.TaskGroup() as tg:
+        def subscribe(rows: list[dict[str, Any]]) -> int:
+            added = uni.assign(rows, datetime.now(UTC))
+            for conn, tickers, interval in added:
+                tg.create_task(rec.kalshi_conn(conn, tickers, interval))
+            return sum(len(t) for _, t, _ in added)
+
+        async def refresher() -> None:
+            while not rec.stop.is_set():
+                await rec._sleep_or_stop(refresh_every)
+                if rec.stop.is_set():
+                    return
+                entry: dict[str, Any] = {"at": datetime.now(UTC).isoformat()}
+                try:
+                    rows = await asyncio.to_thread(select)
+                    entry.update(selected=len(rows), added=subscribe(rows))
+                except Exception as exc:  # noqa: BLE001 - a failed listing must not stop recording
+                    entry["error"] = f"{type(exc).__name__}: {exc}"[:300]
+                uni.refreshes.append(entry)
+
+        async def timer() -> None:
+            await rec._sleep_or_stop(minutes * 60)
+            rec.stop.set()
+
+        tg.create_task(disk_guard(rec, min_free_gb))
+        tg.create_task(timer())
+        tg.create_task(refresher())
+        subscribe(initial)
+        if check_sample:
+            tg.create_task(rec.book_checks(check_every, check_sample, conn="rest_vol"))

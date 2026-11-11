@@ -12,7 +12,9 @@
   `aws ssm start-session --region us-east-2 --target i-01990679def3bfdf4`.
 - Code in `~/albert` (venv `.venv`), secrets `~/albert/.env` (mode 600).
 - Services (systemd, `sudo systemctl status albert-*`):
-  - `albert-record` (deploy/record-loop.sh --paired-days 3) → data/raw/stream
+  - `albert-record` (deploy/record-loop.sh --paired-days 3 --skip-vol) → data/raw/stream
+  - `albert-record-vol` (RECORD_CMD=record-vol deploy/record-loop.sh) → data/raw/stream: the
+    vol-study families (`stream.vol_family`), never recorded by `albert-record` as well
   - `albert-paper` (deploy/paper-loop.sh) → data/paper_l2
   - `albert-forward` (deploy/forward-loop.sh, LEADS="mentions fcs rain") → data/cache/forward
   - `albert-mentions@demo` (albert live mentions --env demo; args in deploy/mentions-demo.conf)

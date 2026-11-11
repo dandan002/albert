@@ -113,6 +113,24 @@ def capture(s: Settings, c: Clients, root: Path) -> list[Path]:
     return out
 
 
+VOL_SERIES = ("KXNBAGAME", "KXNBA1H", "KXNBATOTAL", "KXNHL1P", "KXHIGHNY")
+VOL_DECOYS = ("KXHIGHINFLATION", "KXHIGHMOVKH", "KXNBA3QSPREAD", "KXNBATEAMTOTAL", "KXEPLGAME")
+
+
+def capture_vol(s: Settings, c: Clients, root: Path) -> list[Path]:
+    """Open-market pages of one series per vol family (``stream.select_vol``) plus the series
+    rows that ``stream.vol_family`` classifies, including look-alikes that are not vol series."""
+    from albert.ingest import kalshi_series
+
+    info = kalshi_series(s, c)
+    kc = c.kalshi.client
+    pages = {st: _trim(kc.get("/markets", {"series_ticker": st, "status": "open", "limit": 1000},
+                              cache=False).payload, 6) for st in VOL_SERIES}
+    payload = {"_recorded": datetime.now(UTC).isoformat(), "pages": pages,
+               "_series_trimmed": {st: info[st] for st in (*VOL_SERIES, *VOL_DECOYS) if st in info}}
+    return [_write(root, "kalshi", "vol_markets", payload, 1000)]
+
+
 def _redact(payload: Any) -> Any:
     """Drop the account's user id from portfolio fixtures (the rest is kept verbatim)."""
     if isinstance(payload, list):
