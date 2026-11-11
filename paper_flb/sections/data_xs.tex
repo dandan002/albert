@@ -1,0 +1,229 @@
+% Workstream xs: sampling frame, sample and quote panel.
+% source: data/research/flb_xs/summary.json:coverage, frame_cells.parquet, panel_schema.json
+% Numbers quoted in the xs sections, generated from data/research/flb_xs/ (flb_xs run latex).
+\newcommand{\xsFrameMkts}{3{,}100{,}088} % source: data/research/flb_xs/summary.json:coverage
+\newcommand{\xsEligibleMkts}{1{,}880{,}593} % source: data/research/flb_xs/summary.json:coverage
+\newcommand{\xsMkts}{19{,}007} % source: data/research/flb_xs/summary.json:coverage
+\newcommand{\xsEvents}{4{,}770} % source: data/research/flb_xs/summary.json:coverage
+\newcommand{\xsSeries}{1{,}670} % source: data/research/flb_xs/summary.json:coverage
+\newcommand{\xsPreQuotes}{61{,}992} % source: data/research/flb_xs/summary.json:coverage
+\newcommand{\xsInplayQuotes}{1{,}761} % source: data/research/flb_xs/summary.json:coverage
+\newcommand{\xsPanelRows}{80{,}581} % source: data/research/flb_xs/summary.json:coverage
+\newcommand{\xsUsableShare}{79} % source: data/research/flb_xs/summary.json:coverage
+\newcommand{\xsSampledMkts}{23{,}475} % source: data/research/flb_xs/summary.json:coverage
+\newcommand{\xsSampledEvents}{5{,}640} % source: data/research/flb_xs/summary.json:coverage
+\newcommand{\xsAllBeta}{1.13} % source: data/research/flb_xs/summary.json:measures_group.All.mkt
+\newcommand{\xsAllBetaT}{6.5} % source: data/research/flb_xs/summary.json:measures_group.All.mkt
+\newcommand{\xsAllAlpha}{0.07} % source: data/research/flb_xs/summary.json:measures_group.All.mkt
+\newcommand{\xsAllAlphaT}{2.0} % source: data/research/flb_xs/summary.json:measures_group.All.mkt
+\newcommand{\xsAllLsMid}{\ensuremath{-}55.1} % source: data/research/flb_xs/summary.json:measures_group.All.mkt
+\newcommand{\xsAllLsMidT}{\ensuremath{-}10.0} % source: data/research/flb_xs/summary.json:measures_group.All.mkt
+\newcommand{\xsAllFavMid}{1.1} % source: data/research/flb_xs/summary.json:measures_group.All.mkt
+\newcommand{\xsAllFavMidT}{9.8} % source: data/research/flb_xs/summary.json:measures_group.All.mkt
+\newcommand{\xsAllLsNet}{\ensuremath{-}74.7} % source: data/research/flb_xs/summary.json:measures_group.All.mkt
+\newcommand{\xsAllLsNetT}{\ensuremath{-}25.3} % source: data/research/flb_xs/summary.json:measures_group.All.mkt
+\newcommand{\xsAllFavNet}{\ensuremath{-}0.7} % source: data/research/flb_xs/summary.json:measures_group.All.mkt
+\newcommand{\xsAllFavNetT}{\ensuremath{-}2.4} % source: data/research/flb_xs/summary.json:measures_group.All.mkt
+\newcommand{\xsAllVolBeta}{1.48} % source: data/research/flb_xs/summary.json:measures_group.All.vol
+\newcommand{\xsAllVolBetaT}{3.6} % source: data/research/flb_xs/summary.json:measures_group.All.vol
+\newcommand{\xsAllVolLsMid}{\ensuremath{-}85.6} % source: data/research/flb_xs/summary.json:measures_group.All.vol
+\newcommand{\xsAllVolLsMidT}{\ensuremath{-}17.7} % source: data/research/flb_xs/summary.json:measures_group.All.vol
+\newcommand{\xsSportsBeta}{1.10} % source: data/research/flb_xs/summary.json:measures_group.Sports.mkt
+\newcommand{\xsSportsBetaT}{2.6} % source: data/research/flb_xs/summary.json:measures_group.Sports.mkt
+\newcommand{\xsWeatherBeta}{1.15} % source: data/research/flb_xs/summary.json:measures_group.Weather.mkt
+\newcommand{\xsWeatherBetaT}{2.9} % source: data/research/flb_xs/summary.json:measures_group.Weather.mkt
+\newcommand{\xsWeatherLsMid}{\ensuremath{-}30.7} % source: data/research/flb_xs/summary.json:measures_group.Weather.mkt
+\newcommand{\xsWeatherLsMidT}{\ensuremath{-}1.4} % source: data/research/flb_xs/summary.json:measures_group.Weather.mkt
+\newcommand{\xsPoliticsBeta}{1.07} % source: data/research/flb_xs/summary.json:measures_group.Politics.mkt
+\newcommand{\xsPoliticsBetaT}{1.8} % source: data/research/flb_xs/summary.json:measures_group.Politics.mkt
+\newcommand{\xsEntBeta}{1.25} % source: data/research/flb_xs/summary.json:measures_group.Entertainment.mkt
+\newcommand{\xsEntBetaT}{4.8} % source: data/research/flb_xs/summary.json:measures_group.Entertainment.mkt
+\newcommand{\xsMentionsBeta}{1.13} % source: data/research/flb_xs/summary.json:measures_group.Mentions.mkt
+\newcommand{\xsMentionsBetaT}{2.0} % source: data/research/flb_xs/summary.json:measures_group.Mentions.mkt
+\newcommand{\xsMentionsLsMid}{\ensuremath{-}75.8} % source: data/research/flb_xs/summary.json:measures_group.Mentions.mkt
+\newcommand{\xsMentionsLsMidT}{\ensuremath{-}12.1} % source: data/research/flb_xs/summary.json:measures_group.Mentions.mkt
+\newcommand{\xsSciBeta}{1.18} % source: data/research/flb_xs/summary.json:measures_group.Science & Tech.mkt
+\newcommand{\xsSciBetaT}{2.6} % source: data/research/flb_xs/summary.json:measures_group.Science & Tech.mkt
+\newcommand{\xsOtherBeta}{1.46} % source: data/research/flb_xs/summary.json:measures_group.Other.mkt
+\newcommand{\xsOtherMkts}{116} % source: data/research/flb_xs/summary.json:measures_group.Other.mkt
+\newcommand{\xsInplayBeta}{1.09} % source: data/research/flb_xs/summary.json:measures_group.Sports in-play.mkt
+\newcommand{\xsInplayBetaT}{1.1} % source: data/research/flb_xs/summary.json:measures_group.Sports in-play.mkt
+\newcommand{\xsInplayLsMid}{\ensuremath{-}74.1} % source: data/research/flb_xs/summary.json:measures_group.Sports in-play.mkt
+\newcommand{\xsInplayLsMidT}{\ensuremath{-}8.5} % source: data/research/flb_xs/summary.json:measures_group.Sports in-play.mkt
+\newcommand{\xsBOneQ}{0.87} % source: data/research/flb_xs/tables/calibration.json:All.mkt
+\newcommand{\xsBOneWin}{0.38} % source: data/research/flb_xs/tables/calibration.json:All.mkt
+\newcommand{\xsBOneMid}{\ensuremath{-}62.0} % source: data/research/flb_xs/tables/calibration.json:All.mkt
+\newcommand{\xsBOneMidT}{\ensuremath{-}7.5} % source: data/research/flb_xs/tables/calibration.json:All.mkt
+\newcommand{\xsBThreeMid}{\ensuremath{-}54.1} % source: data/research/flb_xs/tables/calibration.json:All.mkt
+\newcommand{\xsBSixMid}{\ensuremath{-}29.2} % source: data/research/flb_xs/tables/calibration.json:All.mkt
+\newcommand{\xsBNinetyNineMid}{0.4} % source: data/research/flb_xs/tables/calibration.json:All.mkt
+\newcommand{\xsBNinetyNineMidT}{5.6} % source: data/research/flb_xs/tables/calibration.json:All.mkt
+\newcommand{\xsBNinetyNineNet}{\ensuremath{-}0.4} % source: data/research/flb_xs/tables/calibration.json:All.mkt
+\newcommand{\xsTermAllOneHBeta}{1.18} % source: data/research/flb_xs/tables/term.json
+\newcommand{\xsTermAllOneHBetaT}{7.1} % source: data/research/flb_xs/tables/term.json
+\newcommand{\xsTermAllOneDBeta}{1.23} % source: data/research/flb_xs/tables/term.json
+\newcommand{\xsTermAllOneDBetaT}{7.8} % source: data/research/flb_xs/tables/term.json
+\newcommand{\xsTermAllSevenDBeta}{1.16} % source: data/research/flb_xs/tables/term.json
+\newcommand{\xsTermAllThirtyDBeta}{1.12} % source: data/research/flb_xs/tables/term.json
+\newcommand{\xsTermAllThirtyDBetaT}{2.3} % source: data/research/flb_xs/tables/term.json
+\newcommand{\xsTermEntSixHBeta}{1.59} % source: data/research/flb_xs/tables/term.json
+\newcommand{\xsTermEntOneDBeta}{1.47} % source: data/research/flb_xs/tables/term.json
+\newcommand{\xsTermEntOneDBetaT}{5.3} % source: data/research/flb_xs/tables/term.json
+\newcommand{\xsTermEntSevenDBeta}{1.14} % source: data/research/flb_xs/tables/term.json
+\newcommand{\xsTermEntThirtyDBeta}{1.29} % source: data/research/flb_xs/tables/term.json
+\newcommand{\xsTermSportsStartOneHBeta}{1.09} % source: data/research/flb_xs/tables/term.json
+\newcommand{\xsTermSportsStartOneHBetaT}{0.9} % source: data/research/flb_xs/tables/term.json
+\newcommand{\xsTermSportsStartSixHBeta}{1.05} % source: data/research/flb_xs/tables/term.json
+\newcommand{\xsTermSportsStartOneDBeta}{0.98} % source: data/research/flb_xs/tables/term.json
+\newcommand{\xsTermSportsStartInHalfBeta}{1.15} % source: data/research/flb_xs/tables/term.json
+\newcommand{\xsTermSportsStartInHalfBetaT}{1.4} % source: data/research/flb_xs/tables/term.json
+\newcommand{\xsTermSportsStartInOneBeta}{1.03} % source: data/research/flb_xs/tables/term.json
+\newcommand{\xsTermSportsStartInTwoBeta}{1.08} % source: data/research/flb_xs/tables/term.json
+\newcommand{\xsStBinaryBeta}{1.12} % source: data/research/flb_xs/tables/structure.json:binary.all.mkt
+\newcommand{\xsStBinaryBetaT}{3.7} % source: data/research/flb_xs/tables/structure.json:binary.all.mkt
+\newcommand{\xsStMultiBeta}{1.28} % source: data/research/flb_xs/tables/structure.json:multi.all.mkt
+\newcommand{\xsStMultiBetaT}{4.4} % source: data/research/flb_xs/tables/structure.json:multi.all.mkt
+\newcommand{\xsStLadderBeta}{1.12} % source: data/research/flb_xs/tables/structure.json:ladder.all.mkt
+\newcommand{\xsStLadderBetaT}{2.9} % source: data/research/flb_xs/tables/structure.json:ladder.all.mkt
+\newcommand{\xsStLadderRegLsMid}{\ensuremath{-}30.9} % source: data/research/flb_xs/tables/structure.json:ladder.regions
+\newcommand{\xsStLadderRegLsMidT}{\ensuremath{-}2.3} % source: data/research/flb_xs/tables/structure.json:ladder.regions
+\newcommand{\xsStLadderRegBodyMid}{0.4} % source: data/research/flb_xs/tables/structure.json:ladder.regions
+\newcommand{\xsStDeadlineBeta}{1.22} % source: data/research/flb_xs/tables/structure.json:deadline.all.mkt
+\newcommand{\xsStDeadlineBetaT}{3.9} % source: data/research/flb_xs/tables/structure.json:deadline.all.mkt
+\newcommand{\xsStDeadlineRegLsMid}{\ensuremath{-}68.3} % source: data/research/flb_xs/tables/structure.json:deadline.regions
+\newcommand{\xsStDeadlineRegLsMidT}{\ensuremath{-}10.7} % source: data/research/flb_xs/tables/structure.json:deadline.regions
+\newcommand{\xsMeTwoOverAsk}{2.8} % source: data/research/flb_xs/tables/structure.json:multi_outcome.two_leg
+\newcommand{\xsMeTwoOverMid}{\ensuremath{-}0.1} % source: data/research/flb_xs/tables/structure.json:multi_outcome.two_leg
+\newcommand{\xsMeTwoZMedian}{0.020} % source: data/research/flb_xs/tables/structure.json:multi_outcome.two_leg
+\newcommand{\xsMeMultiOverAsk}{9.7} % source: data/research/flb_xs/tables/structure.json:multi_outcome.multi
+\newcommand{\xsMeMultiOverAskT}{16.6} % source: data/research/flb_xs/tables/structure.json:multi_outcome.multi
+\newcommand{\xsMeMultiOverMid}{2.3} % source: data/research/flb_xs/tables/structure.json:multi_outcome.multi
+\newcommand{\xsMeMultiOverMidT}{7.8} % source: data/research/flb_xs/tables/structure.json:multi_outcome.multi
+\newcommand{\xsMeMultiZMedian}{0.017} % source: data/research/flb_xs/tables/structure.json:multi_outcome.multi
+\newcommand{\xsMeMultiBrierMid}{0.0611} % source: data/research/flb_xs/tables/structure.json:multi_outcome.multi
+\newcommand{\xsMeMultiBrierShin}{0.0614} % source: data/research/flb_xs/tables/structure.json:multi_outcome.multi
+\newcommand{\xsMeMultiFieldPrice}{9.7} % source: data/research/flb_xs/tables/structure.json:multi_outcome.multi
+\newcommand{\xsMeMultiFieldWin}{5.4} % source: data/research/flb_xs/tables/structure.json:multi_outcome.multi
+\newcommand{\xsMeMultiFieldGap}{4.3} % source: data/research/flb_xs/tables/structure.json:multi_outcome.multi
+\newcommand{\xsMeMultiFieldGapT}{3.4} % source: data/research/flb_xs/tables/structure.json:multi_outcome.multi
+\newcommand{\xsMeMultiFieldShinGap}{4.0} % source: data/research/flb_xs/tables/structure.json:multi_outcome.multi
+\newcommand{\xsMeMultiFieldShinGapT}{3.2} % source: data/research/flb_xs/tables/structure.json:multi_outcome.multi
+\newcommand{\xsMeMultiRankOneEmid}{1.46} % source: data/research/flb_xs/tables/structure.json:multi_outcome.multi
+\newcommand{\xsMeMultiRankOneEmidT}{0.8} % source: data/research/flb_xs/tables/structure.json:multi_outcome.multi
+\newcommand{\xsMeMultiRankSixEmid}{\ensuremath{-}0.55} % source: data/research/flb_xs/tables/structure.json:multi_outcome.multi
+\newcommand{\xsMeMultiRankSixEmidT}{\ensuremath{-}3.8} % source: data/research/flb_xs/tables/structure.json:multi_outcome.multi
+\newcommand{\xsMultiLegsThreeBeta}{1.26} % source: data/research/flb_xs/tables/structure.json:multi_by_legs
+\newcommand{\xsMultiLegsSixBeta}{1.17} % source: data/research/flb_xs/tables/structure.json:multi_by_legs
+\newcommand{\xsMultiLegsElevenBeta}{1.41} % source: data/research/flb_xs/tables/structure.json:multi_by_legs
+\newcommand{\xsMultiLegsTwentyOneBeta}{1.25} % source: data/research/flb_xs/tables/structure.json:multi_by_legs
+\newcommand{\xsLiqVolLowBeta}{1.13} % source: data/research/flb_xs/tables/liquidity.json
+\newcommand{\xsLiqVolLowLsMid}{\ensuremath{-}53.3} % source: data/research/flb_xs/tables/liquidity.json
+\newcommand{\xsLiqVolMidBeta}{1.13} % source: data/research/flb_xs/tables/liquidity.json
+\newcommand{\xsLiqVolHighBeta}{1.12} % source: data/research/flb_xs/tables/liquidity.json
+\newcommand{\xsLiqVolHighBetaT}{4.1} % source: data/research/flb_xs/tables/liquidity.json
+\newcommand{\xsLiqVolHighLsMid}{\ensuremath{-}60.9} % source: data/research/flb_xs/tables/liquidity.json
+\newcommand{\xsLiqSpreadLowBeta}{1.17} % source: data/research/flb_xs/tables/liquidity.json
+\newcommand{\xsLiqSpreadMidBeta}{1.11} % source: data/research/flb_xs/tables/liquidity.json
+\newcommand{\xsLiqSpreadHighBeta}{1.13} % source: data/research/flb_xs/tables/liquidity.json
+\newcommand{\xsLiqOiLowBeta}{1.12} % source: data/research/flb_xs/tables/liquidity.json
+\newcommand{\xsLiqOiMidBeta}{1.14} % source: data/research/flb_xs/tables/liquidity.json
+\newcommand{\xsLiqOiHighBeta}{1.13} % source: data/research/flb_xs/tables/liquidity.json
+\newcommand{\xsCalFirstQtr}{2021Q3} % source: data/research/flb_xs/tables/calendar.json
+\newcommand{\xsCalLastQtr}{2026Q4} % source: data/research/flb_xs/tables/calendar.json
+\newcommand{\xsCalNQtr}{22} % source: data/research/flb_xs/tables/calendar.json
+\newcommand{\xsCalBetaAboveOne}{17} % source: data/research/flb_xs/tables/calendar.json
+\newcommand{\xsCalRecentMin}{1.08} % source: data/research/flb_xs/tables/calendar.json
+\newcommand{\xsCalRecentMax}{1.19} % source: data/research/flb_xs/tables/calendar.json
+\newcommand{\xsCalRecentN}{8} % source: data/research/flb_xs/tables/calendar.json
+\newcommand{\xsCalEarlyMin}{0.84} % source: data/research/flb_xs/tables/calendar.json
+\newcommand{\xsCalEarlyMax}{1.40} % source: data/research/flb_xs/tables/calendar.json
+\newcommand{\xsVenueEarlyMkts}{1{,}239} % source: data/research/flb_xs/tables/calendar.json:venue (frame markets per quarter, 2022 mean)
+\newcommand{\xsVenuePeakMkts}{1{,}209{,}781} % source: data/research/flb_xs/tables/calendar.json:venue
+\newcommand{\xsVenuePeakQtr}{2026Q3} % source: data/research/flb_xs/tables/calendar.json:venue
+\newcommand{\xsGroupBetaMin}{1.07} % source: data/research/flb_xs/summary.json:measures_group
+\newcommand{\xsGroupBetaMax}{1.25} % source: data/research/flb_xs/summary.json:measures_group
+\newcommand{\xsGroupVolBetaMin}{1.29} % source: data/research/flb_xs/summary.json:measures_group
+\newcommand{\xsGroupVolBetaMax}{1.80} % source: data/research/flb_xs/summary.json:measures_group
+\newcommand{\xsBandShareMin}{62} % source: data/research/flb_xs/tables/limits.json:band
+\newcommand{\xsBandShareMax}{78} % source: data/research/flb_xs/tables/limits.json:band
+\newcommand{\xsFloorShareEither}{34} % source: data/research/flb_xs/tables/limits.json:floor
+\newcommand{\xsFloorSharePinned}{16} % source: data/research/flb_xs/tables/limits.json:floor
+\newcommand{\xsSubcentShare}{0.7} % source: data/research/flb_xs/tables/limits.json:floor
+\newcommand{\xsFloorAllLoss}{0.49} % source: data/research/flb_xs/tables/limits.json:floor.decomposition
+\newcommand{\xsFloorAllMechShare}{45} % source: data/research/flb_xs/tables/limits.json:floor.decomposition
+\newcommand{\xsFloorPinnedWin}{0.13} % source: data/research/flb_xs/tables/limits.json:floor.decomposition
+\newcommand{\xsFloorTakerWin}{0.29} % source: data/research/flb_xs/tables/limits.json:floor.decomposition
+\newcommand{\xsFloorTakerMechShare}{68} % source: data/research/flb_xs/tables/limits.json:floor.decomposition
+\newcommand{\xsOtherAllTakerNet}{\ensuremath{-}0.49} % source: data/research/flb_xs/tables/limits.json:other_side
+\newcommand{\xsOtherAllTakerNetT}{\ensuremath{-}1.7} % source: data/research/flb_xs/tables/limits.json:other_side
+\newcommand{\xsOtherAllMakerNet}{2.64} % source: data/research/flb_xs/tables/limits.json:other_side
+\newcommand{\xsOtherAllMakerNetT}{21.3} % source: data/research/flb_xs/tables/limits.json:other_side
+\newcommand{\xsOtherAllMid}{1.11} % source: data/research/flb_xs/tables/limits.json:other_side
+\newcommand{\xsOtherAllMidT}{9.8} % source: data/research/flb_xs/tables/limits.json:other_side
+\newcommand{\xsBandBOneMis}{0.49} % source: data/research/flb_xs/tables/limits.json:band
+\newcommand{\xsBandBOneCost}{0.79} % source: data/research/flb_xs/tables/limits.json:band
+\newcommand{\xsBandBThreeMis}{1.86} % source: data/research/flb_xs/tables/limits.json:band
+\newcommand{\xsBandBThreeCost}{2.48} % source: data/research/flb_xs/tables/limits.json:band
+\newcommand{\xsBandBSixMis}{2.01} % source: data/research/flb_xs/tables/limits.json:band
+\newcommand{\xsBandBSixCost}{2.56} % source: data/research/flb_xs/tables/limits.json:band
+\newcommand{\xsBandInside}{12} % source: data/research/flb_xs/tables/limits.json:band
+\newcommand{\xsBandN}{12} % source: data/research/flb_xs/tables/limits.json:band
+\newcommand{\xsRobFirstBeta}{1.10} % source: data/research/flb_xs/tables/robustness.json:first_half.all
+\newcommand{\xsRobFirstBetaT}{3.5} % source: data/research/flb_xs/tables/robustness.json:first_half.all
+\newcommand{\xsRobFirstLsMid}{\ensuremath{-}48.5} % source: data/research/flb_xs/tables/robustness.json:first_half.all
+\newcommand{\xsRobFirstGroupsAboveOne}{7} % source: data/research/flb_xs/tables/robustness.json:first_half.by_group
+\newcommand{\xsRobFirstGroups}{7} % source: data/research/flb_xs/tables/robustness.json:first_half.by_group
+\newcommand{\xsRobSecondBeta}{1.15} % source: data/research/flb_xs/tables/robustness.json:second_half.all
+\newcommand{\xsRobSecondBetaT}{5.3} % source: data/research/flb_xs/tables/robustness.json:second_half.all
+\newcommand{\xsRobSecondLsMid}{\ensuremath{-}62.9} % source: data/research/flb_xs/tables/robustness.json:second_half.all
+\newcommand{\xsRobSecondGroupsAboveOne}{6} % source: data/research/flb_xs/tables/robustness.json:second_half.by_group
+\newcommand{\xsRobSecondGroups}{6} % source: data/research/flb_xs/tables/robustness.json:second_half.by_group
+\newcommand{\xsRobSplit}{2025-07-28} % source: data/research/flb_xs/tables/robustness.json:first_half.split_ts
+\newcommand{\xsRobInnerBeta}{1.16} % source: data/research/flb_xs/tables/robustness.json:excl_extreme_buckets
+\newcommand{\xsRobInnerBetaT}{7.9} % source: data/research/flb_xs/tables/robustness.json:excl_extreme_buckets
+\newcommand{\xsRobSpreadBeta}{1.12} % source: data/research/flb_xs/tables/robustness.json:spread_le_5c
+\newcommand{\xsRobFreshBeta}{1.13} % source: data/research/flb_xs/tables/robustness.json:quote_age_le_24h
+\newcommand{\xsRobDesignBeta}{1.15} % source: data/research/flb_xs/tables/robustness.json:design_weighted
+\newcommand{\xsRobDesignBetaT}{2.2} % source: data/research/flb_xs/tables/robustness.json:design_weighted
+\newcommand{\xsCluMarketBetaT}{7.7} % source: data/research/flb_xs/tables/robustness.json:clustering
+\newcommand{\xsCluSeriesBetaT}{6.3} % source: data/research/flb_xs/tables/robustness.json:clustering
+\newcommand{\xsCluMonthBetaT}{7.7} % source: data/research/flb_xs/tables/robustness.json:clustering
+
+\paragraph{Frame.}
+The frame contains every settled single-leg Kalshi market in a non-financial series, \xsFrameMkts{}
+markets in total. Markets settled before Kalshi's historical cutoff of 11 September 2026 come from
+the public historical endpoint, read series by series back to the first listings in July 2021.
+Later markets, to 31 October 2026, come from the settled-market table of \cref{sec:data}. Sports
+series are read back to July 2024, because Kalshi listed almost no sports contracts before 2025.
+Each sports series is capped at its newest 60{,}000 markets; three MLB player-prop series reach the
+cap and are covered from June--July 2026. Multivariate (parlay) collections are not single-leg
+markets and are excluded, as are financial contracts (\cref{sec:data}).
+
+\paragraph{Scheduled time.}
+Leads are measured from a scheduled time $T_m$ that is known when the market lists:
+\begin{itemize}
+\item \emph{start}: the scheduled start written in the ticker of a sports event;
+\item \emph{date}: the event date written in the ticker. This is midnight US Eastern for most
+      groups; for daily weather, the start of the local measurement day; and for sports without a
+      start time, midnight at UTC$+$14, which is before any local start on that date;
+\item \emph{deadline}: the date stated in the rules of a ``by date'' contract;
+\item \emph{close}: otherwise, the scheduled close, equal to the expected expiration minus the
+      series' modal gap between expiration and close.
+\end{itemize}
+Ticker dates take precedence when they fall before the scheduled close, because many markets stay
+open well after their outcome is known. The 2024 presidential market, for example, traded until the
+January 2025 inauguration. Close times of markets that closed early, settlement times and the
+post-outcome \texttt{last\_price} are never used.
+
+\paragraph{Sample and panel.}
+A market is eligible if its scheduled time is known and falls by 31 October 2026, it opened at
+least an hour before that time, and its event traded at least 10 contracts. That leaves
+\xsEligibleMkts{} markets. We draw a stratified random sample of events, keeping all their legs,
+from cells defined by group, month of $T_m$ and structure. Each group has a market budget spread
+evenly over its months, and quota that one structure cannot use in a cell passes to the others in
+that month. Events with more than 30 candidate legs keep a random 30, and ladder events keep whole
+ladders up to 60 legs. The sample has \xsSampledMkts{} markets in \xsSampledEvents{} events, with
+hourly candles from the public candlestick endpoints. Of the \xsPanelRows{} market--lead observations, \xsUsableShare\% have a usable quote.
+The analysis uses \xsPreQuotes{} pre-event quotes on \xsMkts{} markets in \xsEvents{} events and
+\xsSeries{} series, plus \xsInplayQuotes{} sports in-play quotes (\cref{tab:xs-coverage}). The
+panel is shared with the structural analysis (\cref{sec:method-structural}).

@@ -1,0 +1,101 @@
+% Institutional setting and overview of the three data sets.
+\paragraph{Kalshi.} Kalshi is a US exchange for event contracts, regulated by the Commodity Futures
+Trading Commission as a designated contract market.
+\begin{itemize}
+  \item \emph{Contracts.} Each binary contract pays \$1 if its event occurs and nothing otherwise,
+  and is fully collateralised. A trader who buys YES at $p$ posts $p$; a trader who buys NO posts
+  $1-p$.
+  \item \emph{Trading.} Trading takes place in a central limit order book. A bid for NO at $\q$ is an
+  offer of YES at $1-\q$, so each market has a single book. Most markets are quoted on a one-cent
+  grid from 1 to 99\cents.
+  \item \emph{Fees.} A taker pays $0.07\times m\times C\,P(1-P)$ for $C$ contracts at price $P$, where
+  $m$ is a series multiplier equal to one for almost all series. Some series also charge makers,
+  with coefficient $0.0175$ \citep{kalshifees}. Per contract, the fee is largest at
+  $P=50\cents$ and vanishes at the edges of the price range. Per dollar staked it is
+  $0.07\,m(1-P)$, which is largest for longshots.
+  \item \emph{Access.} Retail customers trade through Kalshi's own app and website. Since March 2025
+  they can also trade through a prediction-market hub inside Robinhood's brokerage app, which routes
+  orders to Kalshi \citep{robinhood2025}. Order flow on Kalshi therefore includes flow from a large
+  retail brokerage.
+\end{itemize}
+Contracts are organised as \emph{series} (a recurring question), \emph{events} (one instance of
+the question) and \emph{markets} (one binary leg of an event). We classify every market into one of
+four contract structures.
+\begin{itemize}
+  \item \emph{Single binary:} an event with one or two legs, such as a game-winner market.
+  \item \emph{Multi-outcome:} an event with at least three mutually exclusive legs, of which
+  exactly one pays, such as the winner of an award or a tournament.
+  \item \emph{Strike ladder:} legs on thresholds or brackets of one quantity, such as a city's
+  daily high temperature, a point spread or a game total.
+  \item \emph{Deadline:} a contract that pays if an event happens by a stated date
+  (``by date $T$'').
+\end{itemize}
+Multi-outcome events and ladders produce most longshots, because all but one or two of their legs
+are unlikely.
+
+\paragraph{Polymarket.} Polymarket's international exchange matches orders off chain and settles
+them on chain, with outcome shares collateralised in a dollar stablecoin. Every fill therefore
+records the wallet on each side, which lets us follow identified traders. The venue is not open to
+US persons. Its markets are binary, and multi-outcome questions are listed as groups of binary
+markets, as on Kalshi. Trading was fee-free on almost all markets until early 2026. Taker fees of
+the form $\theta\,\q(1-\q)$ were then introduced on almost every market by May 2026
+(\cref{app:wallets}). We use Polymarket only as a source of data and place no orders.
+
+\paragraph{Scope.} We study \emph{non-financial} contracts: sports, weather, politics (including
+elections and world affairs), entertainment, mentions (whether a speaker says a phrase during an
+event), science and technology, and a small residual group. We exclude contracts on crypto prices,
+equity indices, interest rates, economic releases and company metrics. Their prices are tied to
+traded underlyings with their own dynamics and arbitrage relations. In the events we study, the
+event contract is the only market on the event, so its price is the market's probability
+assessment.
+
+\paragraph{Three data sets.} Each research question uses the data best suited to it.
+\Cref{tab:data-overview} summarises them.
+\begin{itemize}
+  \item \emph{Kalshi quote panel} (\cref{sec:data-xs}): bid and ask quotes at fixed leads before
+  the scheduled resolution of a stratified random sample of settled markets. It measures the bias
+  across categories, horizons and contract structures, and is the basis of the structural
+  analysis.
+  \item \emph{Kalshi trades} (\cref{sec:data-flow}): complete public trade histories of a second
+  stratified sample, with each print's size, price and aggressor side. It measures who pays the
+  bias by liquidity role, trade size and timing.
+  \item \emph{Polymarket wallets} (\cref{sec:data-wallets}): complete on-chain trade histories of a
+  stratified sample of Polymarket markets, with wallet identities, plus Kalshi and Polymarket
+  prices for matched games. It measures which traders buy longshots, how concentrated profits are,
+  and how the two venues compare.
+\end{itemize}
+All three samples are drawn at random within strata, and design weights make pooled estimates
+representative of their frames. The two Kalshi samples draw events without regard to volume. The
+Polymarket sample stratifies by volume tier and excludes the largest markets
+(\cref{sec:data-wallets}). All data are public; we use no
+account-level information from either venue.
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Data sets}\label{tab:data-overview}
+\footnotesize
+\begin{tabular}{@{}llll@{}}
+\toprule
+ & Kalshi quote panel & Kalshi trades & Polymarket wallets \\
+\midrule
+% source: data/research/flb_xs/summary.json (coverage); data/research/flb_flow/summary.json
+% (coverage); data/research/flb_wallets/summary.json (coverage)
+Period (resolution) & Jul 2021--Oct 2026 & 15 Aug--31 Oct 2026 & Jan 2024--Oct 2026 \\
+Frame (markets) & 3{,}100{,}088 & 1{,}128{,}256 & 636{,}520 \\
+Sampling unit & event & event & market \\
+Strata & group $\times$ month $\times$ structure & group or league & group $\times$ volume $\times$ month \\
+Sample (markets) & 23{,}475 & 15{,}329 & 2{,}765 \\
+Observations & 63{,}753 quotes & 2.69 million prints & 2.57 million fills \\
+Identities & none & aggressor side & wallet, role \\
+Used in & \cref{sec:res-xs,sec:res-structural} & \cref{sec:res-flow} & \cref{sec:res-wallets} \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item Non-financial contracts only. Kalshi trade prints are those made before the
+pre-resolution cut of \cref{sec:data-flow}. Polymarket fills are all fills in sampled markets;
+analyses of returns use fills before each market's information time
+(\cref{sec:method-wallets}).
+\end{tablenotes}
+\end{threeparttable}
+\end{table}

@@ -1,0 +1,73 @@
+{
+ "data": [
+  {
+   "bio": "",
+   "condition_id": "0x2cf6f5a26730eaa7dafd249e6363ce8e09706d06856809888a92ca5aa4245638",
+   "event_slug": "nhl-tor-nyr-2025-02-28",
+   "icon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/nhl.png",
+   "name": "huaxia",
+   "outcome": "Maple Leafs",
+   "outcome_index": 0,
+   "price": 0.999,
+   "profile_image": "",
+   "profile_image_optimized": "",
+   "proxy_wallet": "0x0b8526818f5d93642f02a482214556e0a91bd796",
+   "pseudonym": "Bright-Minister",
+   "side": "SELL",
+   "size": 1.88,
+   "slug": "nhl-tor-nyr-2025-02-28",
+   "timestamp": 1740805121,
+   "title": "Maple Leafs vs. Rangers",
+   "token_id": "67729249147134306584854937983037610598160664978841329523774023879285966062091",
+   "transaction_hash": "0x7990affbaf0453e6e346417dbb9b1b8a575d9792abaf91e88020a70124be16ad"
+  },
+  {
+   "bio": "",
+   "condition_id": "0x2cf6f5a26730eaa7dafd249e6363ce8e09706d06856809888a92ca5aa4245638",
+   "event_slug": "nhl-tor-nyr-2025-02-28",
+   "icon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/nhl.png",
+   "name": "lexabass",
+   "outcome": "Maple Leafs",
+   "outcome_index": 0,
+   "price": 0.996,
+   "profile_image": "",
+   "profile_image_optimized": "",
+   "proxy_wallet": "0xec16e20ec531a8fe763e4c827774a634be0b07f9",
+   "pseudonym": "Delightful-Comment",
+   "side": "SELL",
+   "size": 925.92,
+   "slug": "nhl-tor-nyr-2025-02-28",
+   "timestamp": 1740803283,
+   "title": "Maple Leafs vs. Rangers",
+   "token_id": "67729249147134306584854937983037610598160664978841329523774023879285966062091",
+   "transaction_hash": "0x5de5a9052673f868f5d41cf59b03828509c432404c2f9eb26d0baf3581672a8a"
+  },
+  {
+   "bio": "Just want to get back to it",
+   "condition_id": "0x2cf6f5a26730eaa7dafd249e6363ce8e09706d06856809888a92ca5aa4245638",
+   "event_slug": "nhl-tor-nyr-2025-02-28",
+   "icon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/nhl.png",
+   "name": "Cincinnatus17",
+   "outcome": "Maple Leafs",
+   "outcome_index": 0,
+   "price": 0.996,
+   "profile_image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/alexandre_cabanel_cincinnatus_receiving_deputies_of_the_senate_1844_obelisk_art_history_b372710f-bfdb-432e-b9bc-40337c5a6e1e_1726463861361.webp",
+   "profile_image_optimized": "",
+   "proxy_wallet": "0xb4c4ad0fc2c8ad8a12a2a865815e1ccedf478441",
+   "pseudonym": "Careful-Proposition",
+   "side": "SELL",
+   "size": 1000.0,
+   "slug": "nhl-tor-nyr-2025-02-28",
+   "timestamp": 1740801002,
+   "title": "Maple Leafs vs. Rangers",
+   "token_id": "67729249147134306584854937983037610598160664978841329523774023879285966062091",
+   "transaction_hash": "0x07f14606b5cd6bc2554d4e870a1175bd09012eb598872f20d8a3d705a41de85f"
+  }
+ ],
+ "pagination": {
+  "has_more": false,
+  "limit": 1000,
+  "next_cursor": null,
+  "offset": 0
+ }
+}

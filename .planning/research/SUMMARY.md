@@ -531,3 +531,39 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     episodes are sub-contract dust): −0.01c at 2 ms, −0.3c at 3 ms, −0.8c at 4 ms, −1.1c at
     5 ms. The total 1-lot opportunity is a few dollars over four nights.
   - **Verdict.** Faster execution narrows the loss but never makes it positive at our latency.
+- **Favourite–longshot bias and retail flow: academic study (2026-11-11; paper `paper_flb/`,
+  code `flb_{common,xs,flow,wallets,structural}.py`, outputs `data/research/flb_*/`).** This is a
+  descriptive study, not a strategy test.
+  - *Cross-section* (19,007 Kalshi markets, 4,770 events, 2021-07..2026-10, quotes at 1 h–30 d
+    leads).
+    - Calibration slope 1.13 (t 6.5 vs 1); volume-weighted 1.48.
+    - Longshots (≤10c) return −55% per $ at the mid and −75% net of spread and taker fee.
+      Favourites +1.1% at the mid, −0.7% net.
+    - Present in every group and in both halves. Flat across liquidity terciles. Steepest in
+      multi-outcome (1.28) and deadline (1.22) contracts. Does not fade at 1 h (1.18). Pre-game
+      sports with an exact start are near calibrated.
+  - *Kalshi trades* (2.69M prints, 18 strata, Aug–Oct 2026).
+    - Small orders hold the longshots: 39% of contracts in ≤$10 taker orders are longshots,
+      against 1.2% in >$1k orders (18/18 strata).
+    - Taker longshot positions lose in 14/18 strata, and takers do worse than makers in 13/18.
+      The immediacy cost (0.51c half-spread + 0.33c fee) is 14% of the stake.
+    - No overall taker–maker gap, and no size class predicts outcomes.
+    - Pooled per-$ longshot means are heavy-tailed: one MLB HR-prop event is 40% of the weighted
+      profit. Use per-stratum estimates and sign tests.
+  - *Polymarket wallets* (2.57M fills, 237,569 wallets).
+    - Retail wallets make 86% of net longshot buying. No professional seller class.
+    - The top 1% of wallets take 85% of gains, with no persistence (rank correlation 0.02).
+    - Kalshi and Polymarket game prices match within 0.40c.
+    - `gateway.polymarket.us` robots.txt disallows ClaudeBot/anthropic-ai/Claude-Web, so no
+      Polymarket US prices were used. The older `albert ingest pmus` command uses that host;
+      this is flagged to the user.
+  - *Structural.*
+    - Market-weighted, the longshot gap is inside the taker no-arbitrage band; volume-weighted it
+      exceeds the band by 0.79c (t 2.7).
+    - The tick floor is ~half of the 1–2c loss.
+    - LLO γ = 0.89, below 1 in every group; fitted on H1 it removes 61% of the H2 longshot gap.
+    - Shin z is mostly the spread. Belief-dispersion proxies are not supported.
+    - Verdict: frictions bound the bias; lottery demand by small traders is the best-supported
+      source.
+  - Fee note: Kalshi charges fees per fill to $0.000001 and rebates rounding over-payment
+    (docs.kalshi.com/getting_started/fee_rounding), so exact fees are the fees paid.

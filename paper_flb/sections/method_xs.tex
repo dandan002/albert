@@ -1,0 +1,135 @@
+% Workstream xs: measurement of the favourite--longshot bias in the cross-section of Kalshi markets.
+% Code: src/albert/research/flb_xs.py (steps scan, sample, events, candles, panel, analyze).
+% Every number in this subsection's text is a design parameter of that code, not an estimate.
+
+\paragraph{Observations.}
+For market $m$ with scheduled time $T_m$ (defined in \cref{sec:data-xs}) and lead $L$, the
+observation time is $t=T_m-L$. The pre-event leads are $L\in\{1,6,24,72,168,720\}$ hours. Sports
+events whose ticker carries the start time also have in-play observations at $t=T_m+0.5$, $+1$
+and $+2$ hours. The quote at $t$ is the YES bid $b$ and ask $a$ at the close of the last hourly
+candle that ended at or before $t$. Kalshi omits many hours without activity, and the last close is taken
+as the standing quote. Its age is recorded and used in a robustness check. The mid is $p=(a+b)/2$.
+An observation enters the analysis when the market is open at $t$, stays open at least 15 minutes
+after $t$, and its quote is \emph{usable}: $a>b$ and $a-b\le 10\cents$. A one-sided book at the
+tick floor ($b=0$, $a=1\cents$) is usable and has mid $0.5\cents$.
+
+\paragraph{Sides, prices and returns.}
+Each quote yields two side observations: YES, with side price $\q=p$ and payoff $\won=y$, and NO,
+with $\q=1-p$ and $\won=1-y$, where $y=1$ if the market settled YES. The executable taker price is
+$\q^{a}=a$ for YES and $1-b$ for NO; a resting (maker) order buys at $\q^{b}=b$ or $1-a$. Returns
+per dollar are $\ret=(\won-\q-\fee)/(\q+\fee)$ as in \cref{sec:framework}, with the taker fee
+$\fee(\q)=\theta\,\q(1-\q)$, where $\theta=0.07$ times the series fee multiplier (one for almost all
+series). We report three versions:
+gross at the mid ($\q=p$ or $1-p$, $\fee=0$), gross at the ask ($\q=\q^a$, $\fee=0$), and net of the
+exact taker fee at the ask ($\q=\q^a$, $\fee=\fee(\q^a)$). The difference between the first two is the
+half-spread; the difference between the last two is the fee. Kalshi computes fees per fill to
+\$0.000001 and rebates rounding over-payment \citep{kalshirounding}, so we use exact fees and show
+per-order rounding to the cent only for comparison. Fees follow the schedule and
+series multipliers in force in November 2026 throughout; Kalshi's schedule differed in parts of the
+earlier sample, so net returns before 2025 are indicative. A side is a
+\emph{longshot} (\LS) if $\q\le 10\cents$ and a \emph{favourite} (\FAV) if $\q\ge 90\cents$. Price
+buckets are those of the shared definitions: 1--2, 3--5, 6--10, 11--20, 21--35, 36--50, 51--65, 66--80,
+81--90, 91--95, 96--98\cents{} and 99\cents.
+
+\paragraph{Weights.}
+A market has up to six pre-event observations. \emph{Market-weighted} statistics give each
+observation weight $1/n_m$, where $n_m$ is the number of observations of market $m$ in the sample
+being summarised, so that every market counts once. \emph{Volume-weighted} statistics multiply this
+by the number of contracts traded in market $m$ in the seven days up to $t$. That count is known at
+$t$. We do not weight by lifetime volume, because it includes trading after $t$, and a longshot
+that later wins attracts heavy trading on its way up.
+
+\paragraph{Three measures of the bias.}
+\begin{enumerate}
+\item \emph{Returns by price bucket}: the weighted mean of $\ret$ within each bucket of the side price
+      (the mid for gross returns, the taker price for net returns).
+\item \emph{Calibration slope}: the logit regression of \cref{sec:framework}, estimated with weights
+      on YES sides,
+      \begin{equation}\label{eq:xs-logit}
+        \Prob(y=1\mid p)=\Lambda\bigl(\alpha+\beta\,\operatorname{logit}p\bigr),
+      \end{equation}
+      with $p$ clipped to $[0.5\cents,99.5\cents]$. Calibrated prices have $\alpha=0$ and $\beta=1$.
+      With $\beta>1$, true odds are more extreme than quoted odds: longshots are overpriced and
+      favourites underpriced, which is the favourite--longshot bias. Fitting on NO sides gives the
+      same $\beta$ and the opposite $\alpha$, so $\beta$ summarises both tails and $\alpha$ is the
+      YES-only intercept (a preference for buying YES appears as $\alpha<0$). We report
+      $t_{\beta=1}=(\hat\beta-1)/\mathrm{se}(\hat\beta)$.
+\item \emph{Longshot--favourite spread}: the difference between the mean return per dollar of
+      \LS{} sides and of \FAV{} sides. We estimate it as the coefficient on a longshot indicator in a
+      weighted regression of $\ret$ on a constant and that indicator, over \LS{} and \FAV{} sides.
+\end{enumerate}
+Standard errors are clustered by event \citep{cameronmiller2015}, because the legs of an event and the
+leads of a market share one outcome. Each table reports the number of observations, the number of
+clusters and $t$-statistics.
+
+\paragraph{Cross-sections.}
+\begin{itemize}
+\item \emph{Category}: the coarse groups of the shared definitions.
+\item \emph{Horizon}: each lead $L$ separately, which gives one observation per market and lead.
+\item \emph{Contract structure}, from the event and leg design:
+  \begin{itemize}
+  \item a \emph{ladder leg} belongs to a set of at least three legs of one event that differ only by a
+        numeric strike (temperature buckets, run totals, point spreads, player-prop thresholds);
+  \item a \emph{deadline} contract pays if an occurrence happens before a date $T$ stated in the
+        rules, classified from the rules text with the hazard study's parser;
+  \item a \emph{multi-outcome} leg belongs to an event with at least three non-ladder legs that
+        Kalshi flags as mutually exclusive;
+  \item everything else is a \emph{binary}: single-market events, two-leg head-to-head events and
+        independent legs that share an event, such as the words of a mentions event.
+  \end{itemize}
+\item \emph{Liquidity}: within-group terciles of the 7-day volume, the quoted spread and the open
+      interest at $t$.
+\item \emph{Calendar time}: quarters of $T_m$.
+\end{itemize}
+
+\paragraph{Multi-outcome events and the Shin model.}
+For a mutually exclusive event with $K$ legs, all quoted at $t$ and exactly one settling YES, the
+overround is $\sum_k a_k-1$ at the asks and $\sum_k p_k-1$ at the mids. Following
+\citet{shin1991,shin1993} and \cref{sec:framework}, quoted prices $\pi_k$ with $\Pi=\sum_k\pi_k>1$
+map to probabilities
+\begin{equation}\label{eq:xs-shin}
+  \hat p_k(\shinz)=\frac{\sqrt{\shinz^{2}+4(1-\shinz)\pi_k^{2}/\Pi}-\shinz}{2(1-\shinz)},
+\end{equation}
+where $\shinz$ is the share of insider trading and solves $\sum_k\hat p_k(\shinz)=1$. We compute
+$\shinz$ per event and lead from the asks. We then compare the realised frequency of each leg with
+three probability forecasts: the raw mid, the mid normalised to sum to one, and $\hat p_k$
+\citep{strumbelj2014}. Legs are grouped by their price rank within the event. We also measure the
+\emph{field}: the summed price of all legs at or below 10\cents{} against the number of them that win.
+
+\paragraph{Limits to arbitrage.}
+\begin{itemize}
+\item \emph{Fees.} We show the taker fee per dollar staked, $\fee(\q)/\q=\theta(1-\q)$, with and
+      without per-order rounding.
+\item \emph{Taking the other side.} For every quote with a longshot side, we compute the net return
+      of buying the opposite (favourite) side as a taker at $\q^a$. We also compute it for resting a
+      bid at $\q^b$ as a maker, paying the maker fee $\theta_m\q(1-\q)$, with $\theta_m=0.0175$ times the
+      multiplier, only on series that charge it. The maker figure assumes a fill at the quote without adverse selection, so it is an upper
+      bound; who actually fills is the subject of \cref{sec:method-flow}. Exploiting overpriced
+      longshots this way is the arbitrage whose limits \citet{shleifervishny1997} describe.
+\item \emph{No-arbitrage band.} Per bucket, we compare the mispricing per contract, $\bar\q-\bar\won$
+      at the mid, with the cost of trading against it as a taker: the half-spread plus the taker fee
+      on the opposite side. The capital term of the band in \cref{sec:framework} is computed at a 5\%
+      annual cost of capital over the lead.
+\item \emph{Tick floor.} Prices move on a 1\cents{} grid; some markets use 0.1\cents{} steps. On the
+      1\cents{} grid, a contract whose fair value is below $0.5\cents$ cannot have a lower mid, and a
+      taker cannot pay less than 1\cents. In the 1--2\cents{} bucket we split the loss per contract,
+      $\bar\q-\bar\won$, into a mechanical part and a remainder. The mechanical part is the loss of the
+      quotes at the floor $\q_{\min}$ (a 0.5\cents{} mid with no bid, or a 1\cents{} ask for takers),
+      $s\max(\q_{\min}-\bar\won_{f},0)$, where $s$ is their weight share and $\bar\won_{f}$ their win rate.
+      The remainder comes from prices above the floor. Markets on the 0.1\cents{} grid serve as a
+      comparison.
+\end{itemize}
+
+\paragraph{Robustness.}
+We repeat the main measures on several variants of the sample:
+\begin{itemize}
+\item the first and second halves of the sample, split at the median observation time;
+\item without quotes whose mid is at or below 2\cents{} or at or above 98\cents{} (the 1--2\cents{} and
+      99\cents{} buckets and their mirror images);
+\item with quotes at most 24 hours old, and with spreads of at most 5\cents;
+\item by the source of the scheduled time;
+\item with design weights, the inverse of each event's sampling probability;
+\item with standard errors clustered by market, series or month instead of by event.
+\end{itemize}
+Many cells are reported. We emphasise patterns that hold across groups and in both halves rather
+than single cells.

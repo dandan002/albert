@@ -1,0 +1,128 @@
+% Discussion. Numbers are quoted from the results sections; sources are given there.
+\subsection{What the three data sets agree on}
+
+The three samples measure the bias in different ways. The quote panel uses mid-quotes at fixed
+leads. The Kalshi trade sample uses the prices at which orders executed. The Polymarket sample uses
+fills by identified wallets. They agree on four points.
+\begin{itemize}
+  \item \emph{Longshots lose and favourites roughly break even.} On Kalshi, longshot sides return
+  $-55\%$ per dollar at the mid. On Polymarket, longshot buys return $-54\%$ per dollar. In
+  Kalshi's trade sample, taker longshot positions lose in 14 of 18 strata. Favourites earn between
+  zero and a few per cent on both venues.
+  \item \emph{The bias is small per contract.} In probability units the mispricing is a fraction
+  of a cent to a few cents (\cref{sec:res-xs-limits}). Per dollar it is large only because the
+  price is small. Sides quoted at 3--5\cents{} return $-54\%$ per dollar at the mid, so they win
+  about half as often as their price implies, yet the absolute error is only about two cents.
+  \item \emph{Small traders hold the longshots.} On both venues, longshots are a large share of
+  small orders or small wallets and almost none of large orders or whales.
+  \item \emph{Nobody is reliably on the other side.} Kalshi makers earn little more than takers
+  overall, and on Polymarket no class of wallets is a significant net seller of longshots. The
+  wallets that profit do not persist.
+\end{itemize}
+They differ in one respect. Polymarket's market-level calibration slope a day ahead, $0.99$
+(SE $0.15$), is imprecise and cannot be distinguished from Kalshi's $1.13$, but the equal-weight
+estimate, $0.97$ (SE $0.05$), is lower. Polymarket trades on a sub-cent grid near the extremes (89\% of
+its fills below 4\cents{} or above 96\cents{} are at sub-cent prices)
+% source: data/research/flb_lead/checks.json
+and charged no fees for most of the sample, so both mechanical frictions of \cref{sec:framework} were
+weaker there. The samples, price measures and periods also differ, so we do not read the gap as a
+venue effect. On the 441 games observed on both venues, prices are almost identical.
+
+\subsection{Interpreting the bias}
+
+\paragraph{Mechanics set the band, not the position within it.} The one-cent tick and the fee
+schedule explain why the bias cannot be traded away. A contract worth a tenth of a cent cannot be
+quoted below a cent, and a taker who sells the longshot pays a spread and a fee that absorb the
+whole premium. This is a limit to arbitrage in the sense of \citet{shleifervishny1997}, created
+here by market design rather than by capital constraints. The band permits mispricing; it does not
+require it. Without the tick-floor buckets the slope is unchanged, and at a one-hour horizon,
+where the capital term of \cref{prop:band} vanishes, the bias is at least as strong as at thirty
+days. Something keeps longshot prices near the upper edge of the band. That something is demand.
+The structural analysis sharpens this reading (\cref{sec:res-structural}).
+\begin{itemize}
+  \item Market-weighted, the band covers the whole longshot gap in every group.
+  \item Volume-weighted, the gap exceeds the band by 0.79\cents{} per contract ($t=2.7$). In the
+  busiest markets, where spreads are tight, prices go beyond what frictions allow.
+  \item On the few markets quoted on a 0.1\cents{} grid, 1--2\cents{} sides remain overpriced beyond
+  their band.
+\end{itemize}
+
+\paragraph{Who supplies that demand.} The trade-level evidence identifies the buyers.
+\begin{itemize}
+  \item Longshots are bought disproportionately by small orders and small wallets, as
+  \cref{hyp:pref} predicts.
+  \item The buying is not concentrated in moments of retail attention. On Kalshi, volume surges
+  bring \emph{fewer} longshots and fewer small orders, and only weekends and the last hour before
+  expiry show a steeper bias.
+  \item Small traders do not lose more per dollar than large ones on the longshots they buy. They
+  bear most of the bias because they hold most longshots.
+\end{itemize}
+This is the pattern of lottery demand by individual investors in equity and option markets
+\citep{kumar2009,bryzgalova2023}: the demand is for the payoff profile, not the result of worse
+execution.
+
+\paragraph{Information plays a small role.} Insider trading would make longshot flow informative
+and longshot prices protective. Neither holds. No order-size class predicts outcomes on Kalshi,
+small-order flow neither predicts nor reverts, and Polymarket's herding by small wallets moves
+prices for an hour without predicting outcomes. In multi-outcome events Shin's insider share is
+small, and the longshot field stays overpriced after the Shin adjustment.
+The insider share implied by the quoted margin is mostly a restatement of the spread. The share
+that best fits outcomes is no higher where private information is plausible, and it is lowest in
+politics.
+
+\paragraph{Preferences and beliefs.} Two explanations remain: preferences, either risk-love or
+probability weighting, and heterogeneous beliefs. Prices and outcomes alone cannot separate them.
+Both produce a monotone calibration curve, which a weighting function fits by construction
+\citep{manski2006,gandhi2015}. Separating risk-love from weighting would need bet sizes or exotic
+bets \citep{snowbergwolfers2010}. Three findings tilt the balance towards preferences.
+\begin{itemize}
+  \item \emph{One weighting function fits everywhere.} The fitted curvature is below one in every
+  category (0.80 to 0.93), and a common value is not rejected under market weights. The pooled
+  function predicts out of sample as well as group-specific ones. Its gain in log score over
+  face-value prices is negligible, because most quotes lie in the middle of the price range, where
+  prices are calibrated.
+  \item \emph{Dispersion proxies fail.} The bias is not significantly steeper in events with more
+  outcomes or more turnover. An external forecast does not reliably flatten it.
+  \item \emph{The buyers are small.} Longshots are bought by small orders and small wallets, the
+  traders that the evidence on lottery stocks and options associates with skewness preference
+  \citep{kumar2009,boyer2014,bryzgalova2023}.
+\end{itemize}
+Belief dispersion among these traders is not ruled out. A minority of noise traders with dispersed
+beliefs produces the same pattern \citep{gandhi2015}, and our proxies for dispersion are coarse.
+What the evidence does rule out is a bias set by informed traders or by frictions alone.
+
+\subsection{Implications}
+
+\begin{itemize}
+  \item \emph{Reading prices as probabilities.} Event-contract prices are informative but biased
+  in the tails. Users who read them as forecasts should shrink longshot prices towards zero and
+  favourite prices towards one, or apply the calibration function of \cref{sec:res-xs}. The
+  correction matters most for multi-outcome fields and deadline contracts.
+  \item \emph{Market design.} The tick floor alone accounts for about half of the loss in the
+  cheapest bucket. A finer grid near the extremes would let prices of very unlikely outcomes fall
+  towards their probabilities. The fee per dollar is largest on longshots, so fees shape who can
+  trade against the bias but do not explain why it exists.
+  \item \emph{Retail participation.} The losses on longshots fall mainly on small accounts, and
+  wallet profits are concentrated in a few accounts that do not persist. This mirrors the
+  distribution of outcomes in retail options trading \citep{bryzgalova2023}.
+\end{itemize}
+
+\subsection{Limitations}
+
+\begin{itemize}
+  \item \emph{Retail is proxied.} On Kalshi we observe order size, not identity, and makers are
+  anonymous. Polymarket wallet classes use each wallet's history within the sampled markets only.
+  \item \emph{Heavy tails.} Per-dollar longshot returns are dominated by rare wins. Pooled trade-level
+  longshot means are imprecise and can change sign between samples, so we rely on per-stratum
+  estimates, sign tests, calibration slopes and per-contract measures.
+  \item \emph{Samples and periods.} The trade sample covers two and a half months of 2026. The
+  quote panel applies the November 2026 fee schedule to its whole history, so net returns before
+  2025 are indicative. The Polymarket sample excludes markets with more than \$6 million of
+  volume, which carry 42\% of its frame's volume.
+  \item \emph{Maker returns.} Returns to resting orders assume fills at the quote and are an upper
+  bound, because resting orders are adversely selected.
+  \item \emph{Multiple testing.} We report many cells. We therefore emphasise patterns that hold
+  across categories, halves of the sample and data sets, rather than single cells.
+  \item \emph{Polymarket US.} The data host of Polymarket's US exchange disallows our agent in
+  its \texttt{robots.txt}, so we use only its published fee schedule.
+\end{itemize}

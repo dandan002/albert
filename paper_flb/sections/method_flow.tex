@@ -1,0 +1,140 @@
+This subsection asks who pays the bias measured in \cref{sec:method-xs}. It uses every public
+print in the trade sample of \cref{sec:data-flow}. Kalshi's public trade feed has no account
+identities, but it does name the side that crossed the spread. That is enough to separate the two
+parties to each trade by \emph{liquidity role}.
+
+\paragraph{Takers, makers and positions.} A print $i$ records a number of contracts $n_i$, a YES
+price $p_i$ and the taker's side.
+\begin{itemize}
+  \item A taker who bought YES holds YES at $\q_i=p_i$. A taker who bought NO holds NO at
+  $\q_i=1-p_i$.
+  \item The resting order on the other side (the \emph{maker}) holds the opposite side at
+  $1-\q_i$.
+  \item Gross of fees, the two positions are mirror images. The taker earns $\won_i-\q_i$ per
+  contract and the maker earns $-(\won_i-\q_i)$.
+  \item Fees break the symmetry. The taker pays $\fee^T_i=0.07\,\kappa\,\q_i(1-\q_i)$, where
+  $\kappa$ is the series multiplier. The maker pays $\fee^M_i=0.0175\,\kappa\,\q_i(1-\q_i)$ on
+  series that charge makers, and nothing otherwise.
+\end{itemize}
+Each print therefore contributes two \emph{positions}, one per role. We sort positions by the
+price of the side held, $\q$ for the taker and $1-\q$ for the maker, into the buckets of
+\cref{sec:method}.
+
+\paragraph{Weights and returns.} Let $\omega_i$ be the design weight of the print's market
+(the inverse probability that the sampling design of \cref{sec:data-flow} drew it). For any cell
+of positions we report two averages.
+\begin{align}
+  \bar\Delta &= \frac{\sum_i \omega_i n_i(\won_i-\q_i-\fee_i)}{\sum_i\omega_i n_i}
+  &&\text{(contract-weighted, \$ per contract),}\label{eq:flow-c}\\
+  \bar\ret &= \frac{\sum_i \omega_i n_i(\won_i-\q_i-\fee_i)}{\sum_i\omega_i n_i(\q_i+\fee_i)}
+  &&\text{(dollar-weighted, per dollar).}\label{eq:flow-d}
+\end{align}
+Here $\q_i$, $\won_i$ and $\fee_i$ refer to the position's own side. \Cref{eq:flow-d} is the
+dollar-weighted mean of the per-dollar return~\eqref{eq:ret}, that is, aggregate profit over
+aggregate stake. Unless a table says otherwise, returns are net of the exact fee. Gross returns
+set $\fee_i=0$. As a retail-perspective variant we also report a print-weighted mean, in which
+each fill counts once regardless of its size.
+
+\paragraph{Taker orders and trade size.} Kalshi prints one fill for each resting order that a
+taker order executes against. A taker order that sweeps several resting orders therefore
+appears as several prints. These prints share the market, the microsecond timestamp and the
+taker side. We group such prints into one \emph{taker order} $o$, with dollar notional
+$N_o=\sum_{i\in o} n_i\q_i$. Trade size is $N_o$, bucketed as $\le\$10$, $\$10$--$100$,
+$\$100$--$1\text{k}$ and $>\$1\text{k}$. Every print inherits the size of its order. Small trade
+size is the standard proxy for retail flow when identities are hidden
+\citep{leeradhakrishna2000,barberodeanzhu2009}. It is only a proxy: a professional can split
+orders, and a retail trader can send a large one. Makers' order sizes are not observed. A
+print shows only the part of the resting order that was filled.
+
+\paragraph{Timing and attention.} Each print is classified by the following variables. Each is
+known at the time of the print, except the marquee label.
+\begin{itemize}
+  \item \emph{Clock.} Hour of day and weekday or weekend, in US Eastern time.
+  \item \emph{In play.} A sports print is in play if it is at or after the game's scheduled
+  start. The start is the time encoded in the ticker where there is one. Otherwise it is the
+  occurrence time minus three hours, Kalshi's convention for game markets. A start is used only
+  if it falls between 30 minutes and 12 hours before the close.
+  \item \emph{Primetime.} The game is scheduled to start between 19:00 and 23:59 ET.
+  \item \emph{Time to expiry.} Hours from the print to the market's scheduled expiration.
+  \item \emph{New listing.} The print falls in the first 24 hours after the market opened.
+  \item \emph{Volume surge.} The market's volume in the hour before the print, $V_{t-1h,t}$, is
+  compared with its own average hourly volume before that hour, $\bar V_{t-1h}$. Both use past
+  prints only, and the average needs at least six hours of history. A surge is
+  $V_{t-1h,t}\ge3\,\bar V_{t-1h}$, which captures attention shocks in the spirit of
+  \citet{barberodean2008}.
+  \item \emph{Marquee.} The event's total volume is in the top decile of its stratum. This label
+  is descriptive and uses ex post volume.
+\end{itemize}
+
+\paragraph{Mid-quote proxy, price impact and markouts.} The public trade history contains no
+quotes. We therefore build a mid-quote from the prints themselves.
+\begin{itemize}
+  \item A YES-taker print executes at the YES ask, and a NO-taker print executes at the YES bid.
+  \item Let $a_t$ be the YES price of the market's last YES-taker print at or before $t$, and
+  $b_t$ that of its last NO-taker print.
+  \item The proxy is $m_t=(a_t+b_t)/2$. It is defined only when both prints are at most 60
+  minutes old and $a_t\ge b_t$.
+  \item Impact, markout and order-flow analyses also require a tight proxy,
+  $a_t-b_t\le5\cents$, both before the order and at each later horizon. This keeps them to
+  markets where the proxy tracks the book.
+\end{itemize}
+For a taker order at time $t$ with fill price $p$ and direction $d=+1$ (bought YES) or $d=-1$
+(bought NO), define, in cents per contract,
+\begin{equation}\label{eq:flow-markout}
+  s=d\,(p-m_{t^-}),\qquad I_h=d\,(m_{t+h}-m_{t^-}),\qquad M_h=d\,(m_{t+h}-p)=I_h-s,
+\end{equation}
+where $m_{t^-}$ is the proxy just before the order. These are the effective half-spread $s$,
+the price impact $I_h$ and the taker's markout $M_h$ at horizons $h$ of one minute and one hour.
+A mark at $t+h$ is used only if $t+h$ is before the market's pre-resolution cut, so no markout
+reads a price set after the outcome was known. The markout to settlement, $M_\infty=d\,(Y-p)$
+with $Y$ the YES outcome, is the taker's gross profit per contract. It splits into the
+mispricing of the mid and the cost of immediacy, $M_\infty=d\,(Y-m_{t^-})-s$. Persistent impact
+signals information, and impact that reverses signals inventory or noise
+\citep{glostenmilgrom1985,hasbrouck1991}.
+
+We validated the proxy against order books recorded from Kalshi's WebSocket feed in two
+three-hour windows.
+% source: data/research/flb_flow/l2check.json
+\begin{itemize}
+  \item \emph{Saturday evening ET (8~November, 00--03~UTC).} The window covers 236 markets and
+  193,907 taker orders. 98\% of its prints are in game-winner markets, mainly college football
+  and NBA games during the evening slate. The proxy exists for 96\% of orders. It is within one
+  cent of the book mid for 96.9\% of them and within two cents for 98.9\%. Its mean absolute
+  error is 0.16\cents.
+  \item \emph{Tuesday morning ET (10~November, 14--17~UTC).} The window covers 174 markets and
+  11,717 orders. It is mainly pre-game NBA and NHL markets, with daily temperature, mentions and
+  political markets. The proxy exists for 86\% of orders, is within one cent for 94.4\% and
+  within two cents for 97.0\%. Its mean absolute error is 0.27\cents.
+\end{itemize}
+In both windows the proxy's correlation with the book mid exceeds 0.998, and 99.1\% of taker
+orders execute at or beyond the book mid on their own side. This confirms the meaning of the
+taker-side field. The recorded books are among the more liquid on the venue, with a median
+spread of one cent. In thin markets the proxy is staler and more often missing.
+
+\paragraph{Order-flow regressions.} For the information content of flow we aggregate taker
+orders to market-hours $h$, before each market's pre-resolution cut. Order sizes fall into three
+classes: small ($\le\$100$), medium ($\$100$--$1$k) and large ($>\$1$k). Class $c$'s signed
+imbalance is
+\begin{equation}\label{eq:flow-oib}
+  \mathrm{OIB}_{c,h}=\frac{\sum_{o\in(c,h)} d_o n_o}{\sum_{o\in h} n_o}\in[-1,1].
+\end{equation}
+It is normalised by the hour's total volume, so the three classes sum to the hour's net taker
+imbalance. We then estimate
+\begin{equation}\label{eq:flow-reg}
+  \Delta^{(k)}_{h}=\alpha+\sum_{c}\beta^{(k)}_c\,\mathrm{OIB}_{c,h}
+  +\gamma^{(k)}\,(m^{\mathrm{end}}_h-m^{\mathrm{start}}_h)+\varepsilon_h .
+\end{equation}
+The left-hand side $\Delta^{(k)}_h$ is measured in cents and takes three forms: the same-hour mid
+change $m^{\mathrm{end}}_h-m^{\mathrm{start}}_h$ (with $\gamma=0$), the next-hour change, and the
+drift to settlement, $Y-m^{\mathrm{end}}_h$. A class whose flow moves the price and is
+confirmed at settlement ($\beta^{(\infty)}_c>0$) carries information in the sense of
+\citet{kyle1985}. A class whose same-hour impact reverses ($\beta^{(\mathrm{next})}_c<0$,
+$\beta^{(\infty)}_c\le0$) behaves as noise. The settlement drift needs no mid at the outcome,
+because $Y$ is observed.
+
+\paragraph{Inference.} Standard errors are clustered by event \citep{cameronmiller2015}. For
+weighted means we compute them from per-event sums of $\omega_in_i(x_i-\bar x)$, which gives
+exactly the cluster-robust variance. A difference between two cells, such as takers against
+makers or YES-takers against NO-takers, uses the per-event influence functions of both means.
+This accounts for the two cells sharing events. Regression~\eqref{eq:flow-reg} uses CR1
+cluster-robust errors. Every table reports $t$-statistics and the number of event clusters.

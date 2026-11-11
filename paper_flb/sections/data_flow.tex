@@ -1,0 +1,40 @@
+% source: data/research/flb_flow/sample_plan.json, summary.json (coverage, pre_resolution)
+The trade-level analysis uses Kalshi's public trade prints. Each print records the time to the
+microsecond, the number of contracts, the YES price and the taker's side. We fetch complete
+histories from the public \texttt{/historical/trades} and \texttt{/markets/trades} endpoints,
+at no more than three requests per second, and keep the raw responses unchanged.
+
+\paragraph{Frame and sample.} The frame is every settled, non-financial market that closed
+between 15~August and 31~October 2026 and traded at least once: 1,128,256 markets in 210,854
+events. Sports account for 98.6\% of the frame's volume. To cover the other groups, we draw a
+stratified random sample.
+\begin{itemize}
+  \item There are 18 strata: five non-sports groups and 13 sports leagues
+  (\cref{tab:flow-design}).
+  \item Events are drawn uniformly within each stratum, independently of volume.
+  \item Every traded leg of a drawn event is kept, up to 20 legs drawn at random.
+\end{itemize}
+The sample has 2,300 events and 15,329 markets. Design weights $\omega$ (inverse inclusion
+probabilities) make pooled estimates representative of the frame. The histories are complete:
+for the median market in every group, the contracts printed equal the reported volume.
+
+\paragraph{Pre-resolution filter.} We drop prints made after the outcome could be known from the
+clock:
+\begin{itemize}
+  \item all prints in the last 30 minutes before a market's close (or its scheduled expiration,
+  if earlier);
+  \item for non-sports markets that closed early because the event occurred, all prints in the
+  last four hours before the close.
+\end{itemize}
+The cut-offs follow the data (\cref{tab:flow-preres}). In sports, the share of volume at
+$\le3\cents$ or $\ge97\cents$ is 9--10\% between 30 and 60 minutes before the close and 65--75\%
+in the last five minutes. In-play sports prints before the cut are kept and studied. A
+\emph{strict} variant keeps only pre-game sports prints and other prints more than 24 hours
+before the close. The filter removes 34\% of the 4.04 million fetched prints. That leaves
+2,685,117 prints in 1,643,534 taker orders, 14,164 markets and 2,151 events, worth 277 million
+contracts and \$132 million of taker notional (\cref{tab:flow-coverage}).
+
+\paragraph{Replication sample.} Earlier work on this project left 9.8 million prints in 18,333
+other settled markets. These are mainly pre-game windows of sports game-winners, capped
+histories of high-volume markets and the final months of ``by date'' deadline contracts. The
+sample is selected on volume, so we use it only for replication (\cref{tab:flow-robust}).
