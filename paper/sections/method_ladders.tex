@@ -1,0 +1,162 @@
+% Strike ladders: methodology. Code: src/albert/research/pm_smile.py. Outputs: data/research/pm_smile/.
+A ladder is the set of markets of one Kalshi event that pay on the same numeric outcome $X$: the
+daily maximum or minimum temperature at a station, the total points or the margin of a game, an
+approval average, a count of posts. Under the strip-of-digitals reading of \cref{sec:model}, each
+leg prices one point (or one interval) of the survival function $S_t(K)=\Prob_t(X_T>K)$, and the
+ladder as a whole implies a distribution for $X_T$. This subsection describes how we recover that
+distribution from quotes, how we summarise its shape and its dynamics, and how we test it against
+the realised outcome. Inference follows the conventions of \cref{sec:method}: parameters and rules
+are chosen on the \estim{} (events expiring before 1 October 2026), the holdout is October 2026,
+and standard errors are clustered by event.
+
+\paragraph{Ladders and legs.}
+We take every settled event whose markets all carry a numeric strike in their published
+subtitle, in five groups: daily high and low temperature (six-leg bracket sets), sports totals
+(full game and periods), sports team totals, sports point spreads, and numeric ladders in politics,
+entertainment, science and technology and other climate series. Player props, exact-score and
+mention markets are excluded. A leg pays YES iff $X_T\in(\ell,h]$, and the subtitle determines the
+edges. In bracket events (any ``between'' or exact-value leg) the underlying is discrete and edges
+move half a grid step $d$ outwards, with $d$ half the smallest gap between adjacent brackets:
+\begin{equation}\label{eq:lad-edges}
+\begin{gathered}
+  \text{``}a\text{ to }b\text{''}\mapsto(a-d,\,b+d],\qquad
+  \text{``}{\ge}a\text{''}\mapsto(a-d,\infty),\qquad
+  \text{``}{>}a\text{''}\mapsto(a+d,\infty),\\
+  \text{``}{<}a\text{''}\mapsto(-\infty,\,a-d],\qquad
+  \text{``}{\le}a\text{''}\mapsto(-\infty,\,a+d].
+\end{gathered}
+\end{equation}
+Threshold-only ladders use half the strike resolution, which is zero for half-point sports lines.
+A spread ladder puts both teams on one margin $X=A-B$ (``$B$ wins by over $k$'' is $X<-k$); team
+totals form one ladder per team. The realised outcome is known only as the interval
+$X_T\in(L,U]$ implied by which legs settled YES. Ladders whose settlements are inconsistent with
+any single value of $X_T$, and events whose expected expiration lies more than three days after
+their close (mostly elections), are dropped. Before quote filters this gives 33,002 ladders with
+326,286 legs. % source: data/research/pm_smile/ladder_stats.json (summary.json:ladder_stats)
+
+\paragraph{Snapshots and filters.}
+For non-weather ladders we take snapshots 48, 24, 6 and 1 hours before the scheduled expected
+expiration. For sports this time is close to the scheduled end of the game, so the 48--6 hour
+snapshots are pre-game and the 1 hour snapshot is in play. Weather markets close at the end of the
+measurement day $D$ in local standard time, and we sample at 12:00 on $D-1$ and at 00:00, 08:00,
+12:00 and 16:00 on $D$, that is 36, 24, 16, 12 and 8 hours before the close. The quote of each leg
+is the bid and ask close of the last hourly candle that ended at or before the snapshot (at most
+two hours old), for legs that are open at the snapshot. A leg enters the fit only if its spread is
+at most 5\cents{}; a bid of zero is allowed for a wing whose ask is at most 5\cents.
+
+\paragraph{Survival points.}
+A ``greater'' leg with mid $q$ gives $S(\ell)=q$ and a ``less'' leg gives $S(h)=1-q$, each with
+weight $1/\max(\text{spread},1\cents)^2$; legs at the same strike are averaged. A bracket set
+enters only if every leg passes the filter and the edges are contiguous; then $S$ at each interior
+edge is the summed mid of the legs above it divided by the summed mid of all legs, which removes
+the overround multiplicatively. Weighted isotonic regression~\citep{barlow1972} makes $S$
+non-increasing in $K$. A snapshot is kept if it has at least three survival points and the implied
+median lies inside the quoted strikes.
+
+\paragraph{Implied median, width and moneyness.}
+Let $z_i=\Phi^{-1}(S_i)$ with $S$ clipped to $[0.005,0.995]$. The implied median $\Fmed$ is the
+strike at which $z$ crosses zero, by linear interpolation between the two quoted strikes that
+straddle it. For the ATM width we use the implied interquartile range,
+\begin{equation}\label{eq:lad-satm}
+  \satm=\frac{K_{0.25}-K_{0.75}}{2\,\Phi^{-1}(0.75)},\qquad S(K_q)=q,
+\end{equation}
+with $K_q$ interpolated linearly in $z$. We fall back to the local slope between the two strikes
+straddling $\Fmed$ when the quartiles are not both inside the quoted range. Under the Bachelier
+digital of \cref{sec:model} the two definitions coincide. In data they do not: adjacent strikes on
+a football ladder can be one point apart, and point masses at key margins dominate the local slope,
+whereas the interquartile range averages over them. The interquartile definition is used in 84\%
+of snapshots overall and in 76--98\% of snapshots in each large group.
+% source: data/research/pm_smile/snapshots.parquet:sigma_from_iqr (mean 0.841; group means 0.756-0.980)
+Per strike we compute the Bachelier implied volatility and the moneyness
+\begin{equation}\label{eq:lad-sigk}
+  \sigma_K=\frac{\Fmed-K}{\Phi^{-1}\big(S(K)\big)},\qquad m=\frac{K-\Fmed}{\satm},\qquad v_K=\frac{\sigma_K}{\satm},
+\end{equation}
+keeping strikes with $|z|\ge0.25$ whose $S$ is strictly inside the clip. Spread ladders are
+reflected ($X\mapsto-X$) when $\Fmed<0$, so that $X$ is the favourite's margin; the decision uses
+prices only.
+
+\paragraph{Smile regression.}
+Within each group and lead we estimate by pooled least squares
+\begin{equation}\label{eq:lad-smile}
+  v_K-1=a+s\,m+c\,m^2+e_K,\qquad |m|\le3.5,
+\end{equation}
+excluding the two strikes that straddle $\Fmed$, whose volatilities equal the local slope by
+construction. Here $s$ is the skew ($s>0$: upper-wing volatilities exceed lower-wing ones) and $c$
+the curvature ($c>0$: implied tails fatter than a normal with the ATM width). We also fit
+\eqref{eq:lad-smile} with $a=0$ snapshot by snapshot when at least three off-ATM strikes are
+available.
+
+\paragraph{Density shape.}
+To compare the implied and realised shapes in common units, we fit the skew-$t$ distribution of
+\citet{jonesfaddy2003}, $G(x;a,b)=I_{y(x)}(a,b)$ with $y(x)=\tfrac12\big(1+x/\sqrt{a+b+x^2}\big)$
+and $I$ the regularised incomplete beta function. Its left and right tails decay like Student-$t$
+tails with $2a$ and $2b$ degrees of freedom. The implied shape is fitted to the pooled
+standardised survival points, $S(m)=1-G\big((m-\mu)/\varsigma;a,b\big)$, by least squares on the
+logit scale with $S$ clipped to $[0.01,0.99]$. The realised shape is the interval-censored maximum
+likelihood fit of $z_T=(X_T-\Fmed)/\satm$. We report two unit-free summaries of each fit: quantile
+(Bowley) skewness $(q_{0.9}+q_{0.1}-2q_{0.5})/(q_{0.9}-q_{0.1})$~\citep{groeneveld1984} and tail
+weight $(q_{0.975}-q_{0.025})/[2.906\,(q_{0.75}-q_{0.25})]$, which equals one for a normal. The
+implied summaries carry 90\% intervals from 30 cluster-bootstrap replications over events.
+
+\paragraph{Smile dynamics.}
+Take consecutive snapshots $t$ and $u$ (the next shorter lead) of the same ladder in its original
+orientation, and write $\sigma_t$ and $\sigma_u$ for $\satm$ at the two snapshots. Define
+$\Delta\Fmed_n=(\Fmed_u-\Fmed_t)/\sigma_t$ and $\Delta\sigma_n=(\sigma_u-\sigma_t)/\sigma_t$. In the terminology
+of \citet{derman1999}, a \emph{sticky-strike} smile is fixed in $K$, so the ATM point slides along
+it and $\Delta\satm\approx s\,\Delta\Fmed$, since $\partial\sigma_K/\partial K=s$ at the money. A
+\emph{sticky-moneyness} smile is fixed in $m$, so $\Delta\satm=0$ apart from level changes, while
+the volatility at a fixed strike moves by $-\sigma'(m_K)\Delta\Fmed$, with
+$\sigma'(m)=s+2cm$. We estimate, with fixed effects for each group and lead pair,
+\begin{align}
+  \Delta\sigma_n&=b\,\Delta\Fmed_n+e, \label{eq:lad-atm}\\
+  \frac{\sigma_{K,u}-\sigma_{K,t}}{\sigma_t}&=\gamma\,\big[-(s+2c\,m_{K,t})\,\Delta\Fmed_n\big]
+     +\phi\,v_{K,t}\,\Delta\sigma_n+e. \label{eq:lad-fixedk}
+\end{align}
+Sticky strike predicts $b=s$ and $\gamma=0$; sticky moneyness predicts $b=0$ and $\gamma=1$. In
+\eqref{eq:lad-fixedk} $(s,c)$ are either the pooled smile of the group and lead, which has no
+measurement error at the snapshot level, or the snapshot's own fit, which is noisy and biases
+$\gamma$ towards zero. The ATM regression is also run with $s\,\Delta\Fmed_n$ as a regressor, whose
+coefficient $\delta$ is 1 under sticky strike. For the backbone (\citet{hagan2002}; \cref{sec:model})
+we regress $\Delta\log\satm$ on $\Delta\log\Fmed$ within ladders, for groups whose underlying is
+positive, and also run the cross-sectional analogue, $\log\satm$ on $\log\Fmed$ with series-by-lead
+fixed effects. An exponent $\beta$ of 0 corresponds to a normal backbone, $\tfrac12$ to a
+square-root (Poisson-count) backbone and 1 to a lognormal one.
+
+\paragraph{ATM term structure.}
+Under a uniform information clock the remaining variance is proportional to the time left, so
+$\satm\propto\tauexp^{1/2}$ (\cref{sec:model}). We estimate the exponent $\eta$ in
+$\log\sigma_{\ell j}=\alpha_\ell+\eta\log\tauexp_j+e$, where $\sigma_{\ell j}$ is $\satm$ of ladder
+$\ell$ at lead $\tauexp_j$ and $\alpha_\ell$ are ladder fixed effects. Sports use pre-game leads only.
+
+\paragraph{Calibration against the realised outcome.}
+\emph{PIT.} Because $X_T$ is interval-censored, its probability integral transform is the interval
+$[1-S(a'),\,1-S(b')]$, where $a'\le L$ and $b'\ge U$ are the nearest quoted strikes (0 and 1 beyond
+the quoted range). Spreading each interval uniformly gives a fractional histogram that is uniform
+under calibration~\citep{diebold1998,czado2009}. We report the share of mass in the outer two
+deciles (0.2 under calibration) with $t$ clustered by event. \emph{Width ratio.} We fit
+$(X_T-\Fmed)/\satm\sim\N(\mu,\lambda^2)$ by interval-censored maximum likelihood with a cluster
+sandwich; $\lambda<1$ means the implied ATM width is too wide. \emph{Tail mass.} For strikes with
+$m\ge k$ (upper wing) we compare the implied $S(K)$ with the realised $\ind{X_T>K}$, and for
+$m\le-k$ the implied $1-S(K)$ with $\ind{X_T\le K}$. The statistic $z_{H_0}$ treats the implied
+probabilities as true: event means of realised minus implied, variance equal to the event mean of
+$S(1-S)$, events independent. Unlike a clustered $t$ it remains defined when no tail event occurs.
+
+\paragraph{Implied versus realised variance between snapshots.}
+If $\Fmed_t$ were the conditional mean of $X_T$ and $\satm^2$ its conditional variance, the law of
+total variance would give $\E_t[(\Fmed_u-\Fmed_t)^2]=\E_t[\sigma_t^2-\sigma_u^2]$. This
+motivates the ratio
+\begin{equation}\label{eq:lad-vr}
+  \mathrm{RV}/\mathrm{IV}=\frac{\sum(\Delta\Fmed_n)^2}{\sum\big[1-(\sigma_u/\sigma_t)^2\big]},
+\end{equation}
+summed over pairs of a group and window, with a 90\% cluster-bootstrap interval (200 replications
+over events). It is a variance-swap analogue of the variance risk premium~\citep{carrwu2009,bollerslev2009}:
+a ratio below one means the implied distribution narrows faster than its median moves. With a
+median and an interquartile width the identity is exact only for symmetric, normal shapes, and we
+read the ratio descriptively.
+
+\paragraph{Economic significance.}
+We record the outcome of selling a leg's tail side (buying the other side at the snapshot ask,
+Kalshi taker fee by series, one contract, held to settlement), gated either by model moneyness or
+by price alone. Because these wins come from rare tail events, we report a $t$ against settlement
+risk at the market price, $t_{\text{risk}}$ (per-contract standard deviation $\sqrt{p(1-p)}$,
+summed within events), in place of the clustered $t$.

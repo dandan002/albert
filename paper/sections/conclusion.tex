@@ -1,0 +1,25 @@
+We have proposed and calibrated an option-pricing framework for prediction-market contracts. A
+binary contract is a digital option on a latent state, and its price dynamics are governed by an
+information clock that releases a fixed variance budget $\pr_0(1-\pr_0)$. The Gaussian version
+yields a Black--Scholes equation with a digital payoff and an exact transition law. A bounded SABR
+extension and jumps bring it to the data. Strike ladders and deadline strips extend the framework
+to implied distributions, smiles and hazard term structures.
+
+On Kalshi:
+\begin{itemize}
+  \item the framework describes timing well, in that clocks are stable, category-specific and
+  forecastable;
+  \item it describes shape poorly unless jumps are included;
+  \item it identifies a single pricing anomaly, a premium on tail outcomes and on short time
+  windows.
+\end{itemize}
+
+Four extensions follow naturally:
+\begin{itemize}
+  \item using the game clock and score to test jump laws directly;
+  \item longer order-book samples;
+  \item contracts on the same outcome at two horizons, such as the first half and the full game,
+  which would identify the clock without a model;
+  \item pricing derivatives written on prediction-market prices, for which this framework supplies
+  the dynamics.
+\end{itemize}

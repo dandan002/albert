@@ -1,0 +1,236 @@
+% Deadline contracts: additional tables. Every number is taken from
+% data/research/pm_hazard/summary.json (keys noted next to each table).
+
+\paragraph{Calibration by category and for longshots.}
+\Cref{haz-tab-category} breaks the calibration of \cref{haz-tab-calib} down by category, and
+\cref{haz-tab-longshot} reports the two cheapest price buckets by lead. Below 5\cents{} the hazard
+multiplier is bounded below at 0.02 by construction when a cell has no YES outcomes, and the
+one-cent tick bounds the mid from below, so those cells mainly describe the price floor.
+
+\begin{table}[ht]
+\centering
+\begin{threeparttable}
+\caption{Calibration of implied hazards by category (events, mentions and counts)}\label{haz-tab-category}
+\footnotesize
+% source: data/research/pm_hazard/summary.json:calibration_core_category
+\begin{tabular}{@{}llrrcr@{}}
+\toprule
+Category & Lead & $n$ (cl.) & Mid & $k$ [90\% int.] & $\bar y-\bar p$ (\textcent; $t$) \\
+\midrule
+Politics           & $<1$ d  & 2{,}387 (274) & 0.108 & 0.50 [0.40, 0.62] & $-2.18$ ($-5.61$) \\
+                   & 1--7 d  & 2{,}076 (206) & 0.200 & 0.64 [0.52, 0.84] & $-3.98$ ($-3.10$) \\
+                   & $\ge7$ d & 2{,}021 (210) & 0.228 & 0.65 [0.54, 0.79] & $-5.39$ ($-4.33$) \\
+Mentions           & $<1$ d  & 3{,}822 (70)  & 0.236 & 0.65 [0.58, 0.74] & $-1.74$ ($-5.39$) \\
+                   & 1--7 d  & 4{,}181 (66)  & 0.353 & 0.86 [0.77, 0.95] & $-1.75$ ($-2.47$) \\
+                   & $\ge7$ d & 1{,}048 (21)  & 0.411 & 0.89 [0.76, 1.05] & $-2.00$ ($-1.25$) \\
+Science \& tech.   & $<1$ d  &    687 (51)  & 0.032 & 0.23 [0.12, 0.36] & $-2.16$ ($-6.14$) \\
+                   & 1--7 d  &    399 (41)  & 0.138 & 0.55 [0.32, 0.82] & $-4.49$ ($-2.19$) \\
+                   & $\ge7$ d &    587 (47)  & 0.233 & 0.59 [0.43, 0.84] & $-6.39$ ($-2.69$) \\
+Sports             & $<1$ d  &    404 (37)  & 0.112 & 0.58 [0.45, 0.72] & $-1.58$ ($-3.49$) \\
+                   & 1--7 d  &    266 (31)  & 0.271 & 0.82 [0.67, 1.25] & $-2.33$ ($-1.11$) \\
+                   & $\ge7$ d &    242 (29)  & 0.323 & 1.02 [0.76, 1.79] & $0.33$ ($0.10$) \\
+Entertainment      & $<1$ d  &    429 (66)  & 0.058 & 0.85 [0.35, 1.56] & $-0.39$ ($-0.37$) \\
+                   & 1--7 d  &    273 (41)  & 0.214 & 0.64 [0.44, 1.06] & $-3.12$ ($-1.65$) \\
+                   & $\ge7$ d &    411 (52)  & 0.295 & 0.38 [0.28, 0.57] & $-12.95$ ($-4.08$) \\
+Elections          & $<1$ d  &    327 (31)  & 0.050 & 0.97 [0.47, 1.80] & $-0.08$ ($-0.07$) \\
+                   & 1--7 d  &    190 (24)  & 0.150 & 1.15 [0.60, 2.27] & $1.35$ ($0.36$) \\
+                   & $\ge7$ d &    229 (28)  & 0.217 & 0.81 [0.43, 1.56] & $-2.93$ ($-0.59$) \\
+Climate \& weather & $<1$ d  &     37 (6)   & 0.140 & 0.85 [0.43, 1.56] & $-0.47$ ($-0.42$) \\
+                   & 1--7 d  &     52 (8)   & 0.170 & 2.00 [0.35, 10.45] & $4.17$ ($0.51$) \\
+                   & $\ge7$ d &     60 (10)  & 0.231 & 0.91 [0.36, 2.36] & $-1.44$ ($-0.16$) \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item As \cref{haz-tab-calib}, all splits pooled, eliminations excluded. Four categories with fewer
+than four contracts (culture, health, social, world) are omitted.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\begin{threeparttable}
+\caption{Calibration of cheap contracts by lead (events, mentions and counts)}\label{haz-tab-longshot}
+\footnotesize
+% source: data/research/pm_hazard/summary.json:calibration_core_lead_price (price_b 0-5, 5-15)
+\begin{tabular}{@{}lrrrcrrrc@{}}
+\toprule
+ & \multicolumn{4}{c}{Mid below 5\textcent} & \multicolumn{4}{c}{Mid 5--15\textcent} \\
+\cmidrule(lr){2-5}\cmidrule(l){6-9}
+Lead & $n$ (cl.) & Mid & YES & $k$ [90\% int.] & $n$ (cl.) & Mid & YES & $k$ [90\% int.] \\
+\midrule
+$<6$ h   & 3{,}388 (482) & 0.013 & 0.001 & 0.04 [0.02, 0.13] & 315 (108) & 0.078 & 0.051 & 0.64 [0.35, 1.01] \\
+6--24 h  & 2{,}456 (353) & 0.018 & 0.002 & 0.11 [0.02, 0.20] & 600 (138) & 0.082 & 0.045 & 0.54 [0.33, 0.77] \\
+1--3 d   & 1{,}565 (303) & 0.023 & 0.010 & 0.45 [0.27, 0.69] & 894 (179) & 0.084 & 0.049 & 0.58 [0.43, 0.74] \\
+3--7 d   &    952 (269) & 0.023 & 0.011 & 0.45 [0.22, 0.71] & 869 (216) & 0.089 & 0.074 & 0.82 [0.61, 1.07] \\
+7--14 d  &    571 (174) & 0.025 & 0.011 & 0.42 [0.21, 0.78] & 501 (163) & 0.086 & 0.052 & 0.59 [0.36, 0.84] \\
+14--30 d &    314 (123) & 0.025 & 0.016 & 0.64 [0.19, 1.17] & 393 (160) & 0.089 & 0.041 & 0.44 [0.27, 0.64] \\
+30--60 d &    230 (73)  & 0.028 & 0.000 & $\le 0.02$        & 246 (101) & 0.093 & 0.033 & 0.34 [0.14, 0.58] \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item As \cref{haz-tab-calib}, all splits pooled. YES is the share of observations whose contract
+resolved YES. $k$ is reported as $\le 0.02$ when a cell has no YES outcome.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\paragraph{Event timing by type, category and starting price.}
+\Cref{haz-tab-timing} extends the timing evidence of \cref{haz-res-timing}. Relative to the flat implied
+hazard, the mean PIT exceeds 0.5 in every category with at least 15 resolutions and in every
+starting-price bucket, and significantly so everywhere except elections ($t=1.79$). Sports and entertainment, where resolutions often hinge on scheduled games or
+releases, are the most back-loaded.
+
+\begin{table}[ht]
+\centering
+\begin{threeparttable}
+\caption{Timing of YES resolutions relative to the flat implied hazard}\label{haz-tab-timing}
+\footnotesize
+% source: data/research/pm_hazard/summary.json:event_timing (all_core, by_kind, by_category, by_p0)
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrrrrr@{}}
+\toprule
+ & $n$ (cl.) & $p_0$ & Anchor (h) & Mean PIT ($t$) & KS & Last 10\%: real./flat & Last day \\
+\midrule
+Events, mentions, counts & 807 (238) & 0.561 & 120 & 0.61 (7.72) & 0.16 & 0.157 / 0.064 & 0.201 \\
+\addlinespace
+One-off events  & 304 (151) & 0.560 & 504 & 0.65 (8.34)  & 0.22 & 0.197 / 0.063 & 0.207 \\
+Mentions        & 447 (66)  & 0.566 & 120 & 0.60 (4.56)  & 0.16 & 0.132 / 0.064 & 0.201 \\
+Counts          &  56 (21)  & 0.525 & 120 & 0.52 (0.35)  & 0.13 & 0.143 / 0.066 & 0.161 \\
+Eliminations    &  92 (45)  & 0.510 & 120 & 0.95 (19.03) & 0.81 & 0.837 / 0.067 & 0.913 \\
+\addlinespace
+Politics        & 223 (102) & 0.559 & 504 & 0.60 (4.05)  & 0.14 & 0.152 / 0.063 & 0.157 \\
+Science \& tech. &  44 (18) & 0.609 & 420 & 0.64 (2.46)  & 0.33 & 0.114 / 0.060 & 0.136 \\
+Sports          &  39 (15)  & 0.517 & 504 & 0.74 (6.59)  & 0.38 & 0.359 / 0.067 & 0.385 \\
+Elections       &  32 (18)  & 0.497 & 204 & 0.60 (1.79)  & 0.23 & 0.219 / 0.067 & 0.281 \\
+Entertainment   &  15 (14)  & 0.583 & 1080 & 0.78 (6.52) & 0.44 & 0.267 / 0.063 & 0.267 \\
+\addlinespace
+$p_0<0.15$      &  42 (33)  & 0.089 & 120 & 0.64 (2.66)  & 0.24 & 0.238 / 0.096 & 0.238 \\
+$0.15\le p_0<0.5$ & 246 (132) & 0.327 & 120 & 0.60 (4.57) & 0.16 & 0.175 / 0.083 & 0.228 \\
+$0.5\le p_0<0.9$  & 519 (191) & 0.710 & 120 & 0.62 (7.07) & 0.17 & 0.143 / 0.052 & 0.185 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item Contracts that resolved YES, anchored at their earliest priced pre-event grid quote with mid
+below 0.9 ($p_0$: mean anchor price; Anchor: median anchor lead). PIT: $F(u)=[1-(1-p_0)^u]/p_0$ at
+the elapsed window share $u$ of the event-time upper bound; uniform under the flat implied hazard.
+$t$ tests mean PIT $=0.5$ with clustering by event. KS: Kolmogorov--Smirnov distance from uniform.
+Last 10\%: share of resolutions in the last tenth of the window, realised and under the flat implied
+hazard. Last day: share within 24 hours of the deadline. Category and price rows cover events,
+mentions and counts. All splits pooled.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\paragraph{Variance decomposition and Cox intensity.}
+\Cref{haz-tab-qv} gives the quadratic-variation shares behind \cref{haz-fig-timing-var}b, and
+\cref{haz-tab-cir} the CIR fit of \cref{haz-eq-cir}. The negative mean-reversion estimates at both
+horizons are the formal counterpart of the rising single-contract hazard paths in
+\cref{haz-fig-path-theta}a.
+
+\begin{table}[ht]
+\centering
+\begin{threeparttable}
+\caption{Quadratic variation of the hourly mid up to settlement}\label{haz-tab-qv}
+\footnotesize
+% source: data/research/pm_hazard/summary.json:jump_diffusion_qv
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrrrrrrr@{}}
+\toprule
+ & & & & \multicolumn{4}{c}{Share of quadratic variation} & & \\
+\cmidrule(lr){5-8}
+Type & Contracts & YES & Hours & Diff. & Jumps & YES res. & NO step & QV ratio & YES jump \\
+\midrule
+Events, mentions, counts & 4{,}032 & 0.405 & 133 & 0.344 & 0.423 & 0.225 & 0.008 & 1.19 & 0.162 \\
+One-off events & 1{,}983 & 0.267 & 181 & 0.372 & 0.454 & 0.163 & 0.011 & 1.09 & 0.156 \\
+Mentions       & 1{,}778 & 0.564 & 113 & 0.352 & 0.397 & 0.250 & 0.001 & 1.23 & 0.148 \\
+Counts         &    271 & 0.373 & 117 & 0.160 & 0.433 & 0.374 & 0.033 & 1.50 & 0.326 \\
+Eliminations   & 1{,}388 & 0.105 &  13 & 0.256 & 0.689 & 0.045 & 0.010 & 0.96 & 0.056 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item Hourly mids with spread at most 10\textcent{} from the first quote in the last 62 days before the
+deadline; contracts with at least six such hours. YES: share resolving YES. Hours: median count.
+Diff.: hourly changes below 20\textcent{} before resolution. Jumps: hourly changes of at least
+20\textcent{} before resolution. YES res.: $(1-m)^2$ from the last mid at least two hours before the
+event-time upper bound. NO step: $m^2$ from the last mid before the deadline. QV ratio:
+$\sum QV/\sum p_0(1-p_0)$, which is one in expectation for a martingale. YES jump: mean $1-m$ for
+contracts that resolved YES. All splits pooled.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\begin{threeparttable}
+\caption{CIR-type fit of the implied average hazard on no-event steps}\label{haz-tab-cir}
+\footnotesize
+% source: data/research/pm_hazard/summary.json:cir
+\begin{tabular}{@{}llrrrrrrr@{}}
+\toprule
+Type & Leads & Steps & Contracts & Median $\hbarimp$ (/d) & $\kappa$ (/d) & $\theta$ (/d) & $\sigma$ & $\sigma_{\ln\hbarimp}$ \\
+\midrule
+Events, mentions, counts & $\ge 3$ d & 5{,}034 & 1{,}987 & 0.023 & $-0.049$ & $-0.0002$ & 0.23 & 0.42 \\
+                         & $<3$ d    & 3{,}729 & 1{,}279 & 0.113 & $-1.987$ & $0.0146$  & 8.16 & 1.45 \\
+One-off events           & $\ge 3$ d & 2{,}660 &    924 & 0.014 & $-0.060$ & $0.0003$  & 0.27 & 0.41 \\
+                         & $<3$ d    & 1{,}276 &    510 & 0.101 & $-2.219$ & $0.0108$  & 9.27 & 1.54 \\
+Mentions                 & $\ge 3$ d & 2{,}105 &    910 & 0.037 & $-0.006$ & $-0.0443$ & 0.14 & 0.41 \\
+                         & $<3$ d    & 2{,}090 &    659 & 0.105 & $-2.049$ & $0.0193$  & 7.92 & 1.34 \\
+Counts                   & $\ge 3$ d &    269 &    153 & 0.048 & $-0.190$ & $0.0006$  & 0.37 & 0.57 \\
+                         & $<3$ d    &    363 &    110 & 0.212 & $-1.396$ & $-0.0015$ & 4.40 & 1.57 \\
+Eliminations             & $\ge 3$ d &    451 &    276 & 0.048 & $-0.306$ & $-0.0224$ & 0.92 & 0.67 \\
+                         & $<3$ d    &    767 &    313 & 0.222 & $-2.810$ & $0.0161$  & 10.34 & 2.02 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item Least-squares fit of \cref{haz-eq-cir} to $\lambda=\hbarimp$ (per day) over no-jump grid steps
+with both mids in $(0.02, 0.98)$ and spread at most 10\textcent; $\sigma^2$ is the mean squared
+residual per unit time. $\sigma_{\ln\hbarimp}$: standard deviation of $\Delta\ln\hbarimp/\sqrt{\Delta t}$
+per square-root day. Negative $\kappa$ means no mean reversion: $\hbarimp$ drifts upward towards the
+deadline, so $\theta$ is not a long-run level. All splits pooled.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\paragraph{Economic significance.}
+\Cref{haz-tab-econ} reports the trading test summarised in \cref{haz-res-econ}. Thresholds are chosen
+on the \estim{} by the highest mean profit with at least 30 trades, so the \estim{} columns are
+in-sample.
+
+\begin{table}[ht]
+\centering
+\begin{threeparttable}
+\caption{Economic significance: buying NO at the NO ask, held to settlement}\label{haz-tab-econ}
+\footnotesize
+% source: data/research/pm_hazard/summary.json:economic
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+ & & \multicolumn{2}{c}{Estimation sample} & \multicolumn{2}{c}{Holdout} \\
+ & & \multicolumn{2}{c}{(before 1 October 2026)} & \multicolumn{2}{c}{(October 2026)} \\
+\cmidrule(lr){3-4}\cmidrule(l){5-6}
+Rule & Unit & Trades (cl.) & \textcent{} ($t$) & Trades (cl.) & \textcent{} ($t$) \\
+\midrule
+Hazard model, edge $\ge 0.12$  & every signal  &    538 (143) & $19.02$ ($5.02$) &     49 (13) & $-5.30$ ($-0.83$) \\
+                               & first per contract & 311 (143) & $16.15$ ($4.95$) &   29 (13) & $-8.53$ ($-1.26$) \\
+Price-only model, edge $\ge 0.08$ & every signal &   444 (163) & $9.83$ ($2.77$)  &     27 (12) & $-7.43$ ($-0.78$) \\
+                               & first per contract & 344 (163) & $8.20$ ($2.60$)  &   20 (12) & $-4.02$ ($-0.49$) \\
+Control, YES mid $\le 0.50$    & every signal  & 18{,}949 (593) & $1.16$ ($4.35$) & 1{,}737 (89) & $1.32$ ($1.65$) \\
+                               & first per contract & 3{,}561 (593) & $1.89$ ($3.44$) & 294 (89) & $0.06$ ($0.03$) \\
+Maker NO bid, hazard model     & per fill      &     48 (12)  & $6.06$ ($0.68$)  &     29 (13) & $-3.17$ ($-0.46$) \\
+Maker NO bid, mid              & per fill      &     32 (11)  & $6.56$ ($0.63$)  &     14 (9)  & $-10.29$ ($-1.02$) \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item Profit in cents (\textcent) per contract. One contract per signal at the NO ask ($1-$ YES bid) with the Kalshi taker fee
+$0.07\,m\,P(1-P)$ rounded up to \$0.0001, held to settlement; quotes with spread at most
+10\textcent. The hazard model is a multiplier table by type, lead and price fitted on the \estim; the
+price-only model uses price buckets only; thresholds and the control's price cap are chosen on the
+\estim. Maker rows rest a NO bid at $\lfloor 1-p-\text{margin}\rfloor$ until the next grid point and
+count a fill only if a later trade prints through it (shared trade tape from 30 July 2026). $t$ is
+clustered by event. In a logistic blend of the outcome on the logits of the mid and of the hazard
+model, the hazard coefficient is 0.006 ($t=0.04$) in the holdout; holdout Brier scores are 0.0459
+(mid) and 0.0472 (hazard model).
+\end{tablenotes}
+\end{threeparttable}
+\end{table}

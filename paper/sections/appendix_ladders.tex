@@ -1,0 +1,255 @@
+% Strike ladders: additional tables. Generated from data/research/pm_smile/summary.json.
+This appendix reports the ladder sample by group (\cref{tab:lad-sample}), the smile parameters
+for every group, lead and sample (\cref{tab:lad-smile-full}), the ATM term-structure exponents
+(\cref{tab:lad-term}), the tail-mass comparison underlying \cref{fig:lad-calibration}
+(\cref{tab:lad-tails}), the variance ratios underlying \cref{fig:lad-variance}
+(\cref{tab:lad-variance}) and the economic-significance calculation (\cref{tab:lad-econ}).
+
+\begin{table}[ht]
+\centering\small
+\begin{threeparttable}
+\caption{Ladder sample by group.}\label{tab:lad-sample}
+% source: data/research/pm_smile/summary.json:coverage
+\begin{tabular}{@{}lrrrrrrr@{}}
+\toprule
+Group & Series & Events & Ladders & Snapshots & Leg quotes & Estimation & Holdout \\
+\midrule
+Weather highs & 24 & 1,531 & 1,531 & 5,762 & 34,572 & 3,286 & 2,476 \\
+Weather lows & 24 & 836 & 836 & 1,509 & 9,054 & 801 & 708 \\
+Sports totals & 149 & 3,778 & 3,778 & 7,762 & 78,874 & 4,245 & 3,517 \\
+Team totals & 24 & 1,040 & 2,004 & 4,570 & 44,560 & 2,279 & 2,291 \\
+Spreads & 44 & 1,760 & 1,760 & 4,010 & 61,022 & 1,740 & 2,270 \\
+Politics & 11 & 115 & 115 & 270 & 2,157 & 110 & 160 \\
+Entertainment & 11 & 82 & 82 & 207 & 1,775 & 122 & 85 \\
+Science/tech & 14 & 33 & 33 & 57 & 280 & 34 & 23 \\
+Other climate & 7 & 37 & 37 & 44 & 297 & 10 & 34 \\
+Elections & 1 & 1 & 1 & 1 & 3 & 0 & 1 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]\footnotesize
+\item Fitted snapshots (at least three survival points, median inside the quoted strikes). Leg
+quotes: legs with spread at most 5\cents{} used in the fits. Estimation and holdout columns count
+snapshots of events expiring before 1 October 2026 and in October 2026. Team-total events carry
+one ladder per team.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\begin{table}[ht]
+\centering\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{threeparttable}
+\caption{Smile parameters by group, lead and sample.}\label{tab:lad-smile-full}
+% source: data/research/pm_smile/summary.json:smile (split dev = estimation, holdout)
+\begin{tabular}{@{}llrrcccc@{}}
+\toprule
+Group & Lead & Snapshots & Strikes & $s$ [95\% CI] & $c$ [95\% CI] & Median $s$ & Median $c$ \\
+\midrule
+Weather highs & 36 h, est. & 668 & 1,758 & $-0.017$ [$-0.020$, $-0.013$] & 0.053 [0.051, 0.056] & $-0.024$ & 0.033 \\
+Weather highs & 36 h, hold. & 489 & 1,162 & $-0.018$ [$-0.021$, $-0.014$] & 0.058 [0.056, 0.060] & $-0.025$ & 0.033 \\
+Weather highs & 24 h, est. & 734 & 1,668 & $-0.019$ [$-0.022$, $-0.015$] & 0.054 [0.052, 0.056] & $-0.032$ & 0.035 \\
+Weather highs & 24 h, hold. & 538 & 1,042 & $-0.015$ [$-0.018$, $-0.011$] & 0.056 [0.054, 0.059] & $-0.023$ & 0.033 \\
+Weather highs & 16 h, est. & 741 & 1,348 & $-0.019$ [$-0.023$, $-0.016$] & 0.054 [0.051, 0.056] & $-0.036$ & 0.035 \\
+Weather highs & 16 h, hold. & 553 & 876 & $-0.011$ [$-0.015$, $-0.008$] & 0.055 [0.052, 0.057] & $-0.019$ & 0.030 \\
+Weather highs & 12 h, est. & 520 & 603 & 0.002 [$-0.003$, 0.006] & 0.058 [0.054, 0.062] & $-0.022$ & 0.030 \\
+Weather highs & 12 h, hold. & 357 & 302 & $-0.004$ [$-0.011$, 0.003] & 0.053 [0.048, 0.058] & 0.004 & 0.033 \\
+Weather lows & 36 h, est. & 87 & 205 & $-0.030$ [$-0.043$, $-0.018$] & 0.069 [0.061, 0.077] & $-0.041$ & 0.038 \\
+Weather lows & 36 h, hold. & 15 & 33 & $-0.032$ [$-0.061$, $-0.003$] & 0.058 [0.046, 0.070] & $-0.014$ & 0.037 \\
+Sports totals & 48 h, est. & 123 & 1,160 & 0.044 [0.037, 0.051] & 0.025 [0.018, 0.032] & 0.054 & 0.004 \\
+Sports totals & 48 h, hold. & 175 & 1,498 & 0.057 [0.047, 0.068] & 0.038 [0.015, 0.061] & 0.059 & 0.005 \\
+Sports totals & 24 h, est. & 986 & 7,702 & 0.068 [0.065, 0.072] & 0.021 [0.017, 0.024] & 0.086 & 0.001 \\
+Sports totals & 24 h, hold. & 1,253 & 9,841 & 0.058 [0.056, 0.061] & 0.022 [0.018, 0.026] & 0.073 & 0.000 \\
+Sports totals & 6 h, est. & 2,141 & 13,196 & 0.088 [0.085, 0.092] & 0.007 [0.005, 0.010] & 0.098 & $-0.007$ \\
+Sports totals & 6 h, hold. & 1,574 & 12,494 & 0.057 [0.055, 0.059] & 0.018 [0.014, 0.021] & 0.071 & $-0.004$ \\
+Sports totals & 1 h, est. & 995 & 4,954 & 0.117 [0.107, 0.127] & 0.026 [0.019, 0.033] & 0.155 & $-0.024$ \\
+Sports totals & 1 h, hold. & 515 & 4,277 & 0.050 [0.044, 0.056] & 0.039 [0.036, 0.042] & 0.072 & 0.019 \\
+Team totals & 48 h, est. & 103 & 806 & 0.000 [$-0.007$, 0.007] & 0.037 [0.033, 0.042] & 0.004 & 0.024 \\
+Team totals & 48 h, hold. & 173 & 1,320 & 0.008 [0.004, 0.012] & 0.036 [0.033, 0.039] & 0.003 & 0.019 \\
+Team totals & 24 h, est. & 730 & 4,246 & 0.052 [0.044, 0.059] & 0.043 [0.032, 0.053] & 0.075 & $-0.002$ \\
+Team totals & 24 h, hold. & 851 & 6,758 & 0.035 [0.032, 0.039] & 0.022 [0.018, 0.025] & 0.038 & 0.002 \\
+Team totals & 6 h, est. & 1,023 & 6,589 & 0.061 [0.056, 0.067] & 0.028 [0.024, 0.031] & 0.119 & $-0.011$ \\
+Team totals & 6 h, hold. & 958 & 9,148 & 0.035 [0.031, 0.038] & 0.020 [0.016, 0.024] & 0.036 & $-0.006$ \\
+Team totals & 1 h, est. & 423 & 1,555 & 0.114 [0.098, 0.131] & 0.041 [0.035, 0.048] & 0.202 & $-0.017$ \\
+Team totals & 1 h, hold. & 309 & 2,247 & 0.028 [0.020, 0.035] & 0.050 [0.046, 0.054] & 0.038 & 0.026 \\
+Spreads & 48 h, est. & 95 & 1,491 & 0.030 [0.014, 0.046] & 0.056 [0.049, 0.062] & $-0.001$ & 0.031 \\
+Spreads & 48 h, hold. & 151 & 1,643 & 0.017 [$-0.004$, 0.037] & 0.055 [0.025, 0.085] & $-0.012$ & 0.025 \\
+Spreads & 24 h, est. & 501 & 6,486 & 0.019 [0.013, 0.025] & 0.045 [0.040, 0.050] & 0.002 & 0.017 \\
+Spreads & 24 h, hold. & 735 & 10,167 & 0.009 [0.003, 0.016] & 0.031 [0.023, 0.038] & $-0.002$ & 0.012 \\
+Spreads & 6 h, est. & 755 & 7,711 & 0.017 [0.011, 0.023] & 0.053 [0.038, 0.068] & $-0.005$ & 0.008 \\
+Spreads & 6 h, hold. & 966 & 12,318 & 0.006 [0.001, 0.012] & 0.036 [0.025, 0.047] & $-0.002$ & 0.010 \\
+Spreads & 1 h, est. & 389 & 2,638 & 0.010 [$-0.001$, 0.021] & 0.062 [0.055, 0.068] & $-0.005$ & 0.030 \\
+Spreads & 1 h, hold. & 418 & 4,467 & $-0.011$ [$-0.017$, $-0.006$] & 0.037 [0.034, 0.039] & $-0.016$ & 0.023 \\
+Politics & 48 h, est. & 25 & 69 & 0.034 [$-0.002$, 0.070] & 0.057 [0.045, 0.069] & 0.078 & 0.044 \\
+Politics & 48 h, hold. & 28 & 108 & 0.033 [0.011, 0.055] & 0.065 [0.052, 0.079] & 0.014 & 0.043 \\
+Politics & 24 h, est. & 35 & 105 & $-0.001$ [$-0.022$, 0.021] & 0.083 [0.071, 0.095] & $-0.012$ & 0.071 \\
+Politics & 24 h, hold. & 51 & 224 & 0.015 [$-0.004$, 0.034] & 0.068 [0.055, 0.081] & 0.007 & 0.052 \\
+Politics & 6 h, est. & 32 & 76 & 0.002 [$-0.025$, 0.028] & 0.066 [0.055, 0.077] & 0.001 & 0.072 \\
+Politics & 6 h, hold. & 51 & 177 & 0.010 [$-0.013$, 0.032] & 0.074 [0.064, 0.084] & 0.013 & 0.060 \\
+Science/tech & 48 h, hold. & 14 & 34 & 0.012 [$-0.030$, 0.054] & 0.061 [0.037, 0.086] & 0.126 & 0.125 \\
+Other climate & 24 h, hold. & 26 & 126 & 0.156 [0.135, 0.178] & 0.019 [0.003, 0.035] & 0.164 & 0.009 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]\footnotesize
+\item Pooled least squares of $\sigma_K/\satm-1=a+s\,m+c\,m^2$ over off-ATM strikes ($|z|\ge0.25$,
+$|m|\le3.5$, the two strikes straddling $\Fmed$ excluded) in cells with at least 30 strikes;
+est.\ = estimation sample (before 1 October 2026), hold.\ = holdout (October 2026); 95\% intervals
+from standard errors clustered by event. Median $s$, $c$: medians of the per-snapshot fits with
+$a=0$ (snapshots with at least three off-ATM strikes).
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\begin{table}[ht]
+\centering\small
+\begin{threeparttable}
+\caption{ATM term structure: exponent of $\satm$ in the lead.}\label{tab:lad-term}
+% source: data/research/pm_smile/summary.json:term_structure
+\begin{tabular}{@{}lrrccc@{}}
+\toprule
+Group & Snapshots & Ladders & $\eta$ & 95\% CI & $t_{\eta=1/2}$ \\
+\midrule
+Weather highs & 5,640 & 1,409 & 0.773 & [0.760, 0.786] & 41.3 \\
+Weather lows & 1,162 & 489 & 0.480 & [0.413, 0.546] & $-0.6$ \\
+Sports totals & 4,749 & 2,227 & 0.009 & [0.007, 0.010] & $-595.8$ \\
+Team totals & 3,430 & 1,580 & 0.001 & [$-0.003$, 0.005] & $-261.1$ \\
+Spreads & 2,706 & 1,231 & 0.001 & [$-0.002$, 0.004] & $-325.9$ \\
+Politics & 245 & 90 & 0.348 & [0.288, 0.408] & $-5.0$ \\
+Entertainment & 184 & 59 & 0.186 & [0.138, 0.234] & $-12.7$ \\
+Science/tech & 38 & 14 & 0.241 & [0.170, 0.311] & $-7.2$ \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]\footnotesize
+\item Within-ladder regression of $\log\satm$ on the log lead (ladders with at least two
+snapshots), estimation sample and holdout pooled; intervals and $t$ clustered by event. Sports
+use the pre-game leads (48, 24, 6 hours); weather leads are hours before the measurement-day close.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\begin{table}[ht]
+\centering\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{threeparttable}
+\caption{Implied and realised tail mass beyond $|m|$ (cents per strike).}\label{tab:lad-tails}
+% source: data/research/pm_smile/summary.json:tail_summary
+\begin{tabular}{@{}llrccccrcccc@{}}
+\toprule
+ & & \multicolumn{5}{c}{Lower wing ($m\le-k$)} & \multicolumn{5}{c}{Upper wing ($m\ge k$)} \\
+\cmidrule(lr){3-7}\cmidrule(lr){8-12}
+Group & Sample, $k$ & Strikes & Implied & Realised & Normal & $z_{H_0}$ & Strikes & Implied & Realised & Normal & $z_{H_0}$ \\
+\midrule
+Weather highs & est., 1.5 & 5,031 & 2.17 & 0.97 & 1.07 & 0.83 & 5,545 & 1.85 & 0.63 & 1.12 & $-1.28$ \\
+Weather highs & est., 2.5 & 2,953 & 1.11 & 0.30 & 0.09 & $-0.50$ & 3,386 & 0.95 & 0.03 & 0.09 & $-2.57$ \\
+Weather highs & hold., 1.5 & 4,066 & 1.86 & 0.81 & 0.95 & 0.35 & 4,539 & 1.61 & 0.48 & 0.95 & $-1.74$ \\
+Weather highs & hold., 2.5 & 2,580 & 1.05 & 0.00 & 0.09 & $-2.37$ & 2,959 & 0.93 & 0.00 & 0.07 & $-2.29$ \\
+Weather lows & est., 1.5 & 2,221 & 2.14 & 0.54 & 0.95 & $-2.23$ & 1,425 & 0.96 & 0.00 & 0.58 & $-1.98$ \\
+Weather lows & est., 2.5 & 1,552 & 1.54 & 0.32 & 0.01 & $-2.05$ & 949 & 0.65 & 0.00 & 0.14 & $-1.54$ \\
+Weather lows & hold., 1.5 & 2,083 & 1.64 & 0.48 & 0.82 & $-1.49$ & 1,338 & 0.87 & 0.07 & 0.51 & $-1.49$ \\
+Weather lows & hold., 2.5 & 1,471 & 1.14 & 0.14 & 0.01 & $-1.54$ & 925 & 0.66 & 0.00 & 0.15 & $-1.45$ \\
+Sports totals & est., 1.5 & 936 & 3.45 & 2.35 & 4.05 & $-0.96$ & 2,200 & 5.90 & 6.18 & 3.35 & 0.67 \\
+Sports totals & est., 2.5 & 157 & 0.66 & 0.64 & 0.24 & $-0.06$ & 456 & 1.77 & 2.19 & 0.18 & 0.45 \\
+Sports totals & hold., 1.5 & 3,018 & 2.21 & 1.29 & 2.69 & $-0.71$ & 3,476 & 5.08 & 3.22 & 3.02 & $-0.77$ \\
+Sports totals & hold., 2.5 & 858 & 0.55 & 0.00 & 0.12 & $-1.20$ & 914 & 1.70 & 0.11 & 0.15 & $-2.17$ \\
+Team totals & est., 1.5 & 1,086 & 3.19 & 2.76 & 3.33 & $-0.30$ & 1,930 & 5.95 & 5.85 & 3.09 & 0.44 \\
+Team totals & est., 2.5 & 158 & 0.80 & 0.00 & 0.20 & $-0.83$ & 362 & 3.62 & 1.10 & 0.19 & $-2.03$ \\
+Team totals & hold., 1.5 & 1,933 & 3.35 & 2.85 & 3.24 & 0.34 & 2,551 & 4.51 & 4.74 & 2.96 & 1.46 \\
+Team totals & hold., 2.5 & 334 & 1.05 & 0.00 & 0.18 & $-1.00$ & 568 & 2.06 & 0.70 & 0.17 & $-0.89$ \\
+Spreads & est., 1.5 & 2,097 & 4.46 & 6.82 & 3.17 & 0.59 & 501 & 5.88 & 5.79 & 3.72 & 0.65 \\
+Spreads & est., 2.5 & 539 & 1.60 & 2.78 & 0.14 & 1.10 & 90 & 1.26 & 1.11 & 0.17 & 0.39 \\
+Spreads & hold., 1.5 & 4,000 & 3.65 & 2.83 & 2.86 & $-1.02$ & 1,425 & 4.30 & 4.35 & 3.44 & $-0.63$ \\
+Spreads & hold., 2.5 & 1,135 & 1.04 & 0.26 & 0.14 & $-1.74$ & 193 & 1.63 & 0.00 & 0.24 & $-1.23$ \\
+Politics & est., 1.5 & 197 & 3.09 & 2.03 & 1.26 & 0.10 & 320 & 2.96 & 2.50 & 0.87 & 1.29 \\
+Politics & est., 2.5 & 123 & 1.86 & 0.00 & 0.07 & $-0.84$ & 232 & 2.05 & 1.29 & 0.04 & 0.22 \\
+Politics & hold., 1.5 & 343 & 3.23 & 0.87 & 1.14 & $-0.32$ & 454 & 3.32 & 1.54 & 0.78 & $-0.06$ \\
+Politics & hold., 2.5 & 222 & 2.21 & 0.90 & 0.07 & $-0.37$ & 338 & 2.38 & 0.00 & 0.05 & $-1.23$ \\
+Entertainment & est., 1.5 & 343 & 1.14 & 0.87 & 0.57 & $-0.30$ & 478 & 1.20 & 0.21 & 0.47 & $-0.80$ \\
+Entertainment & est., 2.5 & 280 & 0.76 & 0.71 & 0.08 & $-0.38$ & 402 & 0.94 & 0.00 & 0.05 & $-0.68$ \\
+Entertainment & hold., 1.5 & 383 & 1.02 & 0.26 & 0.39 & 1.01 & 485 & 1.03 & 0.00 & 0.30 & $-0.68$ \\
+Entertainment & hold., 2.5 & 331 & 0.76 & 0.00 & 0.04 & $-0.53$ & 433 & 0.84 & 0.00 & 0.03 & $-0.56$ \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]\footnotesize
+\item All strikes beyond the threshold, all leads; est.\ = estimation sample (before 1 October
+2026), hold.\ = holdout (October 2026). Implied: $S(K)$ in the upper wing, $1-S(K)$ in the lower
+wing; realised: the corresponding settled indicator; Normal: $\Phi(-|m|)$, the tail of a normal
+with the ATM width. $z_{H_0}$: event means of realised minus implied over the variance implied
+by the quotes (events independent), which remains valid when no tail event occurs.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\begin{table}[ht]
+\centering\small
+\begin{threeparttable}
+\caption{Realised and implied variance between consecutive snapshots.}\label{tab:lad-variance}
+% source: data/research/pm_smile/summary.json:variance_between
+\begin{tabular}{@{}llrrccccc@{}}
+\toprule
+Group & Window & Pairs & Events & RV & IV & RV/IV & 90\% CI & Drift ($t$) \\
+\midrule
+Weather highs & 36$\to$24 & 1,034 & 1,034 & 0.1356 & 0.1324 & 1.024 & [0.867, 1.243] & 0.065 (5.8) \\
+Weather highs & 24$\to$16 & 1,142 & 1,142 & 0.1259 & 0.1922 & 0.655 & [0.584, 0.731] & $-0.046$ ($-4.5$) \\
+Weather highs & 16$\to$12 & 816 & 816 & 0.3329 & 0.3070 & 1.084 & [0.946, 1.221] & 0.060 (3.0) \\
+Weather highs & 16$\to$8 & 339 & 339 & 0.8501 & 0.8345 & 1.019 & [0.901, 1.153] & 0.176 (3.6) \\
+Weather highs & 12$\to$8 & 713 & 713 & 1.0595 & 0.6849 & 1.547 & [1.374, 1.738] & 0.106 (2.8) \\
+Weather lows & 16$\to$12 & 236 & 236 & 0.0206 & 0.0709 & 0.291 & [0.248, 0.332] & 0.084 (11.0) \\
+Weather lows & 12$\to$8 & 320 & 320 & 0.0208 & 0.0251 & 0.828 & [0.259, 1.890] & 0.036 (4.6) \\
+Sports totals & 48$\to$24 & 296 & 296 & 0.0023 & 0.0053 & -- & -- & 0.003 (0.9) \\
+Sports totals & 24$\to$6 & 2,225 & 2,225 & 0.0041 & 0.0177 & 0.233 & [0.189, 0.290] & 0.003 (2.0) \\
+Sports totals & 6$\to$1 & 1,462 & 1,462 & 0.2797 & 0.3122 & 0.896 & [0.810, 0.982] & 0.022 (1.6) \\
+Team totals & 48$\to$24 & 270 & 142 & 0.0012 & $-0.0202$ & -- & -- & $-0.002$ ($-0.8$) \\
+Team totals & 24$\to$6 & 1,575 & 822 & 0.0033 & $-0.0329$ & -- & -- & $-0.001$ ($-0.6$) \\
+Team totals & 6$\to$1 & 716 & 434 & 0.3507 & 0.5417 & 0.647 & [0.590, 0.701] & $-0.009$ ($-0.4$) \\
+Spreads & 48$\to$24 & 244 & 244 & 0.0019 & $-0.0326$ & -- & -- & 0.003 (1.1) \\
+Spreads & 24$\to$6 & 1,230 & 1,230 & 0.0040 & $-0.0088$ & -- & -- & 0.001 (0.5) \\
+Spreads & 6$\to$1 & 773 & 773 & 0.4392 & 0.4786 & 0.918 & [0.835, 1.040] & 0.013 (0.6) \\
+Politics & 48$\to$24 & 46 & 46 & 0.3432 & 0.0819 & 4.191 & [0.760, 23.987] & $-0.099$ ($-1.1$) \\
+Politics & 24$\to$6 & 68 & 68 & 0.2657 & 0.2554 & 1.040 & [0.367, 3.623] & $-0.027$ ($-0.4$) \\
+Politics & 6$\to$1 & 32 & 32 & 1.5147 & 0.6672 & 2.270 & [1.187, 4.407] & 0.576 (3.0) \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]\footnotesize
+\item Consecutive snapshots $t\to u$ of one ladder (window in hours before expiry; weather windows
+with at least 100 pairs), estimation sample and holdout pooled. RV: mean of
+$((\Fmed_u-\Fmed_t)/\sigma_t)^2$; IV: mean of $1-(\sigma_u/\sigma_t)^2$, with $\sigma=\satm$. RV/IV is
+reported where IV exceeds 0.01; 90\% interval from 200 cluster-bootstrap replications over events.
+Drift: mean of $(\Fmed_u-\Fmed_t)/\sigma_t$ with $t$ clustered by event. Sports windows from 6 to 1
+hours are in play.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+
+\begin{table}[ht]
+\centering\small
+\begin{threeparttable}
+\caption{Economic significance: selling the tail side of ladder legs.}\label{tab:lad-econ}
+% source: data/research/pm_smile/summary.json:pooled_rules (scope "all groups")
+\begin{tabular}{@{}lrrrrrrr@{}}
+\toprule
+ & & \multicolumn{3}{c}{Estimation sample} & \multicolumn{3}{c}{Holdout} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}
+Rule & Tail price & Contracts & PnL & $t_{\text{risk}}$ & Contracts & PnL & $t_{\text{risk}}$ \\
+\midrule
+Every wing leg & 23.67 & 92,217 & $-2.30$ & $-2.90$ & 108,284 & $-1.75$ & $-2.11$ \\
+Model, $|m|\ge1.5$ & 4.39 & 12,977 & $-0.78$ & $-1.63$ & 17,443 & $-0.22$ & $-0.46$ \\
+Model, $|m|\ge2$ & 2.76 & 5,227 & 0.02 & 0.04 & 6,491 & 0.65 & 1.39 \\
+Model, $|m|\ge2.5$ & 2.36 & 2,741 & 0.23 & 0.43 & 3,006 & 1.10 & 1.99 \\
+Price, tail $\le2$\cents & 1.61 & 2,572 & 0.31 & 0.73 & 3,821 & 0.25 & 0.65 \\
+Price, tail $\le3$\cents & 2.08 & 4,650 & 0.22 & 0.53 & 6,924 & $-0.04$ & $-0.09$ \\
+Price, tail $\le5$\cents & 3.08 & 9,510 & $-0.47$ & $-1.12$ & 12,913 & $-0.21$ & $-0.49$ \\
+Price, tail $\le10$\cents & 5.49 & 20,252 & $-1.26$ & $-2.56$ & 27,288 & $-0.91$ & $-1.81$ \\
+Price $\le5$\cents{} and $|m|<2$ & 3.71 & 4,800 & $-1.22$ & $-2.37$ & 6,757 & $-0.85$ & $-1.65$ \\
+Price $\le5$\cents{} and $|m|\ge2$ & 2.41 & 4,710 & 0.29 & 0.62 & 6,156 & 0.49 & 1.08 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]\footnotesize
+\item Pre-specified rules pooled over all groups and leads, not tuned. Each qualifying leg at each
+snapshot is one contract: the side opposite the tail is bought at the snapshot candle's ask (or
+$1-$bid) with the Kalshi taker fee of its series and held to settlement. Tail price: mean mid of the
+tail side (cents). PnL in cents per contract. $t_{\text{risk}}$: mean over its standard error under
+settlement risk at the market price (per-contract s.d.\ $\sqrt{p(1-p)}$ summed within an event,
+events independent). Estimation sample: before 1 October 2026; holdout: October 2026.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}

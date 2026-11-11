@@ -1,0 +1,152 @@
+% Deadline contracts: sample construction, measurement and tests.
+% All numbers come from the saved study outputs under data/research/pm_hazard/ (summary.json,
+% scan_plan.parquet) and the study report data/reports/research-pm-hazard-20261109T222119Z/report.md.
+
+A deadline contract pays one dollar if a specified occurrence happens after issuance and before a
+stated date $T$; the exchange may close it as soon as the occurrence is confirmed. Under the model of
+\cref{sec:model} its price is one minus a survival probability. We measure three objects: the implied
+average hazard $\hbarimp_t$, its term structure across deadlines, and the no-event decay (theta) of
+the price.
+
+\paragraph{Sample and classification.}
+Deadline contracts live for weeks or months, so we extend the settled-market table of \cref{sec:data}
+backwards series by series through the public historical endpoint. The extension covers 237 series
+with a deadline contract in the table and 1{,}450 further non-financial one-off, custom or periodic
+series whose title contains a deadline-type word (``before'', ``out'', ``release'', ``visit'',
+``eliminated'' and similar). Series are selected on titles, never on outcomes.
+% source: data/research/pm_hazard/scan_plan.parquet (tier 1: 237, tier 2: 1450)
+Contracts are classified from their rules text alone. A candidate's rules contain a deadline phrase
+(``before $D$'', ``by $D$'', ``through $D$'', ``between $D_1$ and $D_2$'', optionally with a clock
+time), and candidates fall into four hazard types (\cref{haz-tab-class}):
+\begin{itemize}
+\item \emph{events}: single occurrences, such as a release, resignation, visit or launch;
+\item \emph{mentions}: weekly or monthly windows in which a named speaker must say a word;
+\item \emph{counts}: first-passage thresholds (``at least $N$ \dots{} before $D$'');
+\item \emph{eliminations}: reality-show eliminations, resolved at scheduled episodes.
+\end{itemize}
+We exclude competing legs, which resolve NO early when another candidate succeeds; quantities
+measured at $T$; scheduled votes; and scheduled shows and elections. A contract is in scope when its
+parsed deadline lies in $(1\text{ January}, 2\text{ November }2026]$, it settled YES or NO, and it
+was open after 1 January 2026. The upper bound is the key look-ahead guard: a contract whose deadline
+lies beyond the data end would appear only if it had already resolved YES. The sample has 5{,}872
+contracts, 5{,}761 of them with hourly quotes.
+% source: data/research/pm_hazard/summary.json:universe (in_scope_markets 5872, with_candles 5761)
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Classification of deadline contracts}\label{haz-tab-class}
+\small
+% source: data/reports/research-pm-hazard-20261109T222119Z/report.md (classification table)
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrrrp{4.8cm}@{}}
+\toprule
+Type & Cand. & Series & In scope & Clusters & YES rate & Example \\
+\midrule
+Event        & 3{,}505 & 700 & 2{,}180 & 548 & 0.306 & Google releases next Gemini Pro before 16 Oct \\
+Mention      & 2{,}567 &   8 & 1{,}940 &  71 & 0.588 & Trump says ``Epstein'' before 2 Nov \\
+Elimination  & 1{,}485 &   8 & 1{,}449 &  88 & 0.109 & Contestant eliminated from DWTS before 28 Oct \\
+Count        &    504  &  31 &    303  &  52 & 0.399 & Trump endorses $\ge 5$ people this week \\
+\midrule
+\multicolumn{7}{@{}l}{\emph{Excluded}} \\
+Competing legs     & 2{,}401 & 64 & & & & Player's next team before 1 Dec: Washington \\
+Measured at $T$    & 1{,}014 & 25 & & & & Weekly token total above a level \\
+Scheduled vote     &    250  & 10 & & & & Senator votes for a cloture motion \\
+Scheduled show or election & 36 & 7 & & & & Artist performs a song at a named show \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item Candidates (Cand.) are non-financial single-leg contracts whose rules contain a deadline
+phrase. In scope: parsed deadline in (1 January, 2 November 2026], settled YES or NO, open after
+1 January 2026. Clusters: distinct exchange event tickers among in-scope contracts (the clustering
+unit). YES rate: share of in-scope contracts that resolved YES. Examples paraphrase contract titles.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\paragraph{Deadlines, quotes and look-ahead guards.}
+The deadline is parsed from the rules: ``before $D$'' ends at 00:00 US Eastern on $D$; ``by'',
+``through'' and ``between \dots{} and $D$'' include $D$; an explicit clock time overrides. The window
+start $s$ is an explicit ``after $D$''/``from $D$'' date or, failing that, issuance. Close and
+settlement times are never used, since they reveal an early YES. Of contracts resolving NO, 97.6\%
+closed within 26 hours of the parsed $T$ (median offset $-0.02$ hours). Contracts resolving YES
+closed more than six hours early in 90.1\% of events and 81.8\% of mentions, but only 31.6\% of
+eliminations.
+% source: summary.json:deadline_validation
+Decisions are taken at $t=T-L$ for leads $L$ of 1, 3, 6, 12, 24, 48, 72, 120, 168, 240, 336, 504,
+720, 1080 and 1440 hours. The quote is the bid and ask of the last hourly candle that ended strictly before $t$, at most
+two hours old. An observation is \emph{priced} when the spread is at most 10\cents{} (fixed in
+advance). The \estim{} (before 1 October 2026) holds contracts with $T$ before 1 October 2026. The
+holdout (October 2026) holds decisions taken in October with $T\le 2$ November. Straddling contracts
+enter pooled tables only. The 26{,}290 priced observations cover 5{,}070 contracts in 709 event
+clusters: 22{,}736 in the \estim{} and 2{,}076 in the holdout.
+% source: summary.json:universe
+Measures that condition on ``no event yet'' use an upper bound on the event time, $\tau_E$: the
+earlier of the YES close and the end of the first hourly candle of the final run of mids of at least
+97\cents. $\tau_E$ never enters calibration or trading statistics. Conditioned measures are
+restricted to mids below 0.9, so that a confidently priced contract is not flagged as resolved before
+its event.
+
+\paragraph{Implied hazards and strips.}
+$\hbarimp_t=-\ln(1-p_t)/(T-\max(t,s))$, with $p_t$ the mid. A strip is a set of event or mention
+contracts with identical rules apart from dates. Legs are compared only while both are open and
+their windows have started, and only if the later deadline does not start later than the earlier one.
+Where a window starts at issuance, this assumes that a later deadline issued no later than an earlier
+one covers its window; without such nesting, monotonicity in $T$ is not an arbitrage bound. From one
+daily snapshot per strip (16:00 UTC, spread at most 10\cents) we bootstrap forward hazards
+(\cref{sec:model}). The shape is the ratio of the last forward hazard to the spot hazard to the first
+deadline: rising above 1.25, front-loaded below 0.8, otherwise flat, and inverted if any forward is
+negative.
+
+\paragraph{Calibration ratio.}
+In a cell of observations with mids $p_i$ and outcomes $y_i$, the hazard multiplier $k$ solves
+\begin{equation}
+\textstyle\sum_i\bigl[1-(1-p_i)^{k}\bigr]=\sum_i y_i .\label{haz-eq-k}
+\end{equation}
+Because $1-(1-p)^k=1-\exp(-k\,\hbarimp\tau)$, $k$ scales every implied cumulative hazard and, under a
+flat hazard, is the ratio of realised to implied hazard; $k<1$ means implied hazards are too high.
+Intervals are the 5th and 95th percentiles over 200 bootstrap resamples of event clusters
+\citep{camerongelbachmiller2008}. We also report the mean of $y-p$ in cents with event-clustered
+$t$-statistics (\cref{sec:method}).
+
+\paragraph{Theta and event timing.}
+Each priced observation is followed to the next grid point $t_2$, which is set by the grid whether or
+not the contract is still open ($t_2=T$ at the 1-hour lead); the step contains a jump if
+$\tau_E\le t_2$. We compare the realised no-jump change with the flat-hazard theta
+$(1-p_t)(1-e^{\hbarimp_t\Delta})$, the jump count with $\sum(1-e^{-\hbarimp_t\Delta})$, and report
+the martingale drift $\E[p_{t_2}-p_t]$, with $p_{t_2}=1$ after a jump. Decay paths compare $p(L)/p(A)$
+for contracts with no event yet at an anchor $A=168$ hours against the flat-hazard path
+$[1-(1-p_A)^{\tau_L/\tau_A}]/p_A$. For timing, each YES contract is anchored at its earliest priced
+pre-event quote $p_0$ at $t_0$, with $s_0=\max(t_0,s)$ and elapsed window share
+$u=(\tau_E-s_0)/(T-s_0)$. Under the flat hazard implied by $p_0$, $F(u)=[1-(1-p_0)^u]/p_0$ is uniform
+\citep{diebold1998}; a mean above 0.5 means events come later than implied.
+
+\paragraph{Jumps, diffusion and the Cox intensity.}
+The quadratic variation of the hourly mid (spread at most 10\cents) is measured from the first quote in
+the last 62 days to resolution and split four ways:
+\begin{itemize}
+\item diffusion: hourly changes below 20\cents{} before resolution;
+\item pre-resolution jumps: hourly changes of 20\cents{} or more before resolution;
+\item the YES resolution jump $(1-m)^2$, from the last mid at least two hours before $\tau_E$;
+\item the NO deadline step $m^2$.
+\end{itemize}
+This follows the separation of continuous and jump variation in \citet{barndorffnielsen2004} and
+\citet{andersenbollerslevdiebold2007}. For a bounded martingale settling at 0 or 1 the expected total
+is $p_0(1-p_0)$; bid-ask bounce inflates the realised value \citep{roll1984,zhang2005}. On no-jump
+steps with mids in $(0.02,0.98)$ we fit a CIR-type intensity \citep{cox1985cir,duffiepansingleton2000}
+to $\lambda=\hbarimp$ by least squares without intercept,
+\begin{equation}
+\frac{\Delta\lambda}{\sqrt{\lambda}}=\kappa\theta\,\frac{\Delta t}{\sqrt{\lambda}}-\kappa\sqrt{\lambda}\,\Delta t+\sigma\sqrt{\Delta t}\,\varepsilon ,\label{haz-eq-cir}
+\end{equation}
+separately for leads above and below three days. Because $\hbarimp$ is an average hazard to $T$, a
+deadline-shaped intensity loads on $\kappa$ and $\theta$, so the fit is descriptive.
+
+\paragraph{Static arbitrage and economic significance.}
+For adjacent nested legs quoted in the same hourly candle, we count the pair-hours in which the
+earlier deadline's mid exceeds the later one's, and those in which its bid exceeds the later ask,
+before and after the taker fee on both legs. Buying YES on the later deadline and NO on the earlier
+one pays at least one dollar in every state; displayed sizes are not observed. The trading test is
+recorded briefly. A multiplier table by type, lead and price is fitted on the \estim, and the rule
+buys NO at the NO ask when the model's edge net of fees exceeds a threshold chosen on the \estim.
+It is compared with a price-only calibration model and with a control that buys NO on every quote
+below a dev-chosen price.

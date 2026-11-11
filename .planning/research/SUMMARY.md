@@ -404,3 +404,71 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     2–7% of games positive; far-only −0.18c gross (t −0.7), −0.53c net (t −1.9). Every variant
     negative on both nights; peak resting collateral $440–610. Log-odds spacing and volume
     scaling change nothing; the larger far orders fill into moves that continue (exit 60 s −1.0c).
+- **Black-Scholes / SABR-style model of prediction-market prices (2026-11-09, academic; no edge sought).**
+  Full write-up: `.planning/research/PM-VOL-MODEL.md`. Code in `src/albert/research/`:
+  `pm_vol.py` (single-contract dynamics, hourly candles plus in-game L2),
+  `pm_smile.py` (strike ladders as digital strips) and `pm_hazard.py` (deadline contracts as
+  hazard curves). Reports:
+  - `research-pm-vol-20261109T215533Z`
+  - `research-pm-vol-hf-20261109T221912Z`
+  - `research-pm-smile-20261109T220959Z`
+  - `research-pm-hazard-20261109T222119Z`
+
+  Findings:
+  - **Martingale.** Prices are martingales with total variance p₀(1−p₀).
+  - **Information clock.** It plays the role of implied vol: uniform in-game (Stern), back-loaded
+    for weather, flat pre-game, a hazard rising into the deadline for "by date T" contracts.
+  - **Jumps.** 50–85% of variance arrives in jumps, so a Gaussian probit diffusion fits the clock
+    but not the shape.
+  - **Backbone.** β ≈ 0.3–0.8, Jacobi-like; logit-normal is rejected.
+  - **Smile.** Ladders move sticky-moneyness.
+  - **Stochastic vol.** Half-life 7–21 h within market (weather about 40 h).
+  - **Microstructure.** The mid is sticky with no bid-ask bounce. The probit-drift shortfall is
+    explained by the tick floor outside sports and by jumps in sports.
+  - **Tails and time are overpriced.**
+    - Implied tails 1.2–1.4 against ≈ 1.05 realized.
+    - Deadline hazards at k 0.6–0.8 of realized.
+    - Theta decays at only 0.3–0.7 of the model rate.
+    - Variance premium in-game 0.65–0.92.
+
+    All are capped by the 1c tick, and none survives fees out of sample.
+- **Vol trading strategies from the model (2026-11-10/11; backtest only, no orders).** Two studies
+  test the "tails and time are overpriced" finding as trades, with resting (maker) orders and
+  multi-leg structures that the earlier taker notes did not try. Every strategy is now also
+  measured by **Sharpe ratio and volatility** with `src/albert/research/vol_metrics.py`:
+  - Each study writes a per-leg ledger from a capped $100 book (≤ $5 per event, ≤ $20 open).
+  - Positions are marked daily at the hourly-candle mid.
+  - Sharpe = mean / sd of daily MTM PnL × √365.
+  - The table includes a 90% block-bootstrap CI (7-day blocks), Sortino, drawdown, skew, and the
+    Sharpe without the top-5 events.
+
+  Output: `data/research/vol_metrics/metrics.{csv,md}`.
+  - **Deadline contracts** (`vol_theta.py`, outputs `data/research/vol_theta/`). Walk-forward by
+    decision month, Feb–Nov 2026: each month is priced only from contracts settled before it. 2.78M
+    public prints back the maker fills (fill only on a print strictly through our level).
+
+    | Strategy (walk-forward unless noted) | $/wk | Ann. vol | Sharpe (90% CI) | Ex top-5 events | Max DD |
+    |---|---|---|---|---|---|
+    | S1 maker NO bid at hazard-fair + 12c, T−30d..T−24h | 3.71 | 64% | 3.0 [1.2, 5.1] | 1.7 | −$33 |
+    | S2 short forward hazard (calendar, taker) | −0.11 | 48% | −0.1 | −2.6 | −$29 |
+    | S3t final hours, taker NO | 0.46 | 30% | 0.8 [−0.9, 3.2] | 0.0 | −$30 |
+    | S3m final hours, pegged maker NO | 0.61 | 29% | 1.1 [−0.9, 3.2] | 0.1 | −$25 |
+    | S3m L12_gap0 (picked ex post) | 1.65 | 31% | 2.8 [1.1, 5.1] | 1.9 | −$14 |
+    | S3t L12_all (picked ex post) | 1.54 | 34% | 2.4 [0.4, 4.3] | 1.6 | −$15 |
+
+    Reading the table:
+    - S1 clears the bar but is fragile. The top 5 of 392 events carry 52% of PnL. Per contract
+      it is negative in Jul, Sep and Oct. Skew is −0.9 (a premium seller).
+    - Its edge sits in Politics one-off events, a split found ex post.
+    - Final-hours decay (S3) is robust as a family: every variant is positive and its Sharpe is
+      2.1–2.8 at 3–12 h. But the pre-declared selection rule picked thin variants, so only a
+      forward run can validate it.
+    - Calendar spreads are dead: two spreads, two fees and about 20 days of lock-up eat the
+      0.27-vs-0.21 forward premium.
+
+    Forward paper candidates:
+    - S1 on Politics one-offs, with the mentions ≥ 95c breaker.
+    - S3 frozen as NO at T−12 h on mention-window and elimination contracts priced 2–50c.
+  - **Strike ladders** (`vol_ladders.py`): weather short-vol butterflies (implied width versus a
+    forecast width), weather median drift, and sports moneyline versus the spread-ladder
+    relative value. In progress; results are recorded when the study finishes.

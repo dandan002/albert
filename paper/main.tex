@@ -1,0 +1,93 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{bm}
+\usepackage{textcomp}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{threeparttable}
+\usepackage{siunitx}
+\sisetup{group-separator={,},group-minimum-digits=4,detect-all}
+\usepackage{xcolor}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{subcaption}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{microtype}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+\usepackage[capitalise,noabbrev]{cleveref}
+
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+\input{macros}
+
+\title{Black--Scholes for Binaries: Information Clocks, Jumps and Smiles\\in Prediction-Market Prices}
+\author{[Author names]\\[2pt]\small [Affiliation]}
+\date{November 2026}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+\input{sections/abstract}
+\end{abstract}
+
+\section{Introduction}\label{sec:intro}
+\input{sections/introduction}
+
+\section{Related literature}\label{sec:lit}
+\input{sections/literature}
+
+\section{Institutional setting and data}\label{sec:data}
+\input{sections/setting_data}
+
+\section{A pricing model for binary event contracts}\label{sec:model}
+\input{sections/model}
+
+\section{Empirical methodology}\label{sec:method}
+\input{sections/method_common}
+\subsection{Single-contract dynamics}\label{sec:method-dyn}
+\input{sections/method_dynamics}
+\subsection{Strike ladders}\label{sec:method-lad}
+\input{sections/method_ladders}
+\subsection{Deadline contracts}\label{sec:method-haz}
+\input{sections/method_hazard}
+
+\section{Results}\label{sec:results}
+\subsection{Single-contract dynamics}\label{sec:res-dyn}
+\input{sections/results_dynamics}
+\subsection{High-frequency in-game dynamics}\label{sec:res-hf}
+\input{sections/results_hf}
+\subsection{Strike ladders: the prediction-market smile}\label{sec:res-lad}
+\input{sections/results_ladders}
+\subsection{Deadline contracts: hazard term structures and theta}\label{sec:res-haz}
+\input{sections/results_hazard}
+
+\section{Discussion}\label{sec:discussion}
+\input{sections/discussion}
+
+\section{Conclusion}\label{sec:conclusion}
+\input{sections/conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{references,bib/dynamics,bib/ladders,bib/hazard}
+
+\appendix
+\section{Derivations}\label{app:derivations}
+\input{sections/appendix_derivations}
+\section{Additional results: single-contract dynamics}\label{app:dyn}
+\input{sections/appendix_dynamics}
+\section{Additional results: strike ladders}\label{app:lad}
+\input{sections/appendix_ladders}
+\section{Additional results: deadline contracts}\label{app:haz}
+\input{sections/appendix_hazard}
+
+\end{document}
