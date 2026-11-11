@@ -499,6 +499,27 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
         $139–156.
     - Sharpe is invariant to scale until capacity binds; $/week and drawdown scale together.
       S3t taker fills are not depth-capped, because historical depth is unobservable.
+- **Greek trades on strike ladders (2026-11-11; `vol_greeks.py`, outputs `data/research/vol_greeks/`,
+  read `verdict.md`).** Delta-hedged positions use model greeks from the hourly-fitted ladder
+  (F, σ). Execution is taker at the candle bid/ask with fees, and each order is ≤ 25% of the leg's
+  trailing-3 h volume. Dev runs to Sep 30, the holdout is October, and weather is also tested on
+  Nov 1–9. **Nothing clears the bar, and hedging does not help.**
+  - *Short strangles* (sell both wings) lose after costs in every group. Holdout: weather −1.9c,
+    sports totals −2.2c, spreads −2.7c, team totals −2.9c per contract. In sports the wing
+    premium is paid back almost exactly in tail payouts.
+  - *Delta-hedging* earns +0.25 to +0.7c at mid on dev and about 0 on holdout. It costs 0.1–1.8c in
+    spreads and fees and lowers Sharpe in every group: weather from −0.9 to −1.5, spreads from −3.3
+    to −5.4. At $5 per event most hedges round to zero contracts.
+  - *Vega* (long when the NBM or forecast σ ≥ 1.05–1.15 × σ_ATM). Sports flips sign in the
+    holdout (t −2.1 to −2.5). Weather 16 h is positive in all three splits but has t 0.7 / 1.2 / 0.1
+    and Sharpe ex top-5 −0.9.
+  - *Gamma scalping*. Weather 12→8 h realized/implied variance is 1.36–1.57. The long strangle
+    gains about +1c at mid, but taker round trips cost 2–3.5c, and two variants lost the whole
+    $100 in dev.
+  - *Capacity*: only 0–31% of sports entries can trade at all, because the thin wing leg's median
+    volume is 0.
+  - Forward-monitor ideas only: weather long vega at 16 h; weather 12→8 h long gamma as an
+    unhedged maker (untested).
 - **Structural arbitrage at the measured latency (2026-11-11; `inplay_hft arb START END OUT
   LATS`, outputs `data/research/arb_latency/`).**
   - **Latency.** Live timing records give event → engine p50 of 4.6 ms (p90 6.3 ms, 10.6k
