@@ -43,7 +43,8 @@ first (ground rules, binding), then `.planning/research/SUMMARY.md` (every study
 | Unit | What | Output | Stop |
 |---|---|---|---|
 | `albert-record` | Kalshi + Polymarket WebSocket L2 recorder: random sample + PM intl (`deploy/record-loop.sh --paired-days 3 --skip-vol`) | `data/raw/stream/` (`k<n>`, `p<n>`) | `touch data/record.stop` |
-| `albert-record-vol` | Kalshi L2 of complete vol-study events: game and first-half winners, game spread/total/team-total ladders, weather ladders, expiring within 48 h; new markets added hourly in-run (`RECORD_CMD=record-vol deploy/record-loop.sh`) | `data/raw/stream/` (`v<n>`) | `touch data/record-vol.stop` |
+| `albert-record-vol` | Kalshi L2 of complete vol-study events: game and first-half winners, game spread/total/team-total ladders, weather ladders, expiring within 48 h; new markets added hourly in-run (`RECORD_CMD=record-vol deploy/record-loop.sh --ladder-interval-ms 1000`; ladders conflated to 1 s since 2026-11-16 14:30 UTC, real-time before) | `data/raw/stream/` (`v<n>` real-time, `c<n>` conflated) | `touch data/record-vol.stop` |
+| `albert-archive.timer` | **not installed yet** (bucket and IAM policy pending; enable only once no study reads days ≥ 11-12). Daily 08:00 UTC: `albert archive-stream --keep-days 4` moves closed stream days to S3 `albert-archive-091914201487` (SHA-256 verified, then deleted locally; `_archived.json` marker per day; readers raise `ArchivedError`). Restore: `albert restore-stream <YYYY-MM-DD> [--venue pm]` | S3 `raw/stream/<venue>/<date>/` | `sudo systemctl disable --now albert-archive.timer` |
 | `albert-paper` | paper maker on live books, no orders (`deploy/paper-loop.sh`) | `data/paper_l2/` | `touch data/paper_l2/STOP` |
 | `albert-forward` | hourly forward paper test of 3 leads, no orders (`deploy/forward-loop.sh`, LEADS="mentions fcs rain") | `data/cache/forward/` | `touch data/cache/forward/STOP` |
 | `albert-mentions@demo` | mentions NO-bid bot on Kalshi DEMO (args `deploy/mentions-demo.conf`) | `data/live/mentions/demo/` | `touch data/live/mentions/STOP` |
@@ -89,4 +90,4 @@ with `nice -n 10` and keep < 3 GB RAM so the recorder never starves.
 - Tests/lint: `.venv/bin/python -m pytest -q` (456 pass), `.venv/bin/python -m ruff check src tests`
 - Accounts (read-only): `.venv/bin/python -m albert live check --env demo|prod`
 - Bot orders only: `.venv/bin/python -m albert live cancel-own --env demo` (prod: add `--live`)
-- Disk: recorder ~1.3 GB/day; 96 GB disk; the recorder stops itself on low disk.
+- Disk: 96 GB. Measured 2026-11-12..15 with real-time ladders: 6.5 GB/weekday, 13-16 GB/weekend day (ladders 76% of the vol recorder's bytes); ladders conflated to 1 s from 11-16. Recorders stop on low disk (vol at 20 GB free, main at 10 GB); the archive timer keeps only the last 4 days of raw stream on disk.

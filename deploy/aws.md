@@ -13,8 +13,13 @@
 - Code in `~/albert` (venv `.venv`), secrets `~/albert/.env` (mode 600).
 - Services (systemd, `sudo systemctl status albert-*`):
   - `albert-record` (deploy/record-loop.sh --paired-days 3 --skip-vol) → data/raw/stream
-  - `albert-record-vol` (RECORD_CMD=record-vol deploy/record-loop.sh) → data/raw/stream: the
+  - `albert-record-vol` (RECORD_CMD=record-vol deploy/record-loop.sh --ladder-interval-ms 1000) → data/raw/stream: the
     vol-study families (`stream.vol_family`), never recorded by `albert-record` as well
+  - `albert-archive.timer` (**not installed yet**: bucket and policy below still to be created) → `albert-archive.service` (daily 08:00 UTC, `albert archive-stream --keep-days 4`):
+    closed raw stream days → S3 bucket `albert-archive-091914201487` (us-east-2, private, versioned,
+    SSE-S3), keys `raw/stream/<venue>/<date>/<file>`. The instance role `albert-ec2-ssm` has an inline
+    policy `albert-archive-s3` with Put/Get on `raw/stream/*` and List on the bucket only: no delete.
+    Needs `pip install -e '.[archive]'` (boto3). Restore a day: `albert restore-stream <date>`.
   - `albert-paper` (deploy/paper-loop.sh) → data/paper_l2
   - `albert-forward` (deploy/forward-loop.sh, LEADS="mentions fcs rain") → data/cache/forward
   - `albert-mentions@demo` (albert live mentions --env demo; args in deploy/mentions-demo.conf)

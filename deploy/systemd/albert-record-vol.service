@@ -8,7 +8,7 @@ User=ubuntu
 WorkingDirectory=/home/ubuntu/albert
 Environment=PYTHON=/home/ubuntu/albert/.venv/bin/python
 Environment=RECORD_CMD=record-vol
-ExecStart=/home/ubuntu/albert/deploy/record-loop.sh
+ExecStart=/home/ubuntu/albert/deploy/record-loop.sh --ladder-interval-ms 1000
 Restart=always
 RestartSec=60
 KillMode=control-group

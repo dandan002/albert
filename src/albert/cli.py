@@ -1060,6 +1060,69 @@ def record_vol_cmd(
     typer.echo(f"manifest: {path}")
 
 
+ARCHIVE_BUCKET = "albert-archive-091914201487"
+
+
+def _s3():
+    try:
+        import boto3
+    except ImportError as e:
+        raise typer.Exit("boto3 missing: pip install -e '.[archive]'") from e
+    return boto3.client("s3", region_name="us-east-2")
+
+
+@app.command("archive-stream")
+def archive_stream_cmd(
+    keep_days: int = typer.Option(4, help="Keep the last N UTC days on disk (min 1: today is open)"),
+    bucket: str = typer.Option(ARCHIVE_BUCKET, envvar="ALBERT_ARCHIVE_BUCKET", help="S3 bucket"),
+    delete_local: bool = typer.Option(True, help="Delete local files once every file of the day "
+                                      "is verified in S3"),
+    workers: int = typer.Option(8, help="Parallel uploads"),
+) -> None:
+    """Upload closed raw stream days (data/raw/stream/{kalshi,pm}/<date>) to S3 with SHA-256
+    verification, then free the disk. Each day keeps an _archived.json marker; readers raise
+    instead of running on archived hours. Bring a day back with `albert restore-stream`."""
+    from albert.archive import archive_day, closed_days
+    from albert.store import write_manifest
+
+    if keep_days < 1:
+        raise typer.BadParameter("keep-days must be at least 1 (recorders write into today)")
+    s = settings()
+    client = _s3()
+    days = closed_days(s.raw_dir / "stream", keep_days)
+    if not days:
+        typer.echo("nothing to archive")
+        return
+    out, failed = [], 0
+    for venue, d in days:
+        r = archive_day(client, bucket, venue, d, delete_local=delete_local, workers=workers)
+        failed += len(r.errors)
+        out.append({"venue": venue, "day": r.day, "files": len(r.files), "uploaded": r.uploaded,
+                    "already": r.already, "bytes": r.bytes, "deleted": r.deleted, "errors": r.errors})
+        typer.echo(f"{venue} {r.day}: {len(r.files)} files, {r.bytes / 1e9:.2f} GB "
+                   f"({r.uploaded} uploaded, {r.already} already there), {r.deleted} deleted locally"
+                   + (f", {len(r.errors)} ERRORS (day kept on disk)" if r.errors else ""))
+    path = write_manifest(s.data_dir, "archive-stream",
+                          {"keep_days": keep_days, "bucket": bucket, "delete_local": delete_local},
+                          {"days": out}, [])
+    typer.echo(f"manifest: {path}")
+    if failed:
+        raise typer.Exit(1)
+
+
+@app.command("restore-stream")
+def restore_stream_cmd(
+    day: str = typer.Argument(..., help="UTC day YYYY-MM-DD"),
+    venue: str = typer.Option("kalshi", help="kalshi or pm"),
+    workers: int = typer.Option(8, help="Parallel downloads"),
+) -> None:
+    """Download an archived stream day back into data/raw/stream/<venue>/<day> (SHA-256 checked)."""
+    from albert.archive import restore_day
+
+    got = restore_day(_s3(), settings().raw_dir / "stream" / venue / day, workers=workers)
+    typer.echo(f"{venue} {day}: {got['restored']} restored, {got['present']} already present")
+
+
 @backtest_app.command("l2")
 def backtest_l2_cmd(
     start: str = typer.Option(None, help="First hour, YYYY-MM-DDTHH (UTC)"),
