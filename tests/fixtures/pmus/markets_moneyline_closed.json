@@ -1,0 +1,444 @@
+{
+ "_recorded": "2026-11-16T17:24:23.590632+00:00",
+ "_request": {
+  "url": "https://gateway.polymarket.us/v1/markets",
+  "params": {
+   "limit": 500,
+   "offset": 0,
+   "closed": "true",
+   "orderBy": "id",
+   "orderDirection": "asc",
+   "categories": [
+    "sports"
+   ],
+   "marketTypes": [
+    "moneyline"
+   ],
+   "endDateMin": "2026-11-11T17:00:00Z",
+   "endDateMax": "2026-11-17T00:00:00Z"
+  }
+ },
+ "_trimmed": "3 markets of the listing (fields as returned)",
+ "markets": [
+  {
+   "id": "2038861",
+   "question": "Who will win in the upcoming basketball event Texas State vs UTSA scheduled for November 15, 2026 at 8:00PM ET?",
+   "slug": "aec-cbb-txst-utsa-2026-11-15",
+   "endDate": "2026-11-16T03:14:26Z",
+   "category": "sports",
+   "startDate": "2026-11-01T05:01:50Z",
+   "description": "This market will settle to the winner of the Texas State vs UTSA men's college basketball game scheduled for November 15, 2026 at 8:00PM ET (as of the listing of the event's first instrument). Overtime is included if played. If the game is delayed, postponed, suspended or otherwise rescheduled to a date and time not within two days of the originally scheduled date and time, the market will settle to the last fair market price. Outcome sourced from the relevant governing body.",
+   "active": true,
+   "marketType": "moneyline",
+   "closed": true,
+   "createdAt": "2026-11-01T05:01:50Z",
+   "updatedAt": "2026-11-16T17:11:08Z",
+   "archived": false,
+   "orderPriceMinTickSize": 0.01,
+   "gameStartTime": "2026-11-16T01:00:00Z",
+   "manualActivation": false,
+   "sportsMarketType": "basketball_team_full_game_winner",
+   "marketSides": [
+    {
+     "id": "4077180",
+     "marketSideType": "MARKET_SIDE_TYPE_INSTRUMENT",
+     "identifier": "aec-cbb-txst-utsa-2026-11-15",
+     "createdAt": "2026-11-01T05:01:50Z",
+     "updatedAt": "2026-11-01T05:01:50Z",
+     "description": "Bobcats",
+     "price": "1",
+     "marketId": 2038861,
+     "long": true,
+     "teamId": 1989,
+     "team": {
+      "id": 1989,
+      "name": "Texas State",
+      "abbreviation": "txst",
+      "league": "cbb",
+      "record": "19-13",
+      "logo": "",
+      "alias": "Bobcats",
+      "safeName": "Texas State",
+      "colorPrimary": "#8B2635",
+      "providerId": 332,
+      "ordering": "away",
+      "longIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_TXST_L%40320x320.png",
+      "shortIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_TXST_R%40320x320.png",
+      "displayAbbreviation": "TXST",
+      "conference": "Sun Belt",
+      "providerIds": [
+       {
+        "provider": "PROVIDER_SPORTSDATAIO",
+        "providerId": "332"
+       },
+       {
+        "provider": "PROVIDER_SPORTRADAR",
+        "providerId": "1e5dc9e4-c60d-487b-8279-dfbec9229faa"
+       },
+       {
+        "provider": "PROVIDER_OPTICODDS",
+        "providerId": "EFD3092968CD"
+       }
+      ],
+      "longIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_TXST_L%40320x320.png",
+      "shortIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_TXST_R%40320x320.png",
+      "color": {
+       "light": "#8B2635",
+       "dark": "#8B2635"
+      },
+      "imageDisplayType": "IMAGE_DISPLAY_TYPE_LOGO"
+     },
+     "tradable": true
+    },
+    {
+     "id": "4077181",
+     "marketSideType": "MARKET_SIDE_TYPE_INSTRUMENT",
+     "identifier": "aec-cbb-txst-utsa-2026-11-15",
+     "createdAt": "2026-11-01T05:01:50Z",
+     "updatedAt": "2026-11-01T05:01:50Z",
+     "description": "Roadrunners",
+     "price": "0",
+     "marketId": 2038861,
+     "long": false,
+     "teamId": 1806,
+     "team": {
+      "id": 1806,
+      "name": "UTSA",
+      "abbreviation": "utsa",
+      "league": "cbb",
+      "record": "5-25",
+      "logo": "",
+      "alias": "Roadrunners",
+      "safeName": "UTSA",
+      "colorPrimary": "#E35205",
+      "providerId": 147,
+      "ordering": "home",
+      "longIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_UTSA_L%40320x320.png",
+      "shortIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_UTSA_R%40320x320.png",
+      "displayAbbreviation": "UTSA",
+      "conference": "American",
+      "providerIds": [
+       {
+        "provider": "PROVIDER_SPORTSDATAIO",
+        "providerId": "147"
+       },
+       {
+        "provider": "PROVIDER_SPORTRADAR",
+        "providerId": "953151f2-1e42-4cb0-a99e-202493a64dcf"
+       },
+       {
+        "provider": "PROVIDER_OPTICODDS",
+        "providerId": "114FDF630FC2"
+       }
+      ],
+      "longIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_UTSA_L%40320x320.png",
+      "shortIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_UTSA_R%40320x320.png",
+      "color": {
+       "light": "#E35205",
+       "dark": "#E35205"
+      },
+      "imageDisplayType": "IMAGE_DISPLAY_TYPE_LOGO"
+     },
+     "tradable": true
+    }
+   ],
+   "outcomes": "[\"Bobcats\",\"Roadrunners\"]",
+   "outcomePrices": "[\"1\",\"0\"]",
+   "ep3Status": "EXPIRED",
+   "status": "MARKET_STATUS_RESOLVED",
+   "assetPriceTerms": null,
+   "sportsMarketTypeV2": "SPORTS_MARKET_TYPE_MONEYLINE",
+   "hidden": false,
+   "tags": [],
+   "feeCoefficient": 0.095,
+   "ep3SyncedAt": "2026-11-16T03:14:26Z",
+   "minimumTradeQty": 0.01,
+   "comboEnabled": true,
+   "politics": null,
+   "eventSubcategory": "BASKETBALL",
+   "singlesRfqConfig": {
+    "enabled": true,
+    "midpointDeviation": 0.2,
+    "minOrderValueUsd": 500,
+    "maxQuoteAgeSeconds": 30,
+    "quoteWindows": [
+     {
+      "windowMs": "400"
+     }
+    ],
+    "ruleName": "singles-rfq-half-markets",
+    "version": "singles-half-markets-v2"
+   }
+  },
+  {
+   "id": "1961004",
+   "question": "Who will win in the upcoming basketball event Canisius (W) vs Cornell (W) scheduled for November 13, 2026 at 5:00PM ET?",
+   "slug": "aec-wcbb-cans-cornel-2026-11-13",
+   "endDate": "2026-11-14T00:11:16Z",
+   "category": "sports",
+   "startDate": "2026-10-30T05:00:42Z",
+   "description": "This market will settle to the winner of the Canisius (W) vs Cornell (W) women's college basketball game scheduled for November 13, 2026 at 5:00PM ET (as of the listing of the event's first instrument). Overtime is included if played. If the game is delayed, postponed, suspended or otherwise rescheduled to a date and time not within two days of the originally scheduled date and time, the market will settle to the last fair market price. Outcome sourced from the relevant governing body.",
+   "active": true,
+   "marketType": "moneyline",
+   "closed": true,
+   "createdAt": "2026-10-30T05:00:42Z",
+   "updatedAt": "2026-11-15T00:10:51Z",
+   "archived": false,
+   "orderPriceMinTickSize": 0.01,
+   "gameStartTime": "2026-11-13T22:00:00Z",
+   "manualActivation": false,
+   "sportsMarketType": "basketball_team_full_game_winner",
+   "marketSides": [
+    {
+     "id": "3921470",
+     "marketSideType": "MARKET_SIDE_TYPE_INSTRUMENT",
+     "identifier": "aec-wcbb-cans-cornel-2026-11-13",
+     "createdAt": "2026-10-30T05:00:42Z",
+     "updatedAt": "2026-10-30T05:00:42Z",
+     "description": "Golden Griffins",
+     "price": "0",
+     "marketId": 1961004,
+     "long": true,
+     "teamId": 4224,
+     "team": {
+      "id": 4224,
+      "name": "Canisius (W)",
+      "abbreviation": "cans",
+      "league": "wcbb",
+      "record": "",
+      "logo": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_CANS_L%40320x320.png",
+      "alias": "Golden Griffins",
+      "safeName": "Canisius (W)",
+      "colorPrimary": "#153A7F",
+      "ordering": "away",
+      "longIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_CANS_L%40320x320.png",
+      "shortIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_CANS_R%40320x320.png",
+      "displayAbbreviation": "CANS",
+      "providerIds": [
+       {
+        "provider": "PROVIDER_SPORTRADAR",
+        "providerId": "f8b60bf4-3c2b-48da-8596-73be3fcb1f66"
+       },
+       {
+        "provider": "PROVIDER_OPTICODDS",
+        "providerId": "A2F35FC1DAF0"
+       }
+      ],
+      "longIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_CANS_L%40320x320.png",
+      "shortIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_CANS_R%40320x320.png",
+      "color": {
+       "light": "#153A7F",
+       "dark": "#153A7F"
+      },
+      "imageDisplayType": "IMAGE_DISPLAY_TYPE_LOGO"
+     },
+     "tradable": true
+    },
+    {
+     "id": "3921471",
+     "marketSideType": "MARKET_SIDE_TYPE_INSTRUMENT",
+     "identifier": "aec-wcbb-cans-cornel-2026-11-13",
+     "createdAt": "2026-10-30T05:00:42Z",
+     "updatedAt": "2026-10-30T05:00:42Z",
+     "description": "Big Red",
+     "price": "1",
+     "marketId": 1961004,
+     "long": false,
+     "teamId": 4244,
+     "team": {
+      "id": 4244,
+      "name": "Cornell (W)",
+      "abbreviation": "cornel",
+      "league": "wcbb",
+      "record": "",
+      "logo": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_CORNEL_L%40320x320.png",
+      "alias": "Big Red",
+      "safeName": "Cornell (W)",
+      "colorPrimary": "#B31B1B",
+      "ordering": "home",
+      "longIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_CORNEL_L%40320x320.png",
+      "shortIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_CORNEL_R%40320x320.png",
+      "displayAbbreviation": "CORNEL",
+      "providerIds": [
+       {
+        "provider": "PROVIDER_SPORTRADAR",
+        "providerId": "9a3192d9-fbdf-46ed-8423-b15944b3630d"
+       },
+       {
+        "provider": "PROVIDER_OPTICODDS",
+        "providerId": "B47D8511C3B7"
+       }
+      ],
+      "longIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_CORNEL_L%40320x320.png",
+      "shortIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_CORNEL_R%40320x320.png",
+      "color": {
+       "light": "#B31B1B",
+       "dark": "#B31B1B"
+      },
+      "imageDisplayType": "IMAGE_DISPLAY_TYPE_LOGO"
+     },
+     "tradable": true
+    }
+   ],
+   "outcomes": "[\"Golden Griffins\",\"Big Red\"]",
+   "outcomePrices": "[\"0\",\"1\"]",
+   "ep3Status": "EXPIRED",
+   "status": "MARKET_STATUS_RESOLVED",
+   "assetPriceTerms": null,
+   "sportsMarketTypeV2": "SPORTS_MARKET_TYPE_MONEYLINE",
+   "hidden": false,
+   "tags": [],
+   "feeCoefficient": 0.095,
+   "ep3SyncedAt": "2026-11-14T00:11:16Z",
+   "minimumTradeQty": 0.01,
+   "comboEnabled": true,
+   "politics": null,
+   "eventSubcategory": "BASKETBALL",
+   "singlesRfqConfig": {
+    "enabled": false,
+    "midpointDeviation": 0,
+    "minOrderValueUsd": 0,
+    "maxQuoteAgeSeconds": 0,
+    "quoteWindows": [],
+    "ruleName": "default",
+    "version": "singles-half-markets-v2"
+   }
+  },
+  {
+   "id": "2162792",
+   "question": "Who will win in the upcoming basketball event Bob Jones vs USC Upstate scheduled for November 11, 2026 at 6:30PM ET?",
+   "slug": "aec-cbb-bobj-scup-2026-11-11",
+   "endDate": "2026-11-12T01:43:29Z",
+   "category": "sports",
+   "startDate": "2026-11-04T11:33:02Z",
+   "description": "This market will settle to the winner of the Bob Jones vs USC Upstate men's college basketball game scheduled for November 11, 2026 at 6:30PM ET (as of the listing of the event's first instrument). Overtime is included if played. If the game ends in a tie, the market will settle to $0.50. If the game is delayed, postponed, suspended or otherwise rescheduled to a date and time not within two days of the originally scheduled date and time, the market will settle to the last fair market price. Outcome sourced from the relevant governing body.",
+   "active": true,
+   "marketType": "moneyline",
+   "closed": true,
+   "createdAt": "2026-11-04T11:33:02Z",
+   "updatedAt": "2026-11-13T00:08:06Z",
+   "archived": false,
+   "orderPriceMinTickSize": 0.01,
+   "gameStartTime": "2026-11-11T23:30:00Z",
+   "manualActivation": false,
+   "sportsMarketType": "basketball_team_full_game_winner",
+   "marketSides": [
+    {
+     "id": "4325042",
+     "marketSideType": "MARKET_SIDE_TYPE_INSTRUMENT",
+     "identifier": "aec-cbb-bobj-scup-2026-11-11",
+     "createdAt": "2026-11-04T11:33:02Z",
+     "updatedAt": "2026-11-04T11:33:02Z",
+     "description": "Bruins",
+     "price": "0",
+     "marketId": 2162792,
+     "long": true,
+     "teamId": 44852,
+     "team": {
+      "id": 44852,
+      "name": "Bob Jones",
+      "abbreviation": "bobj",
+      "league": "cbb",
+      "record": "",
+      "logo": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_FLATL_L%40320x320.png",
+      "alias": "Bruins",
+      "safeName": "Bob Jones",
+      "colorPrimary": "#0C2340",
+      "ordering": "away",
+      "longIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_FLATL_L%40320x320.png",
+      "shortIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_FLATL_R%40320x320.png",
+      "displayAbbreviation": "BOBJ",
+      "providerIds": [
+       {
+        "provider": "PROVIDER_SPORTRADAR",
+        "providerId": "b232c20f-6289-4e86-a784-6ea09f7284d1"
+       }
+      ],
+      "longIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_FLATL_L%40320x320.png",
+      "shortIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_FLATL_R%40320x320.png",
+      "color": {
+       "light": "#0C2340",
+       "dark": "#0C2340"
+      },
+      "imageDisplayType": "IMAGE_DISPLAY_TYPE_LOGO"
+     },
+     "tradable": true
+    },
+    {
+     "id": "4325043",
+     "marketSideType": "MARKET_SIDE_TYPE_INSTRUMENT",
+     "identifier": "aec-cbb-bobj-scup-2026-11-11",
+     "createdAt": "2026-11-04T11:33:02Z",
+     "updatedAt": "2026-11-04T11:33:02Z",
+     "description": "Spartans",
+     "price": "1",
+     "marketId": 2162792,
+     "long": false,
+     "teamId": 1702,
+     "team": {
+      "id": 1702,
+      "name": "USC Upstate",
+      "abbreviation": "scup",
+      "league": "cbb",
+      "record": "13-19",
+      "logo": "",
+      "alias": "Spartans",
+      "safeName": "USC Upstate",
+      "colorPrimary": "#00833E",
+      "providerId": 43,
+      "ordering": "home",
+      "longIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_SCUP_L%40320x320.png",
+      "shortIcon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_SCUP_R%40320x320.png",
+      "displayAbbreviation": "UPST",
+      "conference": "Big South",
+      "providerIds": [
+       {
+        "provider": "PROVIDER_SPORTSDATAIO",
+        "providerId": "43"
+       },
+       {
+        "provider": "PROVIDER_SPORTRADAR",
+        "providerId": "2e78bd1b-9422-491e-9c73-37cf83b0e34e"
+       },
+       {
+        "provider": "PROVIDER_OPTICODDS",
+        "providerId": "C52E3206CDE7"
+       }
+      ],
+      "longIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_SCUP_L%40320x320.png",
+      "shortIconDark": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-logos/CBB/Polymarket_NCAAMB_SCUP_R%40320x320.png",
+      "color": {
+       "light": "#00833E",
+       "dark": "#00833E"
+      },
+      "imageDisplayType": "IMAGE_DISPLAY_TYPE_LOGO"
+     },
+     "tradable": true
+    }
+   ],
+   "outcomes": "[\"Bruins\",\"Spartans\"]",
+   "outcomePrices": "[\"0\",\"1\"]",
+   "ep3Status": "EXPIRED",
+   "status": "MARKET_STATUS_RESOLVED",
+   "assetPriceTerms": null,
+   "sportsMarketTypeV2": "SPORTS_MARKET_TYPE_MONEYLINE",
+   "hidden": false,
+   "tags": [],
+   "feeCoefficient": 0.095,
+   "ep3SyncedAt": "2026-11-12T01:43:29Z",
+   "minimumTradeQty": 0.01,
+   "comboEnabled": true,
+   "politics": null,
+   "eventSubcategory": "BASKETBALL",
+   "singlesRfqConfig": {
+    "enabled": false,
+    "midpointDeviation": 0,
+    "minOrderValueUsd": 0,
+    "maxQuoteAgeSeconds": 0,
+    "quoteWindows": [],
+    "ruleName": "default",
+    "version": "singles-half-markets-v2"
+   }
+  }
+ ]
+}
