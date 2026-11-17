@@ -1,0 +1,60 @@
+{
+ "_recorded": "2026-11-17T15:02:20.655750+00:00",
+ "_source": "GET /trade-api/v2/incentive_schedules (api.elections.kalshi.com), trimmed to 3 schedules",
+ "schedules": [
+  {
+   "all_markets": false,
+   "description": "Expected to continue; not promised",
+   "discount_factor_bps": 5000,
+   "ends": "2027-01-01T05:00:00Z",
+   "event_ticker": "ECMOV-28NOV07",
+   "event_title": "2028 Electoral College margin of victory?",
+   "incentive_type": "liquidity",
+   "posted_ts": "2026-11-12T14:11:04.989212Z",
+   "reward": 1000000,
+   "series_category": "Elections",
+   "series_ticker": "ECMOV",
+   "series_title": "Electoral college margin of victory",
+   "source": "series_lip_recurring_events",
+   "target_size_fp": "1000.00",
+   "updated_ts": "2026-11-17T14:11:17.956796Z",
+   "window_days": 7
+  },
+  {
+   "all_markets": false,
+   "description": "Expected to continue; not promised",
+   "discount_factor_bps": 5000,
+   "ends": "2027-01-01T05:00:00Z",
+   "event_ticker": "",
+   "event_title": "",
+   "incentive_type": "liquidity",
+   "posted_ts": "2026-11-12T14:11:04.942601Z",
+   "reward": 1000000,
+   "series_category": "Economics",
+   "series_ticker": "KX30YMORTW",
+   "series_title": "30-year mortgage rate this week",
+   "source": "series_lip_recurring",
+   "target_size_fp": "1000.00",
+   "updated_ts": "2026-11-17T13:41:01.939988Z",
+   "window_days": 7
+  },
+  {
+   "all_markets": false,
+   "description": "Expected to continue; not promised",
+   "discount_factor_bps": 5000,
+   "ends": "2027-01-01T05:00:00Z",
+   "event_ticker": "POPVOTEMOV-28NOV07",
+   "event_title": "2028 popular vote margin of victory?",
+   "incentive_type": "liquidity",
+   "posted_ts": "2026-11-12T14:11:04.989212Z",
+   "reward": 1000000,
+   "series_category": "Elections",
+   "series_ticker": "POPVOTEMOV",
+   "series_title": "Popular vote margin of victory",
+   "source": "series_lip_recurring_events",
+   "target_size_fp": "1000.00",
+   "updated_ts": "2026-11-17T14:11:17.956796Z",
+   "window_days": 7
+  }
+ ]
+}

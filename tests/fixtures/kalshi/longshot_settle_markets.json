@@ -1,0 +1,243 @@
+{
+ "_recorded": "2026-11-16T14:46:31.781835+00:00",
+ "_source": "GET /trade-api/v2/markets?event_ticker=<event> (api.elections.kalshi.com), trimmed to the ws_stream_longshot markets",
+ "pages": {
+  "KXLOWTSEA-26NOV14": {
+   "cursor": "",
+   "markets": [
+    {
+     "can_close_early": true,
+     "cap_strike": 44,
+     "close_time": "2026-11-15T09:00:00Z",
+     "created_time": "2026-11-13T10:31:05.610936Z",
+     "custom_strike": {
+      "City": "Seattle",
+      "structured_city_id": "53924c51-c998-41c0-98fa-17e599486ccf"
+     },
+     "early_close_condition": "The Last Trading Time will be 11:59 PM local time on November 14, 2026 regardless of any data releases or events occurring. Expiration will occur on the sooner of the first 7:00 or 8:00\nAM ET following the release of the data for November 14, 2026, or one week after November 14, 2026.",
+     "event_ticker": "KXLOWTSEA-26NOV14",
+     "exchange_index": 0,
+     "expected_expiration_time": "2026-11-15T20:00:00Z",
+     "expiration_time": "2026-11-21T15:00:00Z",
+     "expiration_value": "46.00",
+     "floor_strike": 43,
+     "last_price_dollars": "0.0200",
+     "latest_expiration_time": "2026-11-21T15:00:00Z",
+     "market_type": "binary",
+     "no_ask_dollars": "1.0000",
+     "no_bid_dollars": "0.0000",
+     "no_sub_title": "43\u00b0 to 44\u00b0",
+     "notional_value_dollars": "1.0000",
+     "occurrence_datetime": "2026-11-15T15:00:00Z",
+     "open_interest_fp": "813.02",
+     "open_time": "2026-11-13T15:00:00Z",
+     "previous_price_dollars": "0.0200",
+     "previous_yes_ask_dollars": "1.0000",
+     "previous_yes_bid_dollars": "0.0000",
+     "price_level_structure": "linear_cent",
+     "price_ranges": [
+      {
+       "end": "1.0000",
+       "start": "0.0000",
+       "step": "0.0100"
+      }
+     ],
+     "result": "no",
+     "rules_primary": "If the minimum temperature recorded at Seattle (CLISEA) for Nov 14, 2026, is between 43-44\u00b0 fahrenheit according to The Weather Company, then the market resolves to Yes.",
+     "rules_secondary": "Not all weather data is the same. While checking a source like AccuWeather or Google Weather may help guide your decision, the official and final value used to determine this market is the maximum/minimum temperature as reported by the Weather Company.\n\nReading weather data\nPreliminary Weather Company data may be subject to rounding and conversion differences from the final reported value.\nUse caution when interpreting preliminary Weather Company readings.\n\nIf it is determined in the sole discretion of the Exchange that there is a material error in the initial non-preliminary publication, Expiration may be held until the publication of a non-materially-erroneous data revision or until the Expiration Date, whichever comes first. If no data is available at the end of this period, all markets will resolve to the last fair price determined by Kalshi. Please note, a status of \"Final\" on weather.com/kalshi is provided for convenience only, and does not guarantee data to be error-free and thus exempt from the above.",
+     "settlement_bounds_type": "default",
+     "settlement_timer_seconds": 300,
+     "settlement_ts": "2026-11-15T15:11:44.564924Z",
+     "settlement_value_dollars": "0.0000",
+     "status": "finalized",
+     "strike_type": "between",
+     "ticker": "KXLOWTSEA-26NOV14-B43.5",
+     "title": "Will the minimum temperature be 43-44\u00b0 on Nov 14, 2026?",
+     "updated_time": "2026-11-15T15:11:44.61474Z",
+     "volume_24h_fp": "0.00",
+     "volume_fp": "1345.58",
+     "yes_ask_dollars": "1.0000",
+     "yes_ask_size_fp": "0.00",
+     "yes_bid_dollars": "0.0000",
+     "yes_bid_size_fp": "0.00",
+     "yes_sub_title": "43\u00b0 to 44\u00b0"
+    }
+   ]
+  },
+  "KXLOWTSAN-26NOV14": {
+   "cursor": "",
+   "markets": [
+    {
+     "can_close_early": true,
+     "cap_strike": 60,
+     "close_time": "2026-11-15T09:00:00Z",
+     "created_time": "2026-11-13T10:31:14.189024Z",
+     "custom_strike": {
+      "City": "San Diego",
+      "structured_city_id": "db97be17-6f29-4dcb-b669-37595ac90413"
+     },
+     "early_close_condition": "The Last Trading Time will be 11:59 PM local time on November 14, 2026 regardless of any data releases or events occurring. Expiration will occur on the sooner of the first 7:00 or 8:00\nAM ET following the release of the data for November 14, 2026, or one week after November 14, 2026.",
+     "event_ticker": "KXLOWTSAN-26NOV14",
+     "exchange_index": 0,
+     "expected_expiration_time": "2026-11-15T20:00:00Z",
+     "expiration_time": "2026-11-21T15:00:00Z",
+     "expiration_value": "61.00",
+     "floor_strike": 59,
+     "last_price_dollars": "0.0500",
+     "latest_expiration_time": "2026-11-21T15:00:00Z",
+     "market_type": "binary",
+     "no_ask_dollars": "1.0000",
+     "no_bid_dollars": "0.0000",
+     "no_sub_title": "59\u00b0 to 60\u00b0",
+     "notional_value_dollars": "1.0000",
+     "occurrence_datetime": "2026-11-15T15:00:00Z",
+     "open_interest_fp": "415.12",
+     "open_time": "2026-11-13T15:00:00Z",
+     "previous_price_dollars": "0.0500",
+     "previous_yes_ask_dollars": "1.0000",
+     "previous_yes_bid_dollars": "0.0000",
+     "price_level_structure": "linear_cent",
+     "price_ranges": [
+      {
+       "end": "1.0000",
+       "start": "0.0000",
+       "step": "0.0100"
+      }
+     ],
+     "result": "no",
+     "rules_primary": "If the minimum temperature recorded at San Diego (CLISAN) for Nov 14, 2026, is between 59-60\u00b0 fahrenheit according to The Weather Company, then the market resolves to Yes.",
+     "rules_secondary": "Not all weather data is the same. While checking a source like AccuWeather or Google Weather may help guide your decision, the official and final value used to determine this market is the maximum/minimum temperature as reported by the Weather Company.\n\nReading weather data\nPreliminary Weather Company data may be subject to rounding and conversion differences from the final reported value.\nUse caution when interpreting preliminary Weather Company readings.\n\nIf it is determined in the sole discretion of the Exchange that there is a material error in the initial non-preliminary publication, Expiration may be held until the publication of a non-materially-erroneous data revision or until the Expiration Date, whichever comes first. If no data is available at the end of this period, all markets will resolve to the last fair price determined by Kalshi. Please note, a status of \"Final\" on weather.com/kalshi is provided for convenience only, and does not guarantee data to be error-free and thus exempt from the above.",
+     "settlement_bounds_type": "default",
+     "settlement_timer_seconds": 300,
+     "settlement_ts": "2026-11-15T15:12:54.563932Z",
+     "settlement_value_dollars": "0.0000",
+     "status": "finalized",
+     "strike_type": "between",
+     "ticker": "KXLOWTSAN-26NOV14-B59.5",
+     "title": "Will the minimum temperature be 59-60\u00b0 on Nov 14, 2026?",
+     "updated_time": "2026-11-15T15:12:54.613593Z",
+     "volume_24h_fp": "0.00",
+     "volume_fp": "594.19",
+     "yes_ask_dollars": "1.0000",
+     "yes_ask_size_fp": "0.00",
+     "yes_bid_dollars": "0.0000",
+     "yes_bid_size_fp": "0.00",
+     "yes_sub_title": "59\u00b0 to 60\u00b0"
+    }
+   ]
+  },
+  "KXNBAGAME-26NOV15SASUTA": {
+   "cursor": "",
+   "markets": [
+    {
+     "can_close_early": true,
+     "close_time": "2026-11-16T00:21:52Z",
+     "created_time": "2026-11-11T22:01:21.916505Z",
+     "custom_strike": {
+      "basketball_team": "ad36c3e8-4194-4e63-920f-7c50f46191a6"
+     },
+     "early_close_condition": "This market will close and expire after a winner is declared.",
+     "event_ticker": "KXNBAGAME-26NOV15SASUTA",
+     "exchange_index": 3,
+     "expected_expiration_time": "2026-11-16T01:00:00Z",
+     "expiration_time": "2026-11-17T22:00:00Z",
+     "expiration_value": "102-110",
+     "last_price_dollars": "0.9900",
+     "latest_expiration_time": "2026-11-17T22:00:00Z",
+     "market_type": "binary",
+     "no_ask_dollars": "1.0000",
+     "no_bid_dollars": "0.0000",
+     "no_sub_title": "San Antonio",
+     "notional_value_dollars": "1.0000",
+     "occurrence_datetime": "2026-11-16T01:00:00Z",
+     "open_interest_fp": "2066396.61",
+     "open_time": "2026-11-11T22:06:09.709555Z",
+     "previous_price_dollars": "0.9200",
+     "previous_yes_ask_dollars": "0.9200",
+     "previous_yes_bid_dollars": "0.9100",
+     "price_level_structure": "linear_cent",
+     "price_ranges": [
+      {
+       "end": "1.0000",
+       "start": "0.0000",
+       "step": "0.0100"
+      }
+     ],
+     "result": "yes",
+     "rules_primary": "If San Antonio wins the San Antonio vs Utah Pro Basketball game originally scheduled for Nov 15, 2026, then the market resolves to Yes.",
+     "rules_secondary": "If the game is postponed but begins within 48 hours of its originally scheduled start time, the market will remain open and resolve based on the official final result. If the game is cancelled or not started within 48 hours of its originally scheduled start, all markets will resolve to a fair price.\n\nKalshi is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the Governing League. All trademarks, logos, and brand names are the property of their respective owners.",
+     "settlement_bounds_type": "default",
+     "settlement_timer_seconds": 45,
+     "settlement_ts": "2026-11-16T00:23:39.725939Z",
+     "settlement_value_dollars": "1.0000",
+     "status": "finalized",
+     "strike_type": "structured",
+     "ticker": "KXNBAGAME-26NOV15SASUTA-SAS",
+     "title": "San Antonio wins",
+     "updated_time": "2026-11-16T00:23:40.320901Z",
+     "volume_24h_fp": "4288833.59",
+     "volume_fp": "4346475.37",
+     "yes_ask_dollars": "1.0000",
+     "yes_ask_size_fp": "0.00",
+     "yes_bid_dollars": "0.0000",
+     "yes_bid_size_fp": "0.00",
+     "yes_sub_title": "San Antonio"
+    },
+    {
+     "can_close_early": true,
+     "close_time": "2026-11-16T00:21:52Z",
+     "created_time": "2026-11-11T22:01:21.916505Z",
+     "custom_strike": {
+      "basketball_team": "6f60dfb1-fda1-423f-b76f-67e9d24b9644"
+     },
+     "early_close_condition": "This market will close and expire after a winner is declared.",
+     "event_ticker": "KXNBAGAME-26NOV15SASUTA",
+     "exchange_index": 3,
+     "expected_expiration_time": "2026-11-16T01:00:00Z",
+     "expiration_time": "2026-11-17T22:00:00Z",
+     "expiration_value": "102-110",
+     "last_price_dollars": "0.0100",
+     "latest_expiration_time": "2026-11-17T22:00:00Z",
+     "market_type": "binary",
+     "no_ask_dollars": "1.0000",
+     "no_bid_dollars": "0.0000",
+     "no_sub_title": "Utah",
+     "notional_value_dollars": "1.0000",
+     "occurrence_datetime": "2026-11-16T01:00:00Z",
+     "open_interest_fp": "2460695.85",
+     "open_time": "2026-11-11T22:06:09.709555Z",
+     "previous_price_dollars": "0.0900",
+     "previous_yes_ask_dollars": "0.0900",
+     "previous_yes_bid_dollars": "0.0800",
+     "price_level_structure": "linear_cent",
+     "price_ranges": [
+      {
+       "end": "1.0000",
+       "start": "0.0000",
+       "step": "0.0100"
+      }
+     ],
+     "result": "no",
+     "rules_primary": "If Utah wins the San Antonio vs Utah Pro Basketball game originally scheduled for Nov 15, 2026, then the market resolves to Yes.",
+     "rules_secondary": "If the game is postponed but begins within 48 hours of its originally scheduled start time, the market will remain open and resolve based on the official final result. If the game is cancelled or not started within 48 hours of its originally scheduled start, all markets will resolve to a fair price.\n\nKalshi is not affiliated, associated, authorized, endorsed by, or in any way officially connected with the Governing League. All trademarks, logos, and brand names are the property of their respective owners.",
+     "settlement_bounds_type": "default",
+     "settlement_timer_seconds": 45,
+     "settlement_ts": "2026-11-16T00:23:39.725939Z",
+     "settlement_value_dollars": "0.0000",
+     "status": "finalized",
+     "strike_type": "structured",
+     "ticker": "KXNBAGAME-26NOV15SASUTA-UTA",
+     "title": "Utah wins",
+     "updated_time": "2026-11-16T00:23:40.320901Z",
+     "volume_24h_fp": "4717384.98",
+     "volume_fp": "4869690.89",
+     "yes_ask_dollars": "1.0000",
+     "yes_ask_size_fp": "0.00",
+     "yes_bid_dollars": "0.0000",
+     "yes_bid_size_fp": "0.00",
+     "yes_sub_title": "Utah"
+    }
+   ]
+  }
+ }
+}

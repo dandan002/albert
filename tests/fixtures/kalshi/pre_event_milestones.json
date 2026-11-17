@@ -1,0 +1,105 @@
+{
+ "_recorded": "GET /milestones {'limit': 500, 'minimum_start_date': '2026-08-13T00:00:00Z', 'category': 'Sports', 'type': 'hockey_match'} at 2026-11-17T15:10:50.276493+00:00, trimmed to 3 NHL milestones (details reduced to league / ids)",
+ "cursor": "",
+ "milestones": [
+  {
+   "category": "Sports",
+   "end_date": "2026-09-20T03:09:51Z",
+   "id": "3473dc64-8737-4969-a9e4-c1ceb44ea843",
+   "last_updated_ts": "2026-09-21T03:30:55.513792Z",
+   "notification_message": "The game is about to begin!",
+   "primary_event_tickers": [
+    "KXNHLGAME-26SEP19DALSTL",
+    "KXNHLSPREAD-26SEP19DALSTL",
+    "KXNHLTOTAL-26SEP19DALSTL"
+   ],
+   "related_event_tickers": [
+    "KXNHLGAME-26SEP19DALSTL",
+    "KXNHLSPREAD-26SEP19DALSTL",
+    "KXNHLTOTAL-26SEP19DALSTL"
+   ],
+   "source_id": "c146f1d5-e541-4fd5-8d6d-81432db40eee",
+   "source_ids": {
+    "source_3_id": "c146f1d5-e541-4fd5-8d6d-81432db40eee",
+    "source_4_id": "73101420",
+    "source_5_id": "sr:match:73101420"
+   },
+   "start_date": "2026-09-19T23:00:00Z",
+   "title": "Dallas at St. Louis",
+   "type": "hockey_match",
+   "details": {
+    "away_team_id": "5cfee6b9-43ff-4dfa-8347-2b9de7ed51b6",
+    "home_team_id": "999aeed3-b537-4775-a2f1-bfcfb9916303",
+    "league": "NHL",
+    "main_game_event_ticker": "KXNHLGAME-26SEP19DALSTL",
+    "status": "scheduled"
+   }
+  },
+  {
+   "category": "Sports",
+   "end_date": "2026-09-20T03:11:49Z",
+   "id": "0b3e33f9-302d-405f-a61c-fac67c661195",
+   "last_updated_ts": "2026-09-21T03:30:55.612432Z",
+   "notification_message": "The game is about to begin!",
+   "primary_event_tickers": [
+    "KXNHLGAME-26SEP19CHIMIN",
+    "KXNHLSPREAD-26SEP19CHIMIN",
+    "KXNHLTOTAL-26SEP19CHIMIN"
+   ],
+   "related_event_tickers": [
+    "KXNHLGAME-26SEP19CHIMIN",
+    "KXNHLSPREAD-26SEP19CHIMIN",
+    "KXNHLTOTAL-26SEP19CHIMIN"
+   ],
+   "source_id": "cef7d604-feea-4073-ae2c-75074ebd64f6",
+   "source_ids": {
+    "source_3_id": "cef7d604-feea-4073-ae2c-75074ebd64f6",
+    "source_4_id": "73101422",
+    "source_5_id": "sr:match:73101422"
+   },
+   "start_date": "2026-09-20T00:00:00Z",
+   "title": "Chicago at Minnesota",
+   "type": "hockey_match",
+   "details": {
+    "away_team_id": "a0e115e4-5a0c-405f-a005-e83ecdc0baa6",
+    "home_team_id": "1cee0410-99f1-43a2-a67c-4e6a3b968a9c",
+    "league": "NHL",
+    "main_game_event_ticker": "KXNHLGAME-26SEP19CHIMIN",
+    "status": "scheduled"
+   }
+  },
+  {
+   "category": "Sports",
+   "end_date": "2026-09-20T03:13:57Z",
+   "id": "f18ca762-e674-472c-b8f3-f681fef84815",
+   "last_updated_ts": "2026-09-21T03:30:55.761784Z",
+   "notification_message": "The game is about to begin!",
+   "primary_event_tickers": [
+    "KXNHLGAME-26SEP19WPGEDM",
+    "KXNHLSPREAD-26SEP19WPGEDM",
+    "KXNHLTOTAL-26SEP19WPGEDM"
+   ],
+   "related_event_tickers": [
+    "KXNHLGAME-26SEP19WPGEDM",
+    "KXNHLSPREAD-26SEP19WPGEDM",
+    "KXNHLTOTAL-26SEP19WPGEDM"
+   ],
+   "source_id": "3d6ee6f9-ace9-431e-b592-292c0ab45f25",
+   "source_ids": {
+    "source_3_id": "3d6ee6f9-ace9-431e-b592-292c0ab45f25",
+    "source_4_id": "73101424",
+    "source_5_id": "sr:match:73101424"
+   },
+   "start_date": "2026-09-20T00:00:00Z",
+   "title": "Winnipeg at Edmonton",
+   "type": "hockey_match",
+   "details": {
+    "away_team_id": "6f769f6d-161e-43d3-a586-db5451c5050e",
+    "home_team_id": "e8b67c82-f465-450d-aef9-c8414f2ae83a",
+    "league": "NHL",
+    "main_game_event_ticker": "KXNHLGAME-26SEP19WPGEDM",
+    "status": "scheduled"
+   }
+  }
+ ]
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=albert: move closed raw stream days to S3 (SHA-256 verified), keep the last 4 days on disk
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/albert
+ExecStart=/home/ubuntu/albert/.venv/bin/python -m albert archive-stream --keep-days 4
+Nice=10

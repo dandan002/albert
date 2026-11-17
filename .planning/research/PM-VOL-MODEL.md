@@ -271,6 +271,99 @@ The control shows what ticks and spreads alone produce.
    - The price-unit negative values are reproduced by the control: φ(Z) rises toward ½.
    - So the hourly in-game ρ < 0 from §6.1 is an hour-scale effect.
 
+**Replication on two later nights (2026-11-11; reports `research-pm-vol-hf-new-20261111T140106Z`,
+`research-pm-vol-hf-all-20261111T140107Z`; `python -m albert.research.pm_vol hf {orig,new,all}`).**
+- *Determinism.* Rerunning the original two nights reproduces every number above exactly.
+- *New sample.* Mon 11-09 and Tue 11-10 nights: 23 legs, 42 in-game hours (NBA 12, NHL 8,
+  NCAAMB 2, NCAAWB 1). These are every in-game leg the old recorder held: it took only games with
+  a Polymarket pair, and there was no football. Pooled: 73 legs, 158 hours.
+
+| Statistic | Original (Sat, Sun) | New (Mon, Tue) | Pooled |
+|---|---|---|---|
+| var(u), 5 s / 60 s / 300 s | 0.77 / 0.73 / 0.77 | 0.99 / 0.92 / 0.87 | 0.83 / 0.79 / 0.80 |
+| t of var(u) − 1, 5 s / 60 s | −3.6 / −4.4 | −0.1 / −0.8 | −3.1 / −4.1 |
+| Excess kurtosis, 1 s → 300 s | 151 → 2 | 186 → 3 | 167 → 2 |
+| Realized-variance signature: fitted noise η | 0 | 0 | 0 |
+| Bipower jump share, 5 / 10 / 15 s (control) | 0.59 / 0.53 / 0.48 (0.16 / 0.09 / 0.08) | 0.65 / 0.55 / 0.44 (0.16 / 0.09 / 0.06) | 0.62 / 0.53 / 0.47 |
+| Stern slope, NBA | 1.08 ± 0.09 | 1.04 ± 0.07 | 1.06 ± 0.07 |
+| Stern slope, NHL | 0.65 ± 0.16 | 0.52 ± 0.41 | 0.62 ± 0.16 |
+| var(u) NBA, 60 s | 1.26 | 1.05 | 1.16 |
+| Probit drift slope, 60 s (t vs 1) | 0.46 ± 0.21 (−2.6) | 0.82 ± 0.43 (−0.4) | 0.54 ± 0.19 (−2.4) |
+| E[sgn(Z)·Δp], 60 s | −0.004c (t −0.1) | +0.048c (t 0.9) | +0.012c (t 0.3) |
+| Leverage ρ, 1 / 2 / 5 min (probit) | +0.016 / +0.003 / +0.045 | +0.012 / +0.033 / +0.052 | +0.015 / +0.014 / +0.047 (all \|t\| ≤ 1.7) |
+
+- **Replicates:**
+  - variance is flat across horizons;
+  - kurtosis falls from about 150 at 1 s to 2–3 at 5 min;
+  - there is no microstructure noise;
+  - about 40–50 points of jump variance above the tick-grid control;
+  - NBA scores are Brownian (Stern slope ≈ 1);
+  - the price is a martingale;
+  - there is no minute-scale leverage.
+- **Does not replicate as a level:** var(u) below 1. On the weekday NBA/NHL nights var(u) is
+  0.87–0.99 and not different from 1. Football (NFL 0.57–0.64, NCAAF 0.47–0.54) drives the low
+  pooled value. NBA's own level moved from 1.26 to 1.05. League levels are not yet stable, and the
+  clock to scheduled settlement (§8, game clock) remains the suspect.
+- **Weaker:** the probit-drift shortfall. It is 0.82 ± 0.43 on the new nights, consistent with
+  both 1 and the original 0.46. The pooled value is still 0.54 (t −2.4 vs 1). The football-heavy
+  original nights carry it, so it needs the weekend games that `albert-record-vol` now records in
+  full.
+
+**Five `record-vol` nights, football included (2026-11-16; reports
+`research-pm-vol-hf-vol-20261116T160941Z`, `research-pm-vol-hf-pooled-20261116T160942Z`;
+`python -m albert.research.pm_vol hf {vol,pooled}`, `hf_stopcheck <sets>` → `hf_stopcheck_<set>.json`).**
+- *Sample.* Wed 11-11 to Sun 11-15 nights (17→06 UTC), every game of every covered league:
+  472 legs, 774 in-game hours (NCAAMB 147, NCAAWB 137, NCAAF 102, NHL 38, NBA 36, NFL 12; no soccer,
+  international break). Pooled with the four earlier nights: 545 legs, 931 hours. The orig, new and
+  all files are unchanged by the rerun.
+- *Bug fixed on the way.* `leadlag_fast.market_info` silently skipped any ticker whose GET was
+  rate-limited (429); the first `vol` run lost about a third of its games that way. It now retries
+  with backoff and raises if a ticker is still missing. Earlier studies that used it (in-play,
+  lead-lag, vol-ladder, mm_models caches) may have run on silently smaller samples.
+
+| Statistic | Original (Sat, Sun) | Five vol nights | Pooled (9 nights) |
+|---|---|---|---|
+| var(u), 5 s / 60 s / 300 s | 0.77 / 0.73 / 0.77 | 1.10 / 1.18 / 1.22 | 1.04 / 1.10 / 1.13 |
+| var(u) by league, 60 s: NFL / NCAAF / NHL / NBA / NCAAMB / NCAAWB | 0.62 / 0.48 / 0.57 / 1.26 / – / – | 0.56 / 0.55 / 0.77 / 1.22 / 1.95 / 1.92 | 0.59 / 0.54 / 0.71 / 1.20 / 1.94 / 1.92 |
+| Excess kurtosis, 1 s → 300 s | 151 → 2 | 326 → 5 | 306 → 5 |
+| Fitted noise η | 0 | 0 | 0 |
+| Bipower jump share, 5 / 10 / 15 s (control) | 0.59 / 0.53 / 0.48 (0.16 / 0.09 / 0.08) | 0.66 / 0.61 / 0.52 (0.16 / 0.11 / 0.09) | 0.65 / 0.60 / 0.51 |
+| Stern slope NBA / NFL / NCAAF / NHL / NCAAMB | 1.08 / 0.50 / 0.56 / 0.65 / – | 0.93 ± 0.06 / 0.60 / 0.36 / 0.42 / 0.82 | 0.98 ± 0.05 / 0.55 / 0.40 / 0.49 / 0.83 |
+| Leverage ρ, 1 / 2 / 5 min (probit) | +0.016 / +0.003 / +0.045 | +0.010 / −0.016 / −0.031 | +0.010 / −0.013 / −0.022 (all \|t\| ≤ 1.7) |
+
+- **League variance levels are real and stable.** Each league's var(u) repeats across independent
+  nights (football 0.5–0.6, NHL ~0.75, NBA ~1.2, college basketball ~1.9). The overall level is
+  only the league mix: the original "var(u) < 1" was a football-heavy sample. The clock to scheduled
+  settlement (`GAME_SERIES` hours, `expected_expiration_time`) is the likely cause (§8).
+- **Replicate on 472 new legs:** no microstructure noise, kurtosis decaying with horizon, jumps
+  ~50–60% of variance against ~10–16% in the tick-grid control, NBA Stern slope ≈ 1, no leverage.
+- **Correction: the drift shortfall is mostly a sampling artifact.** `hf_paths` cuts each leg at
+  its first decided quote, and `hf_steps` keeps only full grid steps inside the cut, so the move that
+  carries a decided game to 2c/98c is never sampled. That optional-stopping selection pulls steps
+  toward 50c, and the one-step M0 control does not share it. Adding each leg's final stopped step
+  (`hf_stopped_steps`; 0.3–5% of steps):
+
+| Probit drift slope, all \|Z\| (t vs 1); E[sgn(Z)·Δp] | Published sampling | Stopped process |
+|---|---|---|
+| Original nights, 60 s | 0.46 ± 0.21 (−2.6); −0.004c | 0.67 ± 0.20 (−1.7); +0.011c |
+| Vol nights, 60 s | 0.50 ± 0.10 (−5.1); −0.028c | 0.81 ± 0.11 (−1.7); −0.001c |
+| Vol nights, 300 s | 0.12 ± 0.09 (−9.8); −0.40c (t −3.5) | 0.57 ± 0.10 (−4.3); −0.15c (t −1.3) |
+| Pooled, 300 s, by league: football / NBA / NHL / college bb | 0.27 / 0.49 / 0.10 / −0.25 | 0.39 ± 0.10 / 1.39 ± 0.32 / 0.73 ± 0.25 / 0.80 ± 0.27 |
+
+  - The price is a martingale: E[sgn(Z)·Δp] is ~0 once the stopped step is in. The apparent
+    5-minute drift toward 50c (−0.40c, t −3.5) was the cut. College basketball keeps −0.53c at
+    300 s (t −2.2), which is weak given how many cells were tested.
+  - Outside football the slope is consistent with 1 or above. Football stays at ~0.4 (t −6),
+    in line with its var(u) ≈ 0.55: a martingale with a clock that runs too fast gives a slope
+    equal to its variance ratio. So the shortfall is the clock, not a drift in p.
+  - The same cut also hides variance. With the stopped steps the M0 variance ratio
+    Σ(z1 − μ)² / Σ var rises with horizon on the vol nights (1.15 / 1.33 / 1.52 at 5 / 60 / 300 s,
+    from 1.08 / 1.16 / 1.14; original nights 0.78 / 0.80 / 0.82). The deciding moves are larger than
+    the scheduled-settlement clock allows, so "flat across horizons" holds only for the cut sample.
+- **For the paper (§6.2):** the drift-shortfall claim should be withdrawn or restated as a clock
+  effect, and var(u) levels reported by league. A clean rerun needs the stopped process in
+  `hf_steps` and a game-clock L (§8); until then the published HF levels are conditional on the cut.
+
 ### 6.3 Strike ladders: smile, its dynamics, calibration (`pm_smile.py`, report `research-pm-smile-20261109T220959Z`)
 
 **Sample and method.**
@@ -561,7 +654,12 @@ places:
   scheduled settlement. This should explain the league differences in §6.2 and test the
   Stern/Skellam jump laws directly.
 - **More in-game data.** Two nights and 50 games is small. Rerun the high-frequency study as
-  recording continues.
+  recording continues. Since 2026-11-11 `albert-record-vol` records complete events in L2:
+  every game- and first-half-winner leg of the `volatile.GAME_SERIES` leagues (not only games
+  with a Polymarket pair), full-game spread/total/team-total ladders, and every weather
+  high/low ladder, from 48 h before expected expiration. This adds an L2 version of §6.3–6.4
+  (smile dynamics and implied-vs-realized variance at minute scale), a calendar test (first half
+  vs full game) and the weather clock from books instead of hourly candles.
 - **Why theta is sticky.** Who holds overpriced deadline longshots into the last day? Possible
   explanations are lottery preference, inattention, and Kalshi fees making the NO side
   unattractive at 97–99c. Testable with trade-side data (`taker_side`).

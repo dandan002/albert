@@ -35,6 +35,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from albert.archive import check_local
 from albert.fees import kalshi_fee
 from albert.stream import read_stream
 
@@ -164,7 +165,8 @@ def events_from_rows(rows: list[dict[str, Any]]) -> list[Event]:
 
 def stream_files(root: Path, start: str | None = None, end: str | None = None) -> list[Path]:
     """Closed Kalshi stream files (excluding REST checks) with ``start <= date-hour < end``
-    where both bounds are ``YYYY-MM-DDTHH`` strings."""
+    where both bounds are ``YYYY-MM-DDTHH`` strings. Raises if a day in range is archived in S3."""
+    check_local(root / "kalshi", start, end)
     files = []
     for p in sorted((root / "kalshi").glob("*/*.jsonl.zst")):
         if "-rest" in p.name:
@@ -204,6 +206,7 @@ def load_pairs(root: Path) -> dict[str, dict[str, Any]]:
 
 
 def pm_files(root: Path, start: str | None = None, end: str | None = None) -> list[Path]:
+    check_local(root / "pm", start, end)
     files = []
     for p in sorted((root / "pm").glob("*/*.jsonl.zst")):
         key = f"{p.parent.name}T{p.name[:2]}"

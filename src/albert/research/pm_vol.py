@@ -1669,13 +1669,56 @@ def write_report(s) -> Path:
 # =============================================================================================================
 # High-frequency follow-up: recorded L2 for two in-play nights (descriptive / modelling only, no trading tests)
 # =============================================================================================================
-HF_NIGHTS = (("2026-11-07T17", "2026-11-08T06", "sat"), ("2026-11-08T17", "2026-11-09T06", "sun"))
+HF_NIGHTS = (("2026-11-07T17", "2026-11-08T06", "sat"), ("2026-11-08T17", "2026-11-09T06", "sun"),
+             ("2026-11-09T17", "2026-11-10T06", "mon"), ("2026-11-10T17", "2026-11-11T06", "tue"),
+             ("2026-11-11T17", "2026-11-12T06", "wed"), ("2026-11-12T17", "2026-11-13T06", "thu"),
+             ("2026-11-13T17", "2026-11-14T06", "fri"), ("2026-11-14T17", "2026-11-15T06", "sat2"),
+             ("2026-11-15T17", "2026-11-16T06", "sun2"))
+# Night sets: "orig" is the published sample (hf_results.json, paper); "new" is the out-of-sample
+# replication on the next two nights; "all" pools those four. "vol" is the first five nights of
+# `albert record-vol` (every game of every covered league, football included), "pooled" all nine.
+# Outputs: hf_results_<set>.json.
+HF_SETS = {"orig": ("sat", "sun"), "new": ("mon", "tue"), "all": ("sat", "sun", "mon", "tue"),
+           "vol": ("wed", "thu", "fri", "sat2", "sun2"),
+           "pooled": ("sat", "sun", "mon", "tue", "wed", "thu", "fri", "sat2", "sun2")}
 HF_DIR = OUT / "hf"
 HF_H = (1, 5, 15, 60, 300)                     # seconds, M0 test horizons
 SIG_H = (1, 2, 5, 10, 15, 30, 60, 120, 300, 600)
 HF_MIN_TAU_S = 600.0                           # step must end >= 10 min before the scheduled end
 HF_START_SPREAD = (0.02, 0.03)
 _ESC_TICKER = __import__("re").compile(r'market_ticker\\":\\"([^"\\]+)')
+
+
+def _no_game_files(s, start: str, end: str, files: list[Path]) -> set[Path]:
+    """Files of `albert record-vol` connections that held no game-winner market in any vol run
+    overlapping their hour (from the run manifests). Skipping them leaves the extraction unchanged:
+    a market lives on one connection, and conn names that recur across runs are unioned."""
+    import re
+
+    from albert.research.volatile import GAME_SERIES
+
+    w0 = datetime.fromisoformat(start + ":00:00+00:00")
+    w1 = datetime.fromisoformat(end + ":00:00+00:00")
+    runs = []
+    for mpath in sorted((s.data_dir / "runs").glob("*-record-vol.json")):
+        m = json.loads(mpath.read_text())
+        t0, t1 = datetime.fromisoformat(m["params"]["started_at"]), datetime.fromisoformat(m["created_at"])
+        if t1 < w0 or t0 > w1:
+            continue
+        rows = m["params"]["kalshi_markets"]
+        runs.append((t0, t1, {r["conn"] for r in rows},
+                     {r["conn"] for r in rows if r["series_ticker"] in GAME_SERIES}))
+    skip = set()
+    for f in files:
+        mm = re.match(r"(\d\d)-([a-z]+\d+)", f.name)
+        if mm is None:
+            continue
+        h0 = datetime.fromisoformat(f"{f.parent.name}T{mm.group(1)}:00:00+00:00")
+        live = [r for r in runs if r[0] < h0 + timedelta(hours=1) and r[1] >= h0]
+        conn = mm.group(2)
+        if live and any(conn in r[2] for r in live) and not any(conn in r[3] for r in live):
+            skip.add(f)
+    return skip
 
 
 def hf_extract(s, start: str, end: str, tag: str) -> dict[str, Any]:
@@ -1692,11 +1735,13 @@ def hf_extract(s, start: str, end: str, tag: str) -> dict[str, Any]:
 
     HF_DIR.mkdir(parents=True, exist_ok=True)
     files = stream_files(s.raw_dir / "stream", start, end)
+    skip = _no_game_files(s, start, end, files)
+    files = [f for f in files if f not in skip]
     books: dict[str, dict[str, dict[float, float]]] = {}
     last: dict[str, tuple[float | None, float | None]] = {}
     q_t, q_m, q_b, q_a = [], [], [], []
     t_t, t_m, t_p, t_c, t_s = [], [], [], [], []
-    stats = {"files": len(files), "lines": 0, "parsed": 0, "pre_snapshot": 0}
+    stats = {"files": len(files), "skipped_no_game_files": len(skip), "lines": 0, "parsed": 0, "pre_snapshot": 0}
 
     def best(m: str) -> tuple[float | None, float | None]:
         b = books[m]
@@ -1709,6 +1754,8 @@ def hf_extract(s, start: str, end: str, tag: str) -> dict[str, Any]:
             with open(path, "rb") as f:
                 for line in io.TextIOWrapper(zstandard.ZstdDecompressor().stream_reader(f), encoding="utf-8"):
                     stats["lines"] += 1
+                    if "GAME-" not in line:           # every GAME_SERIES ends in GAME: cheap exact prefilter
+                        continue
                     mm = _ESC_TICKER.search(line)
                     if mm is None or mm.group(1).split("-", 1)[0] not in GAME_SERIES:
                         continue
@@ -1769,7 +1816,8 @@ def hf_games(s) -> pl.DataFrame:
 
     tick = set()
     for _, _, tag in HF_NIGHTS:
-        tick |= set(pl.read_parquet(HF_DIR / f"quotes_{tag}.parquet", columns=["ticker"])["ticker"].unique().to_list())
+        if (HF_DIR / f"quotes_{tag}.parquet").exists():
+            tick |= set(pl.read_parquet(HF_DIR / f"quotes_{tag}.parquet", columns=["ticker"])["ticker"].unique().to_list())
     cache = HF_DIR / "markets_meta.json"
     shared = s.data_dir / "cache" / "volatile_markets.json"
     if not cache.exists() and shared.exists():           # seed from the shared cache, never write it
@@ -1785,13 +1833,15 @@ def hf_games(s) -> pl.DataFrame:
     return g.unique("event", keep="first", maintain_order=True)
 
 
-def hf_paths(s) -> list[dict[str, Any]]:
+def hf_paths(s, tags: tuple[str, ...] = HF_SETS["orig"]) -> list[dict[str, Any]]:
     """Per game leg and night: quote change times and bid/ask inside the in-play window, cut at the
     first decided quote (mid <= 2c or >= 98c with spread <= 10c, observable at that time) and at
     T - 10 min."""
     games = hf_games(s)
     out = []
     for start, end, tag in HF_NIGHTS:
+        if tag not in tags:
+            continue
         q = pl.read_parquet(HF_DIR / f"quotes_{tag}.parquet")
         w0 = int(datetime.fromisoformat(start + ":00:00+00:00").timestamp() * 1e9)
         w1 = int(datetime.fromisoformat(end + ":00:00+00:00").timestamp() * 1e9)
@@ -2221,6 +2271,63 @@ def hf_sim_paths(paths: list[dict[str, Any]], seed: int = 12) -> list[dict[str, 
     return out
 
 
+HF_GROUPS = {"all": None, "football": ("KXNFLGAME", "KXNCAAFGAME"), "NBA": ("KXNBAGAME",), "NHL": ("KXNHLGAME",),
+             "college basketball": ("KXNCAAMBGAME", "KXNCAAWBGAME")}
+
+
+def hf_stopped_steps(paths: list[dict[str, Any]], h: int, start_spread: float = 0.03) -> dict[str, np.ndarray]:
+    """Each path's final partial step: from its last h-grid point to the quote at ``stop`` (the
+    first decided quote or T - 10 min), with L from the true duration. ``hf_steps`` keeps only full
+    grid steps inside [lo, stop], so the move that carries a decided game to 2c/98c is never sampled:
+    an optional-stopping selection that pulls steps toward 50c. A martingale stopped at a stopping
+    time has zero-mean steps, so adding these restores the unbiased sample."""
+    cols: dict[str, list] = {k: [] for k in ("p0", "p1", "tau", "d", "game")}
+    for gi, pth in enumerate(paths):
+        g = hf_sample(pth, h)
+        k = len(g["t"]) - 1
+        dur = (pth["stop"] - int(g["t"][k])) / 1e9
+        j = len(pth["ns"]) - 1
+        m0, s0 = g["mid"][k], g["spr"][k]
+        m1, s1 = (pth["bid"][j] + pth["ask"][j]) / 2, pth["ask"][j] - pth["bid"][j]
+        if not (dur > 0 and np.isfinite(m0) and np.isfinite(m1) and 0 < s0 <= start_spread + 1e-9
+                and P_LO <= m0 <= P_HI and 0 < s1 <= END_SPREAD + 1e-9 and g["tau"][k] - dur >= HF_MIN_TAU_S - h):
+            continue
+        for key, v in (("p0", m0), ("p1", m1), ("tau", g["tau"][k]), ("d", dur), ("game", gi)):
+            cols[key].append(v)
+    out = {k: np.array(v, dtype=float if k != "game" else int) for k, v in cols.items()}
+    out["L"] = np.log(out["tau"] / (out["tau"] - out["d"])) if len(out["tau"]) else np.array([])
+    out["z0"], out["z1"] = probit(out["p0"]), probit(out["p1"])
+    return out
+
+
+def hf_stop_check(paths: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Probit drift slope and E[sgn(Z) dp] (all |Z|, data) by league group at 60 s and 300 s, on the
+    published step sample and on the stopped process (published steps + ``hf_stopped_steps``)."""
+    out = []
+    for h in (60, 300):
+        st, ex = hf_steps(paths, h, 0.03), hf_stopped_steps(paths, h)
+        for gname, ser in HF_GROUPS.items():
+            keep = {gi for gi, p in enumerate(paths) if ser is None or p["series"] in ser}
+            for sample in ("published", "stopped"):
+                parts = [st] + ([ex] if sample == "stopped" else [])
+                cat = {k: np.concatenate([q[k] for q in parts]) for k in ("z0", "z1", "L", "game")}
+                m = np.isin(cat["game"], list(keep))
+                if m.sum() < 500:
+                    continue
+                r = next(x for x in drift_by_z(cat["z0"][m], cat["z1"][m], cat["L"][m], cat["game"][m]) if x["p_range"] == "all")
+                out.append({"h_s": h, "group": gname, "sample": sample, "legs": len(keep),
+                            "added_steps": int(np.isin(ex["game"], list(keep)).sum()) if sample == "stopped" else 0,
+                            **{k: r[k] for k in ("slope", "se", "t_vs_1", "n", "e_sgn_dp_c", "t_sgn_dp")}})
+    return out
+
+
+def run_hf_stop_check(s, which: str) -> None:
+    rows = hf_stop_check(hf_paths(s, HF_SETS[which]))
+    (OUT / f"hf_stopcheck_{which}.json").write_text(json.dumps(_jsonable(rows)))
+    for r in rows:
+        print(which, r, flush=True)
+
+
 def run_hf_extract(s) -> None:
     for start, end, tag in HF_NIGHTS:
         if (HF_DIR / f"quotes_{tag}.parquet").exists():
@@ -2230,9 +2337,10 @@ def run_hf_extract(s) -> None:
         print(hf_extract(s, start, end, tag), flush=True)
 
 
-def run_hf(s) -> None:
-    """All HF analyses -> data/research/pm_vol/hf_results.json."""
-    paths = hf_paths(s)
+def run_hf(s, which: str = "orig") -> None:
+    """All HF analyses on the nights of ``HF_SETS[which]`` -> data/research/pm_vol/hf_results_<which>.json
+    (the published two-night file hf_results.json is left as it is)."""
+    paths = hf_paths(s, HF_SETS[which])
     print(f"{len(paths)} in-play game legs", flush=True)
     res: dict[str, Any] = {"games": [{"ticker": p["ticker"], "series": p["series"], "night": p["night"],
                                       "minutes": (p["stop"] - p["lo"]) / 6e10, "quote_changes": len(p["ns"])} for p in paths]}
@@ -2252,14 +2360,14 @@ def run_hf(s) -> None:
     res["jumps"] = jrows[:-1]
     res["stern"] = jrows[-1]["stern"]
     if jumps:
-        pl.DataFrame(jumps).write_parquet(HF_DIR / "jumps.parquet")
+        pl.DataFrame(jumps).write_parquet(HF_DIR / f"jumps_{which}.parquet")
     jsim, jumps_sim = hf_jumps(sims)
     res["jumps_sim"] = jsim[:-1]
     res["n_jumps_sim_10s"] = len(jumps_sim)
     print("== leverage", flush=True)
     res["leverage"] = hf_leverage(paths)
     res["leverage_sim"] = hf_leverage(sims)
-    (OUT / "hf_results.json").write_text(json.dumps(_jsonable(res)))
+    (OUT / f"hf_results_{which}.json").write_text(json.dumps(_jsonable(res)))
     print("done", flush=True)
 
 
@@ -2353,17 +2461,19 @@ def run_drift_sim(s) -> None:
     print("done", flush=True)
 
 
-def write_hf_report(s) -> Path:
+def write_hf_report(s, which: str | None = None) -> Path:
+    """Report for ``hf_results_<which>.json``; ``which=None`` re-renders the published two-night file."""
     from albert.reports import Report
 
-    res = json.loads((OUT / "hf_results.json").read_text())
+    res = json.loads((OUT / (f"hf_results_{which}.json" if which else "hf_results.json")).read_text())
     dsim = json.loads((OUT / "drift_sim.json").read_text()) if (OUT / "drift_sim.json").exists() else []
-    rep = Report(s.reports_dir, "research-pm-vol-hf")
-    if (OUT / "hf_verdict.md").exists():
+    rep = Report(s.reports_dir, f"research-pm-vol-hf-{which}" if which else "research-pm-vol-hf")
+    if not which and (OUT / "hf_verdict.md").exists():
         rep.text("Summary", (OUT / "hf_verdict.md").read_text())
+    nights = "; ".join(f"{tag} {a} -> {b} UTC" for a, b, tag in HF_NIGHTS if tag in HF_SETS[which or "orig"])
     rep.text("Data and definitions", (
-        "Recorded Kalshi L2 (public market-data websocket) replayed to top of book, nights Sat 2026-11-07 17 -> "
-        "11-08 06 UTC and Sun 11-08 17 -> 11-09 06 UTC. Game-winner series of `volatile.GAME_SERIES`, one leg per "
+        f"Recorded Kalshi L2 (public market-data websocket) replayed to top of book, nights {nights}. "
+        "Game-winner series of `volatile.GAME_SERIES`, one leg per "
         "game (first alphabetical non-TIE leg), inside the scheduled in-play window of `volatile._in_play_bounds` "
         "(expected_expiration - league game length .. expected_expiration + 1 h), cut at the first decided quote "
         "(mid <= 2c or >= 98c, spread <= 10c) and 10 min before the scheduled end T = expected_expiration_time. "
@@ -2414,7 +2524,7 @@ def write_hf_report(s) -> Path:
             "jumps": res["jumps"], "stern": res["stern"], "leverage": res["leverage"],
             "control": {"m0": [r for r in res.get("m0_sim", []) if "series" not in r], "signature_fit": res.get("signature_fit_sim"),
                         "jumps": res.get("jumps_sim"), "leverage": res.get("leverage_sim")}}
-    (OUT / "hf_summary.json").write_text(json.dumps(_jsonable(summ), indent=1))
+    (OUT / (f"hf_summary_{which}.json" if which else "hf_summary.json")).write_text(json.dumps(_jsonable(summ), indent=1))
     print(path)
     return path
 
@@ -2440,15 +2550,18 @@ def main(argv: list[str]) -> None:
     if step == "hf_extract":
         run_hf_extract(s)
     if step == "hf":
-        run_hf(s)
+        run_hf(s, argv[1] if len(argv) > 1 else "orig")
     if step == "drift_sim":
         run_drift_sim(s)
     if step == "drift_tail":
         run_drift_tail(s)
     if step == "backbone_cells":
         run_backbone_cells(s)
+    if step == "hf_stopcheck":
+        for which in argv[1:] or ["orig"]:
+            run_hf_stop_check(s, which)
     if step == "hf_report":
-        write_hf_report(s)
+        write_hf_report(s, argv[1] if len(argv) > 1 else None)
 
 
 if __name__ == "__main__":

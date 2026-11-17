@@ -508,22 +508,42 @@ def summarize_defence(f: pl.DataFrame) -> list[dict[str, Any]]:
     return out
 
 
-def market_info(tickers: list[str], cache: Path) -> dict[str, dict[str, Any]]:
-    """Kalshi market metadata (public REST), cached as JSON at ``cache``."""
+def market_info(tickers: list[str], cache: Path, *, retries: int = 6, pause: float = 0.05,
+                transport=None, sleep=None) -> dict[str, dict[str, Any]]:
+    """Kalshi market metadata (public REST), cached as JSON at ``cache``. Rate limits (429) and
+    server errors are retried with backoff; any ticker still missing afterwards raises (after the
+    cache is saved), because silently dropping markets shrinks every sample built on this."""
+    import time
+    from collections import Counter
+
     import httpx
 
+    sleep = sleep or time.sleep
     have = json.loads(cache.read_text()) if cache.exists() else {}
-    with httpx.Client(timeout=20) as http:
+    failed: dict[str, int] = {}
+    with httpx.Client(timeout=20, transport=transport) as http:
         for t in tickers:
             if t in have:
                 continue
-            r = http.get(f"https://api.elections.kalshi.com/trade-api/v2/markets/{t}")
+            for attempt in range(retries + 1):
+                r = http.get(f"https://api.elections.kalshi.com/trade-api/v2/markets/{t}")
+                if r.status_code != 429 and r.status_code < 500:
+                    break
+                if attempt < retries:
+                    sleep(float(r.headers.get("retry-after") or 0) or min(0.5 * 2 ** attempt, 30.0))
             if r.status_code == 200:
                 m = r.json().get("market", {})
                 have[t] = {k: m.get(k) for k in ("expected_expiration_time", "occurrence_datetime",
                                                  "close_time", "status", "result")}
+            else:
+                failed[t] = r.status_code
+            if pause:
+                sleep(pause)
     cache.parent.mkdir(parents=True, exist_ok=True)
     cache.write_text(json.dumps(have, indent=1))
+    if failed:
+        raise RuntimeError(f"Kalshi market metadata missing for {len(failed)} of {len(tickers)} tickers "
+                           f"(HTTP {dict(Counter(failed.values()))}), e.g. {sorted(failed)[:3]}; rerun to resume")
     return have
 
 

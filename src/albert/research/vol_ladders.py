@@ -1342,8 +1342,11 @@ def step_l2_tob(s, days: tuple[str, ...] = ("2026-11-07", "2026-11-08", "2026-11
 
     out = []
     (OUT / "l2_tob").mkdir(exist_ok=True)
+    from albert.archive import check_local
+
     for day in days:
         root = s.raw_dir / "stream" / "kalshi" / day
+        check_local(root.parent, f"{day}T00", f"{day}T24")
         for h in range(24):
             path = OUT / "l2_tob" / f"{day}T{h:02d}.parquet"
             if not path.exists():

@@ -1,0 +1,270 @@
+{
+ "_recorded": "2026-11-16T17:28:27.632995+00:00",
+ "_request": {
+  "url": "https://gateway.polymarket.us/v1/price-history",
+  "params": {
+   "symbol": "aec-cbb-txst-utsa-2026-11-15",
+   "timestamp.startTimestamp": 1794769200,
+   "timestamp.endTimestamp": 1794800666,
+   "fidelity": 1
+  }
+ },
+ "_trimmed": "points 00:40-01:30 UTC of 2026-11-16",
+ "history": [
+  {
+   "timestamp": 1794789600,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794789660,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794789720,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794789780,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794789840,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794789900,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794789960,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794790020,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794790080,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794790140,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794790200,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794790260,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794790320,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794790380,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794790440,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794790500,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794790560,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794790620,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794790680,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794790740,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794790800,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794790860,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794790920,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794790980,
+   "longPrice": 0.67,
+   "shortPrice": 0.34
+  },
+  {
+   "timestamp": 1794791040,
+   "longPrice": 0.67,
+   "shortPrice": 0.34
+  },
+  {
+   "timestamp": 1794791100,
+   "longPrice": 0.63,
+   "shortPrice": 0.39
+  },
+  {
+   "timestamp": 1794791160,
+   "longPrice": 0.6,
+   "shortPrice": 0.41
+  },
+  {
+   "timestamp": 1794791220,
+   "longPrice": 0.6,
+   "shortPrice": 0.41
+  },
+  {
+   "timestamp": 1794791280,
+   "longPrice": 0.6,
+   "shortPrice": 0.41
+  },
+  {
+   "timestamp": 1794791340,
+   "longPrice": 0.62,
+   "shortPrice": 0.39
+  },
+  {
+   "timestamp": 1794791400,
+   "longPrice": 0.62,
+   "shortPrice": 0.39
+  },
+  {
+   "timestamp": 1794791460,
+   "longPrice": 0.62,
+   "shortPrice": 0.39
+  },
+  {
+   "timestamp": 1794791520,
+   "longPrice": 0.62,
+   "shortPrice": 0.39
+  },
+  {
+   "timestamp": 1794791580,
+   "longPrice": 0.68,
+   "shortPrice": 0.33
+  },
+  {
+   "timestamp": 1794791640,
+   "longPrice": 0.71,
+   "shortPrice": 0.3
+  },
+  {
+   "timestamp": 1794791700,
+   "longPrice": 0.67,
+   "shortPrice": 0.34
+  },
+  {
+   "timestamp": 1794791760,
+   "longPrice": 0.67,
+   "shortPrice": 0.34
+  },
+  {
+   "timestamp": 1794791820,
+   "longPrice": 0.62,
+   "shortPrice": 0.39
+  },
+  {
+   "timestamp": 1794791880,
+   "longPrice": 0.68,
+   "shortPrice": 0.33
+  },
+  {
+   "timestamp": 1794791940,
+   "longPrice": 0.68,
+   "shortPrice": 0.33
+  },
+  {
+   "timestamp": 1794792000,
+   "longPrice": 0.69,
+   "shortPrice": 0.32
+  },
+  {
+   "timestamp": 1794792060,
+   "longPrice": 0.69,
+   "shortPrice": 0.32
+  },
+  {
+   "timestamp": 1794792120,
+   "longPrice": 0.69,
+   "shortPrice": 0.32
+  },
+  {
+   "timestamp": 1794792180,
+   "longPrice": 0.69,
+   "shortPrice": 0.32
+  },
+  {
+   "timestamp": 1794792240,
+   "longPrice": 0.68,
+   "shortPrice": 0.33
+  },
+  {
+   "timestamp": 1794792300,
+   "longPrice": 0.69,
+   "shortPrice": 0.32
+  },
+  {
+   "timestamp": 1794792360,
+   "longPrice": 0.66,
+   "shortPrice": 0.35
+  },
+  {
+   "timestamp": 1794792420,
+   "longPrice": 0.61,
+   "shortPrice": 0.4
+  },
+  {
+   "timestamp": 1794792480,
+   "longPrice": 0.66,
+   "shortPrice": 0.35
+  },
+  {
+   "timestamp": 1794792540,
+   "longPrice": 0.82,
+   "shortPrice": 0.19
+  },
+  {
+   "timestamp": 1794792600,
+   "longPrice": 0.82,
+   "shortPrice": 0.19
+  }
+ ]
+}

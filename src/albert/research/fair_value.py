@@ -368,6 +368,9 @@ def tape_from_events(events: Iterable[Event]) -> tuple[pl.DataFrame, pl.DataFram
 
 
 def hour_files(root: Path, start: str, end: str) -> dict[str, list[Path]]:
+    from albert.archive import check_local
+
+    check_local(root / "kalshi", start, end)
     out: dict[str, list[Path]] = defaultdict(list)
     for p in sorted((root / "kalshi").glob("*/*.jsonl.zst")):
         if "-rest" in p.name:

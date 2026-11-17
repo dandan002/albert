@@ -1,5 +1,21 @@
 # Live (cash) maker pilot: plan
 
+**MENTIONS BOT ONLY, RESTARTED 2026-11-17 16:45 UTC at the user's request ("Start just the
+mentions bot and run", "Do $15 VAR"):** `albert-mentions@prod`, margin 12c, max 2 events,
+`--max-collateral 15 --max-daily-loss 15` (`deploy/mentions-prod.conf`). The collateral cap is now a
+strict value at risk: resting NO bids + max(today's fill cost, cost of every unsettled bot fill)
+≤ $15. Fills stay counted until their market shows no position (15 min grace), and a restart
+rebuilds unsettled fills from earlier prod ledgers (`live_mentions.py`, tests in
+`test_live_mentions.py`). Both makers stay stopped: `data/live/STOP` is in place (services
+inactive but still enabled at boot, so the kill file is what keeps them off). Only
+`data/live/mentions/STOP` was removed. Pre-run checks: `GET /series/fee_changes` shows nothing
+after 2026-09-03 and nothing on any mention series; every Mentions series is `quadratic` (no maker
+fee); kalshi.com's fee PDF is still behind a Vercel challenge (429). Account: $96.57 cash, no bot
+positions, one manual order and position (`KXIMPEACH-29-JAN20`, blocked). The finance filter skips
+executive and company mention series (Altman, Musk, Nadella, …); political speakers trade. Stop:
+`touch data/live/mentions/STOP` or `sudo systemctl stop albert-mentions@prod`.
+(Between 11-11 12:48 UTC and this restart every live service was stopped by kill files.)
+
 **RESTARTED 2026-11-09 ~14:30 UTC at the user's request ("run a few strats with $5 each again",
 including a mentions trial):** `albert-mentions@prod` ($5 collateral, $5 daily fill cost),
 `albert-live-maker@liquid` (back to $5: 5 contracts, -$5 halt) and `albert-live-maker@illiquid`

@@ -223,3 +223,67 @@ def test_finance_mention_events_are_skipped(tmp_path):
     assert bot.is_financial("KXWALLERMENTION") and bot.is_financial("KXNEWSERIESMENTION")
     bot.series_info = None
     assert bot.is_financial("KXTRUMPMENTION")       # loader set but the list failed to load
+
+
+def _maker_fill(t, oid, created, tid="tr1"):
+    return {"trade_id": tid, "order_id": oid, "client_order_id": created["client_order_id"],
+            "ticker": created["ticker"], "side": "no", "outcome_side": "no", "is_taker": False,
+            "yes_price_dollars": "0.10", "count_fp": "1.00", "fee_cost": "0.0000", "ts": 1794000000}
+
+
+def test_unsettled_fill_counts_after_midnight_until_its_market_settles(tmp_path):
+    t = FakeTrader()
+    bot, clock = _bot(tmp_path, t, START - timedelta(hours=5, minutes=30))
+    asyncio.run(bot.prepare())
+    asyncio.run(bot.tick())
+    oid = next(iter(bot.events[EV].orders))
+    created = next(b for b in t.created)
+    t.fills = [_maker_fill(t, oid, created)]
+    t.pos = {created["ticker"]: -1.0}
+    clock["now"] += timedelta(minutes=1)
+    asyncio.run(bot.tick())
+    cost = bot.events[EV].orders[oid]["price"]
+    assert bot.open_exposure() == pytest.approx(cost)
+    clock["now"] += timedelta(days=1)                    # a new UTC day: today's fill cost is 0
+    asyncio.run(bot.tick())
+    assert bot.spent_today() == 0.0
+    assert bot.at_risk() >= cost - 1e-9                   # the open position still counts
+    t.pos = {}                                            # the market settled
+    clock["now"] += timedelta(minutes=1)
+    asyncio.run(bot.tick())
+    assert bot.open_exposure() == 0.0
+    led = [json.loads(x) for x in (tmp_path / "run" / "ledger.jsonl").read_text().splitlines()]
+    assert any(r["kind"] == "settled" and r["ticker"] == created["ticker"] for r in led)
+
+
+def test_settlement_waits_for_the_grace_period(tmp_path):
+    t = FakeTrader()
+    bot, clock = _bot(tmp_path, t, START - timedelta(hours=5, minutes=30))
+    asyncio.run(bot.prepare())
+    asyncio.run(bot.tick())
+    oid = next(iter(bot.events[EV].orders))
+    t.fills = [_maker_fill(t, oid, t.created[0])]
+    t.pos = {}                                            # positions lag the fill feed
+    clock["now"] += timedelta(minutes=1)
+    asyncio.run(bot.tick())
+    clock["now"] += timedelta(minutes=5)
+    asyncio.run(bot.tick())
+    assert bot.open_exposure() > 0                        # not dropped inside SETTLE_GRACE
+
+
+def test_restart_rebuilds_unsettled_fills_and_shrinks_the_room(tmp_path):
+    old = tmp_path / "20261101T000000Z"
+    old.mkdir()
+    rec = {"ts": "2026-11-06T10:00:00+00:00", "kind": "fill", "ticker": "KXOLD-1", "cost": 0.9}
+    gone = {"ts": "2026-11-06T10:00:00+00:00", "kind": "fill", "ticker": "KXOLD-2", "cost": 0.8}
+    (old / "ledger.jsonl").write_text(json.dumps(rec) + "\n" + json.dumps(gone) + "\n")
+    t = FakeTrader(positions={"KXOLD-1": -1.0})          # KXOLD-2 already settled
+    s = Settings(data_dir=tmp_path)
+    clock = {"now": START - timedelta(hours=5, minutes=30)}
+    bot = MentionsBot(s, "demo", t, tmp_path / "20261117T000000Z", limits=MentionLimits(max_collateral=1.5),
+                      base=BASE, stop_file=tmp_path / "STOP", transport=_transport(),
+                      clock=lambda: clock["now"], log=lambda *_: None)
+    asyncio.run(bot.prepare())
+    assert bot.open_exposure() == pytest.approx(0.9)
+    asyncio.run(bot.tick())
+    assert sum(1 - float(b["price"]) for b in t.created) <= 1.5 - 0.9 + 1e-9

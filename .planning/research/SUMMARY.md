@@ -556,7 +556,13 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     - Kalshi and Polymarket game prices match within 0.40c.
     - `gateway.polymarket.us` robots.txt disallows ClaudeBot/anthropic-ai/Claude-Web, so no
       Polymarket US prices were used. The older `albert ingest pmus` command uses that host;
-      this is flagged to the user.
+      this is flagged to the user. *Re-read 2026-11-16:* the file is now Cloudflare's managed
+      robots.txt: `User-agent: *` / `Allow: /` with `Content-Signal: search=yes, ai-train=no,
+      use=reference`, plus `Disallow: /` for a "Training crawlers" list that includes ClaudeBot
+      (anthropic-ai and Claude-Web are no longer listed; api.polymarket.us is the same). Whether a
+      ClaudeBot block makes the host off-limits under the 2026-11-06 data-source policy (rollcall.com
+      was dropped for blocking anthropic-ai) is **pending a user decision**; the 2026-11-16
+      cross-venue study below used it.
   - *Structural.*
     - Market-weighted, the longshot gap is inside the taker no-arbitrage band; volume-weighted it
       exceeds the band by 0.79c (t 2.7).
@@ -567,3 +573,164 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
       source.
   - Fee note: Kalshi charges fees per fill to $0.000001 and rebates rounding over-payment
     (docs.kalshi.com/getting_started/fee_rounding), so exact fees are the fees paid.
+- **Passive longshot seller on recorded L2 (2026-11-16; `research/longshot_maker.py`, outputs
+  `data/research/longshot_maker/`, report `research-longshot-maker-20261116T190332Z`).** Does the
+  FLB maker margin survive the queue? Rest a 1-lot favourite bid at 1 - q whenever a side's ask is
+  q <= 10c (`join` the longshot ask, or `improve` it by 1c), hold to settlement, max 3 per market.
+  - *Setup.* Stream days 11-12 00:00 to 11-16 14:00 UTC, both recorders. Replay `Simulator`, 20 ms
+    latency, risk-averse queue, exact maker fees per `fee_type`. Only in-zone market-hours replayed.
+    Ladders sampled at 10% of events, one leg per game.
+  - *Result.* 22.5k fills, 1.4k events. `join` +0.13c per contract (t 0.3), `improve` -0.07c
+    (t -0.1); upper 95% bounds about +1.0c, under the 2.2-2.4c maker bound. Fees rounded up per
+    order make both negative (-0.27c / -0.49c). The 60 s mid moves -0.4c / -0.7c against the fill.
+    Back-of-queue fills earn +0.67c; trade-through and cross fills lose 0.5-1.0c. No price band,
+    family or phase is significant (best: halves +1.4-1.5c, t 1.2-1.4).
+  - *Sharpe.* $100 capped book: Sharpe 7.9 / 7.1, but the 90% CIs span about -35 to +28 over
+    5 days. Ex top-5 events: 3.5 / 4.4.
+  - *Verdict.* No measurable edge after queue and adverse selection, so not a strategy as specified.
+    Caveats: 5 days; ladders conflated to 1 s from 11-16 14:30 (outside the sample); resting-order
+    collateral is ignored.
+- **Polymarket US as a signal for Kalshi game moneylines (2026-11-16; `research/pmus_xvenue.py`,
+  outputs `data/research/pmus_xvenue/`, report `research-pmus-xvenue-20261116T190743Z`).**
+  Kalshi execution only; Polymarket US public gateway data (robots.txt question: see the
+  2026-11-11 note above, pending a user decision).
+  - *Data.* 770 Polymarket US moneylines (NBA, NHL, NFL, NCAAF, NCAAMB, NCAAWB) starting
+    11-11T17..11-16T06; `/price-history` at `fidelity=1` returns one book snapshot per minute
+    (ask = `longPrice`, bid = 1 − `shortPrice`) and reaches back ≥ 41 days (games of 2026-10-06
+    still return full minute series). Matched 687 of the 690 recorded Kalshi games (99.6%); the
+    winner agrees on 686 (one PM US market resolved at 0.14/0.86).
+  - *Stamp.* A point stamped minute t is the book at **t + 60 s** (in play: mean |PM − Kalshi|
+    0.37c at +60 s vs 1.59c at 0 s; minute-change correlation 0.97 vs 0.02). Using the point at t
+    would be 60 s of look-ahead.
+  - *Recorder lag (new, affects other studies).* Kalshi frames carry exchange timestamps; our
+    receive time lags them by p50 6–12 ms but p99 0.5–8 s on 11-11..11-14 and **p90 6.6 s, p99
+    24 s on 11-14/15 (Saturday; 20% of quote rows > 1 s late)**. Quote tables keyed on receive
+    time (`pm_vol` HF quotes and anything else replaying `record-vol`) show Kalshi stale exactly
+    when it is busy. This study rebuilt every leg's book on the exchange clock
+    (`server_quotes`, 9.6M rows).
+  - *Gaps.* Median |Kalshi − PM US| 0–0.5c, p90 ≤ 1.5c in every league, pre-game and in play.
+    Buying both sides (Kalshi taker + PM US taker, Θ = 0.095) costs a median 3–5c over $1; < 0.3%
+    of minute points dip below $1, on display prices with unknown size. No arbitrage even if PM
+    US trading were allowed.
+  - *Lead-lag (exchange clock).* In play, after a ≥ 1c PM US minute move Kalshi follows +0.15c at
+    60 s and +0.22c at 120 s (t 5–6), like the PM intl result (+0.29c). Both venues close the
+    gap: Kalshi 33% and PM US 27% within 60 s (t 11 and 9); neither leads. Pre-game Brier is
+    identical (0.1674 vs 0.1674 at −15 min, t 0.1), so a PM US-anchored maker has nothing to
+    anchor on (not simulated).
+  - *Kalshi taker on divergence* (24 cells: pre-game / in play × edge 0/1/3c × exit 60 s/5 min/
+    15 min/settle; one position per market; ask/bid at ≥ 1 contract, exact taker fee; displayed
+    size caps the $5 stake): every exit-at-time cell negative or noise (−3.5% per $ at edge 0,
+    t −17 in play; in play ≥ 3c: +7.6% t 1.3 on 38 trades, dev −4.0% on 11). The one t > 2 cell
+    (in play ≥ 3c, hold to settlement, +49% t 2.3) is 27 binary bets with 81% of PnL in 5
+    games (Sharpe ex-top-5 −7). Ledger Sharpe/vol are in the report; with 6 calendar days the
+    bootstrap CI is not defined.
+  - *Artifact caught.* On the receive clock the in-play ≥ 3c cells looked like +8.7% (t 3.9) to
+    +18%, 81 of 106 trades on Saturday. Re-priced on the exchange-clock L2 book at the same
+    instants, only 28–33% enter at the simulated price and the result goes to −1.7% … +5.7%
+    (t ≤ 0.5): Kalshi had already moved; the recorder showed it late.
+  - **Verdict:** Polymarket US is a second copy of the Kalshi price (agrees within ~0.4c,
+    converges both ways within a minute, equally accurate). Nothing to trade on Kalshi from it at
+    minute resolution; sub-second data would need a KYC'd API key for the markets WebSocket.
+- **Naive technical-analysis factors and day-of-week effects (2026-11-17; `research/ta_calendar.py`,
+  outputs `data/research/ta_calendar/`, run `python -m albert.research.ta_calendar all`).** Taker
+  at the hourly candle's closing quote, ~$1 order (`n = floor(1/price)`), taker fee rounded up per
+  order, held to settlement; dev = scheduled expiration before 10-01, holdout = October; t
+  clustered by match, and calendar effects also by ET date (a weekday effect is a common shock).
+  - *Data.* Volume-blind sports + weather candles (38,785 markets / 23,684 matches, closes
+    Aug 15–Oct 31) on a regular hourly grid (Kalshi omits unchanged hours; quote carried forward);
+    the `pm_hazard` deadline contracts (5,754 markets, 305 ET dates, Jan–Oct); the trade tape
+    (7.3M trades / 14,760 markets, volume-selected: flagged).
+  - *TA, 17 signals × trend/fade:* RSI 6/14 at 70/30 and 80/20 (needs ≥ 3c of movement in the
+    window), EMA 3/12 and 6/24 crosses, Bollinger 12/24 at 2σ, Donchian 12/24/48 breakouts by 2c,
+    MACD histogram cross, 6 h ≥ 5c moves split by volume (≥ 2× vs ≤ 0.5× trailing) and by OI
+    change. |Gross| ≤ 1.7c in every rule against ~3.1c of taker cost; trend net −1.6 to −5.9c per
+    contract (t −2 to −8 where n ≥ 1,000) and every fade also negative. Capped-book ledgers
+    ($100, $1 per position, $3 per event): Sharpe −4.5 to −6.9 (CIs below 0), max DD −$146 to
+    −$386 (ruin). The 6,044 volume-selected politics / entertainment / mentions markets look the
+    same.
+  - Only consistent cell: RSI trend 3–12 h before scheduled expiration, gross +2.3 / +4.0c
+    (t 2.0 / 2.8) dev / holdout. This is the known near-event momentum (`momentum_hist` tsmom).
+    Net −0.6 / +1.0c; ledger Sharpe −2.0 overall, +0.6 [−3.9, 4.0] holdout. One of ~270 cells.
+  - *Calibration by ET weekday* (noon and 8 pm snapshots, y − mid): weekend − weekday +0.2c dev
+    (t 0.6 by date), +1.1c holdout (t 2.3). Cells do not replicate (weather t 2.8 → 0; 12–48 h
+    t 0.7 → 4.7). The favourite-longshot slope flips sign Aug–Sep vs October and is the same on
+    weekends. Weekend favourites (buy YES 50–97c at noon ET): gross +4.7 / +4.0c vs weekday
+    +1.9 / +0.1c, but ledger Sharpe 0.6 [−1.7, 2.5], holdout −0.3 (weekday control −3.9).
+  - *Deadline-contract drift by weekday:* YES falls 0.7–0.9c/day Tue–Fri vs 0.1–0.7c Sat–Mon;
+    weekend gap +0.2c/day (t 1.9; dev 1.3, holdout 1.5). A day on which the market closes must be
+    valued at settlement: dropping it censors the early-YES jumps, which cluster on weekdays, and
+    inflated the gap to t 4.1. Only Mentions replicates (+0.7 / +1.3c/day, t 2.2 / 2.7): speeches
+    happen on weekdays, so the weekend hazard is lower and priced. Buying NO at noon ET every day,
+    held to settlement, with lead-time and price fixed effects: weekend − weekday +0.3% per $ dev
+    (t 0.2), +1.8% holdout (t 1.2). Ledgers: weekends-only Sharpe 2.2 [0.6, 4.1] ≈ weekdays-only
+    2.3 [0.5, 4.0], both ~0.6 ex top-5, holdout 1.2 / 0.3. That is the `vol_theta` deadline
+    theta; the weekday is not a lever on it.
+  - *Taker tape:* taker PnL per $ by weekday has no pattern (Tue −16%, Wed −18%, other days +2 to
+    +5%; 12 dates per weekday); the taker YES share is ~80% every day, weekends included.
+  - **Verdict:** no naive TA or day-of-week rule pays the taker spread and fee; nothing to paper
+    trade. Weekday effects are noise or rational (weekday-concentrated hazard). Ledgers are in
+    `data/research/ta_calendar/ledgers/` (picked up by `vol_metrics run`).
+- **Momentum outside sports and resolution spikes (2026-11-17; `research/xcat.py` sampler,
+  `research/spikes.py` study, outputs `data/research/{xcat,spikes}/`, run
+  `python -m albert.research.xcat sample|fetch hourly|fetch minute` then
+  `python -m albert.research.spikes all`).** Taker at the candle's closing quote, fee rounded up per
+  order, held to settlement; $1 orders for momentum, $5 for spike trades; dev = decision before
+  10-01, holdout = October; t by event and by ET date.
+  - *Data (volume-blind, seeded, nothing selected on volume or result).* Hourly candles over the
+    whole life of every Politics / Science-Tech / Elections / Mentions market plus 450 random
+    Entertainment events closing Aug 15–Oct 31 (23,506 markets, 2,180 events, 8.4M grid hours).
+    Minute candles with full OHLC over each market's **first 3 days after open** (a window fixed
+    by the open time, so no spike is chosen because the market then resolved) for random events:
+    sports winners / spreads-totals / props, weather, mentions, entertainment, politics (16,183
+    markets, 5.1M candles; the window holds the close for 99% of weather, 77–79% of game winners
+    and props, 60% of spreads and mentions, 30–38% of politics / entertainment). API facts: the
+    historical cutoff was 2026-09-18 (markets settled minutes after it are still live-only); a
+    candle request may span at most 5,000 periods, a batch 10,000 summed over tickers; ~4 req/s
+    sustained from one IP.
+  - *H1 momentum (6 h ≥ 5c trend; also 1/24/72 h, 3/10c, fades, 1 h jumps).* Gross +1–2c
+    overall, net −2 to −6c in both splits for every rule. Politics dev +4–6c gross (t 2.5–3.5)
+    → holdout +0.6–2.4c; entertainment +3–4.5c gross in both splits but net ≈ 0; mentions moves
+    reverse (buying 1 h jumps −8c net, t −6 / −7). Ledgers: Sharpe −2.3 overall, −0.4 to −4.4 by
+    category (holdout −0.8 to −10.4).
+  - *H2 spike taker (leader ≥ 90c after +10c in 60 min).* Net −1.9c dev / −1.5c holdout; ledger
+    Sharpe −0.6 overall, −4.0 holdout. Across 78 variants (70/80/90/95c, 10/20c, 5/15/60 min,
+    slow-approach control, fade, +1 min delay) gross stays within ±1c and every cell is net
+    negative in both splits; the win-rate lower bound is under breakeven everywhere. First touch
+    of 97c wins 97.7% vs 98.8% breakeven (−1.1c, t −3.2). The dev-only lead in game winners
+    (26 of 26 cells +1.3 to +5.8c net) is negative in all 26 in October (−0.5 to −8.1c).
+  - *H3 spike limit (leader bid 1/3/5c below, 60 min or to window end; laggard bids).* Adverse
+    selection eats the discount: after a ≥ 90c spike the leader wins 93.6%, but a bid 3c below
+    fills only on a dip and the filled ones win 88% vs 89% breakeven. Every holdout leader cell
+    −0.6 to −3.9c; laggard bids −1.8 to +0.3c; ledger Sharpe −2.4 overall, −2.9 holdout. Same
+    mechanism as the L2 `longshot_maker` result, now over 2.5 months and all categories.
+  - *Screens.* Intraday momentum at 20–80c mids: trend −3.4 to −8.2c net; 15-min moves revert
+    (fade +1.4 to +3.8c gross) but net −0.7 to −3.5c (quote flicker, as in the L2 studies). New
+    listings (first quote in a market's first 6 h): −3 to −6c net either side; the consistent
+    cells are longshots (−6 to −9c, the favourite-longshot bias, not a listing effect). Hour of
+    day: YES overpriced ~1.5c dev / ~0.7c holdout at every ET hour, no hour stands out.
+  - **Verdict:** public price paths (momentum at 15 min to 72 h, spikes into resolution, resting
+    bids on dips, listing quotes, hour of day) carry no tradable information on Kalshi outside
+    sports either; nothing to paper trade. Ledgers in `data/research/spikes/ledgers/`.
+- **Three new directions, run in parallel (2026-11-17; reports in `data/research/{lip,pre_event,linked}/`).**
+  - *Kalshi Liquidity Incentive Program* (`research/lip.py`): terms verified on help.kalshi.com and
+    docs.kalshi.com (`get-incentives`; 1 s snapshots, both sides ≥ Target Size 1,000, DF 0.5, $1
+    minimum payout per market program, ends 2027-01-01; ~$66k/day of non-financial pools on ~3,270
+    markets). A $100 book can only reach the payout minimum on the 1–3c longshot side, where fills
+    are informed (0.4% of filled contracts won). Replay of 10.7 recorded days, 1,209 program
+    markets: −$10 to −$155/week across variants (rewards are an upper bound), Sharpe −0.6 to
+    −12.5. Not worth a paper test.
+  - *Pre-event NO bids beyond Mentions* (`research/pre_event.py`): the harness reproduces Mentions
+    (October +9.1c/fill t 5.8, book Sharpe 6.6 [3.1, 11.1], 3.7 ex top-5) but no other scheduled
+    event type passes the frozen rule: props +3.1 → −3.9c, game winners −4.5 → −2.0c, esports
+    −3.8 → −3.1c (ruin), broadcasts +3.1 → +1.4c on 33 fills, earnings flat. A post-hoc "≤ 15c
+    sports book" lead (+8–10c) fell to +2.4c (t 0.5) on a frozen November check. The pre-event
+    YES premium is specific to speeches.
+  - *Linked markets across events/series* (`research/linked.py`): ~406k links found by rules text
+    (spread ⇒ winner, team ⇒ game total, player stats across series, protected/unprotected props,
+    speech word ⇒ "says before date", rain day ⇒ rain weekend, Billboard duplicates). Prices
+    agree almost everywhere (0.06% of quoted link-hours beat both legs' costs, 0.002% for sports
+    games). A one-minute-delayed taker lock in the thin series makes +6.4c dev / +5.1c holdout per
+    pair (t 3.2 / 2.4, ~4c locked floor), $1.7–2.7/week, Sharpe 3.8 / 2.6 but 0.9 / 0.3 ex top-5,
+    ~30 trades per period; basis risk (same-text Trump series meaning different days; 1.7% of
+    protected/unprotected pairs settle apart). Maker on the rich leg loses (−4 to −16c Oct).
+    At most a live scanner for those few series later.

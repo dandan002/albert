@@ -1,0 +1,35 @@
+{
+ "_source": "params.kalshi_markets rows of data/runs/*-record-vol.json (albert record-vol, 2026-11-14)",
+ "markets": {
+  "KXLOWTSAN-26NOV14-B59.5": {
+   "ticker": "KXLOWTSAN-26NOV14-B59.5",
+   "event_ticker": "KXLOWTSAN-26NOV14",
+   "series_ticker": "KXLOWTSAN",
+   "category": "Climate and Weather",
+   "family": "weather",
+   "expected_expiration_time": "2026-11-15T20:00:00Z",
+   "conn": "v4",
+   "added_at": "2026-11-15T06:27:10.702524+00:00"
+  },
+  "KXLOWTSEA-26NOV14-B43.5": {
+   "ticker": "KXLOWTSEA-26NOV14-B43.5",
+   "event_ticker": "KXLOWTSEA-26NOV14",
+   "series_ticker": "KXLOWTSEA",
+   "category": "Climate and Weather",
+   "family": "weather",
+   "expected_expiration_time": "2026-11-15T20:00:00Z",
+   "conn": "v4",
+   "added_at": "2026-11-15T06:27:10.702524+00:00"
+  },
+  "KXNBAGAME-26NOV15SASUTA-SAS": {
+   "ticker": "KXNBAGAME-26NOV15SASUTA-SAS",
+   "event_ticker": "KXNBAGAME-26NOV15SASUTA",
+   "series_ticker": "KXNBAGAME",
+   "category": "Sports",
+   "family": "game",
+   "expected_expiration_time": "2026-11-16T01:00:00Z",
+   "conn": "v5",
+   "added_at": "2026-11-15T06:27:10.702524+00:00"
+  }
+ }
+}

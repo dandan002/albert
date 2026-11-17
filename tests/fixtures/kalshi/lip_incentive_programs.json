@@ -1,0 +1,67 @@
+{
+ "_recorded": "2026-11-17T15:00:53.570861+00:00",
+ "_source": "GET /trade-api/v2/incentive_programs?status=active&type=liquidity&limit=10000 (api.elections.kalshi.com), trimmed to 4 programs (series_lip, new_event, empty description, a 1-day KXRT period)",
+ "incentive_programs": [
+  {
+   "discount_factor_bps": 5000,
+   "end_date": "2026-11-24T05:00:00Z",
+   "event_ticker": "KXZYNPOS-26DEC03",
+   "id": "b6c40dfa-6fe4-424e-a6d2-7d14b723d52d",
+   "incentive_description": "series_lip",
+   "incentive_type": "liquidity",
+   "market_id": "01a1e472-165c-7c4a-b598-5596b4068cbe",
+   "market_ticker": "KXZYNPOS-26DEC03-T97.5",
+   "paid_out": false,
+   "period_reward": 950000,
+   "series_ticker": "KXZYNPOS",
+   "start_date": "2026-11-17T14:11:21Z",
+   "target_size_fp": "1000.00"
+  },
+  {
+   "discount_factor_bps": 5000,
+   "end_date": "2026-11-22T05:00:00Z",
+   "event_ticker": "KXCBDHUNGARY-26DEC15",
+   "id": "d979d4b7-cac7-4f21-ae78-c063bba9879f",
+   "incentive_description": "new_event",
+   "incentive_type": "liquidity",
+   "market_id": "01a1e10d-14f6-74f0-9775-a07264db0854",
+   "market_ticker": "KXCBDHUNGARY-26DEC15-HOLD",
+   "paid_out": false,
+   "period_reward": 2000000,
+   "series_ticker": "KXCBDHUNGARY",
+   "start_date": "2026-11-16T23:01:34Z",
+   "target_size_fp": "1000.00"
+  },
+  {
+   "discount_factor_bps": 5000,
+   "end_date": "2026-11-21T05:00:00Z",
+   "event_ticker": "KXGROUNDSTOPCAUSE-26DEC01",
+   "id": "017734e2-da53-4b70-a10a-51c07628d0b6",
+   "incentive_description": "",
+   "incentive_type": "liquidity",
+   "market_id": "01a1d73d-356f-7187-8613-7db645cb2e40",
+   "market_ticker": "KXGROUNDSTOPCAUSE-26DEC01-VZ",
+   "paid_out": false,
+   "period_reward": 1750000,
+   "series_ticker": "KXGROUNDSTOPCAUSE",
+   "start_date": "2026-11-15T00:29:00Z",
+   "target_size_fp": "1000.00"
+  },
+  {
+   "discount_factor_bps": 5000,
+   "end_date": "2026-11-18T05:00:00Z",
+   "event_ticker": "KXRT-JUM",
+   "id": "fe81eb43-e92c-4e92-8498-33e08abd98c1",
+   "incentive_description": "series_lip",
+   "incentive_type": "liquidity",
+   "market_id": "01a15597-ebb0-7355-b079-0da434931f8a",
+   "market_ticker": "KXRT-JUM-65",
+   "paid_out": false,
+   "period_reward": 1000000,
+   "series_ticker": "KXRT",
+   "start_date": "2026-11-17T05:00:00Z",
+   "target_size_fp": "1000.00"
+  }
+ ],
+ "next_cursor": ""
+}
