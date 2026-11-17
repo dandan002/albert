@@ -15,8 +15,11 @@ cancels, prod gate ``KALSHI_LIVE_ENABLED=1`` + ``--live``):
   ``alb``), sits in a per-event order group (exchange-side cap on contracts matched per 15 s) and
   has ``expiration_time`` = start − 10 min, so the exchange cancels it even if this process dies;
 * markets where the account holds a position or a non-bot order are never touched;
-* collateral cap: resting NO bids plus today's fill cost never exceed ``max_collateral``; no new
-  events once today's fill cost exceeds ``max_daily_loss`` (worst case: every fill loses);
+* collateral cap (the bot's value at risk): resting NO bids plus the larger of today's fill cost and
+  the cost of every bot fill whose market has not settled yet never exceed ``max_collateral`` (so a
+  fill from before midnight UTC still counts, and a restart rebuilds unsettled fills from earlier
+  runs' ledgers); no new events once today's fill cost exceeds ``max_daily_loss`` (worst case:
+  every fill loses);
 * circuit breaker: if a leg asked ≤ 80c at posting trades or bids at ≥ 95c (a word was said, so
   the speech has started or leaked), the event's order group is triggered (all its orders cancel);
 * if the milestone start moves earlier than 10 min from now, the event's orders are cancelled;
@@ -45,12 +48,14 @@ EXCLUDED_GROUPS = ("earnings",)
 DUE = (timedelta(hours=5), timedelta(hours=6))      # post when start − now is in (5 h, 6 h]
 END_BEFORE = timedelta(minutes=10)
 BREAKER_PRICE, CHEAP_ASK = 0.95, 0.80
+SETTLE_GRACE = timedelta(minutes=15)  # a fill leaves the open exposure only this long after it, once
+                                      # its market shows no position (positions can lag the fill feed)
 
 
 @dataclass
 class MentionLimits:
     margin: float = 0.12
-    max_collateral: float = 20.0      # $: resting NO bid prices + today's fill cost
+    max_collateral: float = 20.0      # $: resting NO bids + max(today's fills, unsettled fills)
     max_daily_loss: float = 10.0      # $: today's fill cost (worst case) before new events stop
     max_events: int = 3               # events with resting orders at once
     max_orders_per_event: int = 40
@@ -128,6 +133,7 @@ class MentionsBot:
         self.blocked: set[str] = set()
         self.fill_ids: set[str] = set()
         self.fill_cost_today: dict[str, float] = {}
+        self.open_fills: dict[str, dict[str, Any]] = {}   # ticker -> {cost, since}: fills not yet settled
         self.halted: str | None = None
         self._n = 0
         # Finance filter (albert.categories): the series list is reloaded once a day; an event whose
@@ -152,6 +158,43 @@ class MentionsBot:
     def spent_today(self) -> float:
         return self.fill_cost_today.get(self.clock().strftime("%Y-%m-%d"), 0.0)
 
+    def open_exposure(self) -> float:
+        """Cost of bot fills whose market has not settled (worst case: they all lose)."""
+        return sum(v["cost"] for v in self.open_fills.values())
+
+    def at_risk(self) -> float:
+        """Resting NO bids plus fills that can still lose (today's, or all unsettled if more)."""
+        return self.resting_collateral() + max(self.spent_today(), self.open_exposure())
+
+    def _add_open(self, ticker: str, cost: float, since: datetime) -> None:
+        cur = self.open_fills.get(ticker)
+        self.open_fills[ticker] = {"cost": (cur["cost"] if cur else 0.0) + cost,
+                                   "since": min(cur["since"], since) if cur else since}
+
+    def _earlier_fills(self, pos: dict[str, float]) -> None:
+        """Unsettled fills of earlier runs in this env (crash restarts must not reset the budget):
+        every fill in a sibling run's ledger whose market still shows a position."""
+        for led in sorted(self.run_dir.parent.glob("*/ledger.jsonl")):
+            if led.parent == self.run_dir:
+                continue
+            for line in led.read_text().splitlines():
+                try:
+                    rec = json.loads(line)
+                except ValueError:
+                    continue
+                if rec.get("kind") == "fill" and abs(pos.get(rec.get("ticker"), 0.0)) > 1e-9:
+                    self._add_open(rec["ticker"], float(rec.get("cost") or 0.0), datetime.fromisoformat(rec["ts"]))
+
+    async def _settled(self, now: datetime) -> None:
+        """Drop fills whose market no longer shows a position (settled), after SETTLE_GRACE."""
+        old = [t for t, v in self.open_fills.items() if now - v["since"] >= SETTLE_GRACE]
+        if not old:
+            return
+        pos = await self.trader.positions()
+        for t in old:
+            if abs(pos.get(t, 0.0)) <= 1e-9:
+                self.write("settled", {"ticker": t, "cost": round(self.open_fills.pop(t)["cost"], 4)})
+
     # -- lifecycle --
     async def prepare(self) -> None:
         """Sweep stale bot orders, then block every market with a position or a non-bot order."""
@@ -160,7 +203,9 @@ class MentionsBot:
         pos = await self.trader.positions()
         manual = {o.ticker for o in resting if not o.client_order_id.startswith(PREFIX)}
         self.blocked = manual | {t for t, q in pos.items() if abs(q) > 1e-9}
-        self.write("prepare", {"swept": swept, "blocked": sorted(self.blocked)})
+        self._earlier_fills(pos)
+        self.write("prepare", {"swept": swept, "blocked": sorted(self.blocked),
+                               "open_exposure": round(self.open_exposure(), 4)})
 
     async def shutdown(self, reason: str) -> None:
         cancelled = await self.trader.cancel_own(PREFIX)
@@ -196,6 +241,7 @@ class MentionsBot:
                 self.write("error", {"what": "series list", "error": repr(e)[:200]})
         starts = await self._milestones(now)
         await self._fills()
+        await self._settled(now)
         await self._watch(now, starts)
         if self.spent_today() >= self.limits.max_daily_loss:
             self.write("no_new_events", {"spent_today": self.spent_today()})
@@ -262,7 +308,7 @@ class MentionsBot:
         legs = plan.filter(pl.col("eligible") & pl.col("price").is_not_null()
                            & ~pl.col("ticker").is_in(F._strs(self.blocked)))
         legs = legs.sort("price").head(self.limits.max_orders_per_event)
-        room = self.limits.max_collateral - self.resting_collateral() - self.spent_today()
+        room = self.limits.max_collateral - self.at_risk()
         keep, total = [], 0.0
         for r in legs.iter_rows(named=True):
             if total + r["price"] > room + 1e-9:
@@ -372,6 +418,7 @@ class MentionsBot:
             cost = fr.qty * o["price"] + fr.fee      # a NO bid's fill costs its price; worst case lost
             day = self.clock().strftime("%Y-%m-%d")
             self.fill_cost_today[day] = self.fill_cost_today.get(day, 0.0) + cost
+            self._add_open(fr.ticker, cost, self.clock())
             o["status"] = "filled"
             self.write("fill", {"event": e.event, **asdict(fr), "cost": round(cost, 4)})
             self.log(f"fill {fr.ticker} NO @{o['price']:.2f}")
