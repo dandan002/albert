@@ -1,0 +1,270 @@
+{
+ "series": [
+  {
+   "additional_prohibitions": [
+    "Persons who are employed by any of the Source Agencies are not permitted to trade on the Contract.",
+    "Persons who hold any material, non-public information on the Underlying are not permitted to trade on the Contract."
+   ],
+   "categories": [
+    "Economics"
+   ],
+   "category": "Economics",
+   "contract_terms_url": "https://assets.kalshi.com/contract_terms/TSAW.pdf",
+   "contract_url": "https://assets.kalshi.com/regulatory/product-certifications/TSAW.pdf",
+   "exchange_index": 0,
+   "fee_multiplier": 1,
+   "fee_type": "quadratic",
+   "frequency": "weekly",
+   "last_updated_ts": "2026-11-13T00:37:51.983097Z",
+   "settlement_sources": [
+    {
+     "name": "Transportation Security Administration",
+     "url": "https://www.tsa.gov/travel/passenger-volumes"
+    }
+   ],
+   "tags": [
+    "Econ Weekly",
+    "Jobs & Economy"
+   ],
+   "ticker": "KXTSAW",
+   "title": "TSA check-ins this week"
+  },
+  {
+   "additional_prohibitions": [
+    "Persons who are employed by any of the Source Agencies are not permitted to trade on the Contract.",
+    "Persons who hold any material, non-public information on the Underlying are not permitted to trade on the Contract."
+   ],
+   "categories": [
+    "Climate and Weather"
+   ],
+   "category": "Climate and Weather",
+   "contract_terms_url": "https://assets.kalshi.com/contract_terms/RAINNYCM.pdf",
+   "contract_url": "https://assets.kalshi.com/regulatory/product-certifications/RAINNYCM.pdf",
+   "exchange_index": 0,
+   "fee_multiplier": 1,
+   "fee_type": "quadratic",
+   "frequency": "monthly",
+   "last_updated_ts": "2026-11-14T03:20:28.912545Z",
+   "settlement_sources": [
+    {
+     "name": "NWS Climatological Report NY",
+     "url": "https://forecast.weather.gov/product.php?site=OKX&product=CLI&issuedby=NYC"
+    }
+   ],
+   "tags": [
+    "Rain",
+    "Snow and rain"
+   ],
+   "ticker": "KXRAINNYCM",
+   "title": "Monthly rain in New York"
+  },
+  {
+   "additional_prohibitions": [
+    "Persons who are employed by any of the Source Agencies are not permitted to trade on the Contract.",
+    "Persons who hold any material, non-public information on the Underlying are not permitted to trade on the Contract."
+   ],
+   "categories": [
+    "Climate and Weather"
+   ],
+   "category": "Climate and Weather",
+   "contract_terms_url": "https://assets.kalshi.com/contract_terms/RAINM.pdf",
+   "contract_url": "https://assets.kalshi.com/regulatory/product-certifications/RAINM.pdf",
+   "exchange_index": 0,
+   "fee_multiplier": 1,
+   "fee_type": "quadratic",
+   "frequency": "monthly",
+   "last_updated_ts": "2026-11-14T03:20:26.951889Z",
+   "settlement_sources": [
+    {
+     "name": "The Weather Company",
+     "url": "https://weather.com/kalshi"
+    },
+    {
+     "name": "National Oceanic and Atmospheric Administration",
+     "url": "https://www.noaa.gov/"
+    },
+    {
+     "name": "National Weather Service",
+     "url": "https://www.weather.gov/"
+    }
+   ],
+   "tags": [
+    "Rain",
+    "Snow and rain"
+   ],
+   "ticker": "KXRAINCHIM",
+   "title": "Rain Chicago"
+  },
+  {
+   "additional_prohibitions": [
+    "Persons who are employed by any of the Source Agencies are not permitted to trade on the Contract.",
+    "Persons who hold any material, non-public information on the Underlying are not permitted to trade on the Contract."
+   ],
+   "categories": [
+    "Politics"
+   ],
+   "category": "Politics",
+   "contract_terms_url": "https://assets.kalshi.com/contract_terms/EOPERIOD.pdf",
+   "contract_url": "https://assets.kalshi.com/regulatory/product-certifications/EOPERIOD.pdf",
+   "exchange_index": 0,
+   "fee_multiplier": 1,
+   "fee_type": "quadratic",
+   "frequency": "weekly",
+   "last_updated_ts": "2026-11-15T18:12:07.797445Z",
+   "settlement_sources": [
+    {
+     "name": "Federal Register",
+     "url": "https://www.federalregister.gov/"
+    }
+   ],
+   "tags": [
+    "Recurring"
+   ],
+   "ticker": "KXEOWEEK",
+   "title": "EO this week?"
+  },
+  {
+   "additional_prohibitions": [
+    "Persons who are employed by any of the Source Agencies are not permitted to trade on the Contract.",
+    "Persons who hold any material, non-public information on the Underlying are not permitted to trade on the Contract."
+   ],
+   "categories": [
+    "Mentions"
+   ],
+   "category": "Mentions",
+   "contract_terms_url": "https://assets.kalshi.com/contract_terms/MENTION.pdf",
+   "contract_url": "https://assets.kalshi.com/regulatory/product-certifications/MENTION.pdf",
+   "exchange_index": 0,
+   "fee_multiplier": 1,
+   "fee_type": "quadratic",
+   "frequency": "one_off",
+   "last_updated_ts": "2026-11-04T23:40:46.026311Z",
+   "settlement_sources": [
+    {
+     "name": "Snowflake Inc. Investor Events",
+     "url": "https://investors.snowflake.com/events-and-presentations/default.aspx"
+    }
+   ],
+   "tags": [
+    "Business"
+   ],
+   "ticker": "KXSNOWMENTION",
+   "title": "Snowflake Mention"
+  },
+  {
+   "additional_prohibitions": [
+    "Persons who are employed by any of the Source Agencies are not permitted to trade on the Contract.",
+    "Persons who hold any material, non-public information on the Underlying are not permitted to trade on the Contract."
+   ],
+   "categories": [
+    "Climate and Weather"
+   ],
+   "category": "Climate and Weather",
+   "contract_terms_url": "https://assets.kalshi.com/contract_terms/SNOWOVERTIME.pdf",
+   "contract_url": "https://assets.kalshi.com/regulatory/product-certifications/SNOWOVERTIME.pdf",
+   "exchange_index": 0,
+   "fee_multiplier": 1,
+   "fee_type": "quadratic",
+   "frequency": "monthly",
+   "last_updated_ts": "2026-11-14T03:20:26.421986Z",
+   "settlement_sources": [
+    {
+     "name": "The Weather Company",
+     "url": "https://weather.com/kalshi"
+    }
+   ],
+   "tags": [
+    "Snow and rain",
+    "Snow"
+   ],
+   "ticker": "KXNYCSNOWM",
+   "title": "NYC Snowfall monthly"
+  },
+  {
+   "additional_prohibitions": [
+    "Persons who are employed by any of the Source Agencies are not permitted to trade on the Contract.",
+    "Persons who hold any material, non-public information on the Underlying are not permitted to trade on the Contract.",
+    "Any candidate currently listed as a market within this event."
+   ],
+   "categories": [
+    "Politics"
+   ],
+   "category": "Politics",
+   "contract_terms_url": "https://assets.kalshi.com/contract_terms/POLITICALSTAT.pdf",
+   "contract_url": "https://assets.kalshi.com/regulatory/product-certifications/POLITICALSTAT.pdf",
+   "exchange_index": 0,
+   "fee_multiplier": 1,
+   "fee_type": "quadratic",
+   "frequency": "weekly",
+   "last_updated_ts": "2026-11-16T20:52:00.977246Z",
+   "settlement_sources": [
+    {
+     "name": "Roll Call",
+     "url": "https://rollcall.com/factbase/trump/topic/social/?platform=truth+social&sort=date&sort_order=desc&page=1"
+    }
+   ],
+   "tags": [
+    "Recurring",
+    "Trump"
+   ],
+   "ticker": "KXTRUTHSOCIAL",
+   "title": "Number of Trump Truth Social posts this week?"
+  },
+  {
+   "additional_prohibitions": [
+    "Persons who are employed by any of the Source Agencies are not permitted to trade on the Contract.",
+    "Persons who hold any material, non-public information on the Underlying are not permitted to trade on the Contract."
+   ],
+   "categories": [
+    "Climate and Weather"
+   ],
+   "category": "Climate and Weather",
+   "contract_terms_url": "https://assets.kalshi.com/contract_terms/GLOBALTEMPERATURESUSTAINED.pdf",
+   "contract_url": "https://assets.kalshi.com/regulatory/product-certifications/GLOBALTEMPERATURESUSTAINED.pdf",
+   "exchange_index": 0,
+   "fee_multiplier": 1,
+   "fee_type": "quadratic",
+   "frequency": "weekly",
+   "last_updated_ts": "2026-10-15T08:02:28.792359Z",
+   "settlement_sources": [
+    {
+     "name": "The Weather Company",
+     "url": "https://weather.com/kalshi"
+    }
+   ],
+   "tags": [
+    "Heatwaves"
+   ],
+   "ticker": "KXAVGTKAUS",
+   "title": "Average Weekly Temp in Austin "
+  },
+  {
+   "additional_prohibitions": [
+    "Persons who are employed by any of the Source Agencies are not permitted to trade on the Contract.",
+    "Persons who hold any material, non-public information on the Underlying are not permitted to trade on the Contract."
+   ],
+   "categories": [
+    "Entertainment"
+   ],
+   "category": "Entertainment",
+   "contract_terms_url": "https://assets.kalshi.com/contract_terms/TWEETS.pdf",
+   "contract_url": "https://assets.kalshi.com/regulatory/product-certifications/TWEETS.pdf",
+   "exchange_index": 0,
+   "fee_multiplier": 1,
+   "fee_type": "quadratic",
+   "frequency": "weekly",
+   "last_updated_ts": "2026-10-31T21:10:47.055121Z",
+   "settlement_sources": [
+    {
+     "name": "X",
+     "url": "https://x.com/elonmusk"
+    }
+   ],
+   "tags": [
+    "Culture war"
+   ],
+   "ticker": "KXELONTWEETS",
+   "title": "Elon Musk tweets"
+  }
+ ]
+}

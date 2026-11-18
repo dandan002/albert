@@ -1,0 +1,25 @@
+User-agent: *
+Allow:  /
+Disallow: /wp-admin/
+Allow: /wp-admin/admin-ajax.php
+
+User-agent: PerplexityBot
+Disallow: /
+
+# Anthropic / Claude model training
+User-agent: anthropic-ai
+Disallow: /
+
+# AI Model Training
+User-agent: cohere-ai
+Disallow: /
+
+# For OpenAI Model Training
+User-agent: GPTBot
+Disallow: /
+
+# For Bard / Gemini Training. Block
+User-agent: Google-Extended
+Disallow: /
+
+Sitemap: https://rollcall.com/sitemap_index.xml
