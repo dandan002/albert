@@ -216,7 +216,7 @@ class PaperTrader:
 
 def ledger_report(s, ledgers: list, *, transport=None):
     """Orders and fills from bot ledgers (``order`` / ``fill`` records), each fill held to the
-    settled result (``research.forward.fetch_results``). One row per order: ticker, event, side,
+    settled result (``research.forward.fetch_results``). One row per order: ticker, event, phase, side,
     price, filled, fee, y (null until settled) and pnl ($, null until settled)."""
     import json
 
@@ -230,10 +230,12 @@ def ledger_report(s, ledgers: list, *, transport=None):
             r = json.loads(line)
             if r.get("kind") == "order":
                 orders[r["order_id"]] = {"run": path.parent.name, "ts": r["ts"], "event": r["event"], "ticker": r["ticker"],
-                                         "side": r["side"], "price": float(r["price"]), "filled": False, "fee": 0.0}
+                                         "phase": r.get("phase", "main"), "side": r["side"],
+                                         "price": float(r["price"]), "filled": False, "fee": 0.0}
             elif r.get("kind") == "fill" and r.get("order_id") in orders:
                 orders[r["order_id"]].update(filled=True, fee=float(r.get("fee") or 0.0))
-    schema = {"run": pl.String, "ts": pl.String, "event": pl.String, "ticker": pl.String, "side": pl.String,
+    schema = {"run": pl.String, "ts": pl.String, "event": pl.String, "ticker": pl.String, "phase": pl.String,
+              "side": pl.String,
               "price": pl.Float64, "filled": pl.Boolean, "fee": pl.Float64}
     df = pl.DataFrame(list(orders.values()), schema=schema)
     if not df.height:

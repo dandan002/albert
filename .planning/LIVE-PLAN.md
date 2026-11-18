@@ -1,5 +1,27 @@
 # Live (cash) maker pilot: plan
 
+**12 H EARLY PHASE LIVE, 2026-11-18** (user: "Deploy commit and merge", after being offered the
+promotion ahead of the 6-week paper test): `deploy/mentions-prod.conf` adds `--early-hours 12` to
+the live bot, inside the same $15 value at risk, 2 events and 12c margin, and the CLI no longer
+refuses `--early-hours` for `--env prod`. Pre-run fee re-check (2026-11-18 08:05 UTC):
+`GET /series/fee_changes` has 107 rows, the latest scheduled 2026-09-03 and none on a mention series;
+`/events/fee_changes` is empty; all 465 Mentions series are `quadratic` ×1 (no maker fee). The
+restart waits until today's main-phase bids (Vance, Carney; expiring 12:50 UTC) are off the book,
+because shutdown cancels every `albm` order. The paper bot below keeps running as a
+simulated-vs-real check. Demote (drop `--early-hours`) if early-phase fills run below +5c over
+~6 weeks.
+
+**PAPER FORWARD TEST OF THE 12 H EARLY PHASE, STARTED 2026-11-18 05:12 UTC** (user: "Add it in
+then"): `albert-mentions@paper` (simulated orders on prod markets, `albert.paper_trader`; no order can
+leave the process) runs the live limits plus `--early-hours 12` (`deploy/mentions-paper.conf`): NO
+bids from start − 12 h to start − 6 h, then the frozen 6 h order on legs the early phase did not
+fill. Evidence: `research/mentions_ext` Q2 cell `L12h/m12c/extend`, frozen from dev; a one-off
+confirmatory holdout run (2026-11-18) gave $15-book $8.13/week vs live $6.34, Sharpe 9.15 vs 8.36
+(ex-top-5 6.96 vs 5.93), early-phase fills +7.27c on 433 fills. `--early-hours` is refused for
+`--env prod` until promotion. Promote after ~6 weeks if early-phase fills earn ≥ +5c (t ≥ 2) and the
+paper book beats live; score with `python -m albert paper mentions-report` (splits by phase). Stop:
+`touch data/live/mentions/paper/STOP`.
+
 **MENTIONS BOT ONLY, RESTARTED 2026-11-17 16:45 UTC at the user's request ("Start just the
 mentions bot and run", "Do $15 VAR"):** `albert-mentions@prod`, margin 12c, max 2 events,
 `--max-collateral 15 --max-daily-loss 15` (`deploy/mentions-prod.conf`). The collateral cap is now a
