@@ -353,3 +353,50 @@ def test_main_phases_are_served_before_early_ones():
     starts = {EV: START, "KXVANCEMENTION-26NOV06": now + timedelta(hours=5, minutes=30)}
     due = bot._due(now, starts, None)
     assert [(e, p) for e, _, p in due] == [("KXVANCEMENTION-26NOV06", "main"), (EV, "early")]
+
+
+def test_venue_is_the_text_after_the_last_at():
+    from albert.live_mentions import venue
+
+    assert venue("Elon Musk at NYT DealBook Summit") == "nyt dealbook summit"
+    assert venue("Trump delivers remarks at the UP Summit") == "the up summit"
+    assert venue("Trump weekly") is None and venue(None) is None
+
+
+def test_executives_trade_only_at_a_mostly_political_event(tmp_path):
+    bot, _ = _bot(tmp_path, FakeTrader(), START - timedelta(hours=6))
+    now = START - timedelta(hours=6)
+    bot.series_loader = dict
+    bot.series_info = {"KXVANCEMENTION": {"category": "Mentions", "title": "Vance mention"},
+                       "KXELONMENTION": {"category": "Mentions", "title": "Elon Musk Mention"},
+                       "KXALTMANMENTION": {"category": "Mentions", "title": "Sam Altman Mention"},
+                       "KXJENSENMENTION": {"category": "Mentions", "title": "Jensen Mention"},
+                       "KXWALLERMENTION": {"category": "Mentions", "title": "Waller Mention"},
+                       "KXEARNINGSMENTIONTGT": {"category": "Mentions", "title": "Target earnings call"}}
+    at = now + timedelta(hours=5, minutes=30)
+    starts = {"KXVANCEMENTION-26NOV18": at, "KXELONMENTION-26NOV18": at, "KXWALLERMENTION-26NOV18": at,
+              "KXJENSENMENTION-26NOV18": at, "KXALTMANMENTION-26NOV19": at}
+    bot.venues = {"KXVANCEMENTION-26NOV18": "nyt dealbook summit", "KXELONMENTION-26NOV18": "nyt dealbook summit",
+                  "KXWALLERMENTION-26NOV18": "nyt dealbook summit", "KXJENSENMENTION-26NOV18": "gtc",
+                  "KXALTMANMENTION-26NOV19": "openai devday"}
+    due = [e for e, _, _ in bot._due(now, starts, None)]
+    # Musk shares the venue with Vance; Jensen and Altman are alone at their companies' events;
+    # a Fed governor stays out even at DealBook.
+    assert due == ["KXVANCEMENTION-26NOV18", "KXELONMENTION-26NOV18"]
+    led = [json.loads(x) for x in (tmp_path / "run" / "ledger.jsonl").read_text().splitlines()]
+    assert [r["event"] for r in led if r["kind"] == "executive_at_political_event"] == ["KXELONMENTION-26NOV18"]
+    assert {r["event"] for r in led if r["kind"] == "skip_financial"} == {
+        "KXWALLERMENTION-26NOV18", "KXJENSENMENTION-26NOV18", "KXALTMANMENTION-26NOV19"}
+    # only executives at a finance-free co-speaker's venue: two executives together are not enough
+    bot.venues["KXVANCEMENTION-26NOV18"] = "white house"
+    bot.done = set()
+    assert [e for e, _, _ in bot._due(now, starts, None)] == ["KXVANCEMENTION-26NOV18"]
+    # without the series list nothing financial passes (fail closed)
+    bot.series_info = None
+    assert bot._due(now, starts, None) == []
+
+
+def test_milestone_titles_give_each_event_its_venue(tmp_path):
+    bot, _ = _bot(tmp_path, FakeTrader(), START - timedelta(hours=6))
+    asyncio.run(bot._milestones(START - timedelta(hours=6)))
+    assert bot.venues == {EV: "the up summit"}      # "Trump delivers remarks at the UP Summit"
