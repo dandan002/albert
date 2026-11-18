@@ -1,0 +1,20 @@
+User-agent: usasearch
+Disallow: /
+# Crawl-delay: 2
+
+User-agent: *
+Crawl-delay: 10
+Disallow: /
+
+Sitemap: https://www.spc.noaa.gov/sitemap.xml
+
+Disallow: /staff/mkay/greece/
+Disallow: /exper/mref_mars/
+Disallow: /cgi-bin-spc/
+Disallow: /exper/sref/srefdrb.html
+Disallow: zz.html
+Disallow: /faq/tornado.save.20060327/
+Disallow: /misc/AbtDerechos.save.20060327/
+Disallow: /exper/fcstfirewxltg/
+Disallow: /products/date.txt
+Disallow: /site.php

@@ -1,0 +1,6 @@
+# Robots file for IEM
+User-agent: *
+Disallow: /usage/
+Disallow: /tmp/
+Disallow: /archive/nexrad/
+Disallow: /archive/raw/

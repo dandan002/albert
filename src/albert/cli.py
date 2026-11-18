@@ -541,6 +541,12 @@ def paper_mentions_report(env: str = typer.Option("paper", help="Ledger folder u
         typer.echo(f"settled PnL ${settled['pnl'].sum():+.2f} ({settled['pnl'].mean() * 100:+.1f}c per fill), "
                    f"cost ${settled['price'].sum():.2f}")
     with pl.Config(tbl_rows=50, tbl_cols=20, tbl_width_chars=160):
+        if df["phase"].n_unique() > 1:
+            typer.echo(df.group_by("phase").agg(pl.len().alias("bids"), pl.col("filled").sum().alias("fills"),
+                                                (pl.col("filled") & pl.col("pnl").is_not_null()).sum().alias("settled"),
+                                                (pl.col("pnl").filter(pl.col("filled")).mean() * 100).round(2)
+                                                .alias("c_per_fill"), pl.col("pnl").sum().round(2).alias("pnl"))
+                       .sort("phase"))
         typer.echo(df.group_by("event").agg(pl.len().alias("bids"), pl.col("filled").sum().alias("fills"),
                                             pl.col("pnl").sum().round(2).alias("pnl")).sort("event"))
 
@@ -707,6 +713,9 @@ def live_mentions(
     group_limit: int = typer.Option(5, help="Exchange-side: contracts matched per rolling 15 s per event"),
     poll_s: float = typer.Option(60.0),
     force_event: str = typer.Option(None, help="Demo/paper only: post this event now (orders expire in 15 min)"),
+    early_hours: float = typer.Option(0.0, "--early-hours",
+                                      help="Also bid from start - H to start - 6 h, then the 6 h order on "
+                                           "unfilled legs (0 = off, else > 7)"),
 ) -> None:
     """Pre-speech NO bids on Kalshi mention markets (research/mentions_history). Stop with
     `touch data/live/mentions/STOP` or SIGTERM; every bot order carries an expiration_time.
@@ -720,6 +729,8 @@ def live_mentions(
 
     if force_event and env not in ("demo", "paper"):
         raise typer.BadParameter("--force-event is for demo and paper only")
+    if early_hours and early_hours <= 7:
+        raise typer.BadParameter("--early-hours must be 0 (off) or more than 7")
     s = settings()
     root = s.data_dir / "live" / "mentions"
     stop_file = root / "STOP"
@@ -737,7 +748,7 @@ def live_mentions(
         raise typer.BadParameter(f"{env} is not enabled for orders (prod needs KALSHI_LIVE_ENABLED=1 and --live)")
     run_dir = root / env / datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     limits = MentionLimits(margin=margin, max_collateral=max_collateral, max_daily_loss=max_daily_loss,
-                           max_events=max_events, group_limit=group_limit)
+                           max_events=max_events, group_limit=group_limit, early_hours=early_hours)
     def load_series() -> dict[str, dict]:
         from albert.ingest import kalshi_series
 

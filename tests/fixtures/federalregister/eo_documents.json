@@ -1,0 +1,39 @@
+{
+ "description": "Documents signed on or after 06/01/2024 and of presidential document type Executive Order",
+ "count": 317,
+ "total_pages": 1,
+ "results": [
+  {
+   "signing_date": "2026-10-05",
+   "publication_date": "2026-10-09",
+   "executive_order_number": "14435",
+   "title": "Emergency Tax Relief on Diesel Fuel",
+   "public_inspection_pdf_url": "https://public-inspection.federalregister.gov/2026-20855.pdf?1791472513",
+   "document_number": "2026-20855"
+  },
+  {
+   "signing_date": "2026-10-16",
+   "publication_date": "2026-10-21",
+   "executive_order_number": "14436",
+   "title": "Implementing the Lindsey O. Graham Sanctioning Russia and Iran Act of 2026",
+   "public_inspection_pdf_url": "https://public-inspection.federalregister.gov/2026-21599.pdf?1792509307",
+   "document_number": "2026-21599"
+  },
+  {
+   "signing_date": "2026-10-19",
+   "publication_date": "2026-10-22",
+   "executive_order_number": "14437",
+   "title": "Advancing Women's Health To Improve Outcomes in All Phases of Life",
+   "public_inspection_pdf_url": "https://public-inspection.federalregister.gov/2026-21666.pdf?1792595707",
+   "document_number": "2026-21666"
+  },
+  {
+   "signing_date": "2026-10-22",
+   "publication_date": "2026-10-28",
+   "executive_order_number": "14438",
+   "title": "Decreasing Housing Costs for the American People",
+   "public_inspection_pdf_url": "https://public-inspection.federalregister.gov/2026-22051.pdf?1793114109",
+   "document_number": "2026-22051"
+  }
+ ]
+}

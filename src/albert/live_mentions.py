@@ -24,6 +24,12 @@ cancels, prod gate ``KALSHI_LIVE_ENABLED=1`` + ``--live``):
   the speech has started or leaked), the event's order group is triggered (all its orders cancel);
 * if the milestone start moves earlier than 10 min from now, the event's orders are cancelled;
 * kill switch file and SIGTERM cancel every ``albm`` order and stop.
+
+Early phase (``early_hours``; live since 2026-11-18 at the user's request, with the paper bot
+running alongside; ``research/mentions_ext`` Q2 ``L12h/m12c/extend``): the same NO bids are also posted ``early_hours`` before the start and rest
+until start − 6 h (their own order group and expiration); at 6 h the frozen order above is posted
+only on legs the early phase did not fill, and not at all if the early phase's breaker fired.
+Main (6 h) phases are served before early ones, and both count against ``max_events`` and the cap.
 """
 
 from __future__ import annotations
@@ -47,6 +53,7 @@ PREFIX = "albm"
 EXCLUDED_GROUPS = ("earnings",)
 DUE = (timedelta(hours=5), timedelta(hours=6))      # post when start − now is in (5 h, 6 h]
 END_BEFORE = timedelta(minutes=10)
+EARLY_END = DUE[1]                                  # an early phase rests until start − 6 h
 BREAKER_PRICE, CHEAP_ASK = 0.95, 0.80
 SETTLE_GRACE = timedelta(minutes=15)  # a fill leaves the open exposure only this long after it, once
                                       # its market shows no position (positions can lag the fill feed)
@@ -60,6 +67,7 @@ class MentionLimits:
     max_events: int = 3               # events with resting orders at once
     max_orders_per_event: int = 40
     group_limit: int = 5              # exchange-side: contracts matched per rolling 15 s
+    early_hours: float = 0.0          # > 7: also bid from start − early_hours to start − 6 h (0 = off)
 
 
 @dataclass
@@ -71,6 +79,13 @@ class EventState:
     orders: dict[str, dict[str, Any]] = field(default_factory=dict)   # order_id -> {ticker, price, cheap}
     closed: bool = False
     breaker: bool = False
+    phase: str = "main"               # "main" (6 h -> start − 10 min) or "early" (early_hours -> 6 h)
+    lead: timedelta = END_BEFORE      # the phase ends this long before the start
+
+
+def _key(event: str, phase: str) -> str:
+    """``events`` / ``done`` key: the event ticker for the main phase, ``<event>@early`` otherwise."""
+    return event if phase == "main" else f"{event}@{phase}"
 
 
 def _timing(t_send_ns: int, resp: Any) -> dict[str, float]:
@@ -247,10 +262,10 @@ class MentionsBot:
             self.write("no_new_events", {"spent_today": self.spent_today()})
             return True
         due = self._due(now, starts, force_events)
-        for ev, start in due:
-            if sum(not e.closed for e in self.events.values()) >= self.limits.max_events:
+        for ev, start, phase in due:
+            if len({e.event for e in self.events.values() if not e.closed} - {ev}) >= self.limits.max_events:
                 break
-            await self._post_event(ev, start, now, forced=bool(force_events and ev in force_events))
+            await self._post_event(ev, start, now, forced=bool(force_events and ev in force_events), phase=phase)
         return True
 
     async def _milestones(self, now: datetime) -> dict[str, datetime]:
@@ -274,11 +289,15 @@ class MentionsBot:
             return True
         return kalshi_series_is_financial(series, info.get("category"), info.get("title"))
 
-    def _due(self, now: datetime, starts: dict[str, datetime], force: list[str] | None) -> list[tuple[str, datetime]]:
+    def _due(self, now: datetime, starts: dict[str, datetime],
+             force: list[str] | None) -> list[tuple[str, datetime, str]]:
+        """(event, start, phase) to post now: main phases (start in (5 h, 6 h]) first, then early
+        ones (start in (early_hours − 1 h, early_hours]), each by start time."""
         from albert.research import forward as F
 
         if force:
-            return [(ev, now + timedelta(minutes=25)) for ev in force if ev not in self.done]
+            return [(ev, now + timedelta(minutes=25), "main") for ev in force if ev not in self.done]
+        early = timedelta(hours=self.limits.early_hours)
         out = []
         for ev, start in sorted(starts.items(), key=lambda kv: kv[1]):
             if ev in self.done or F.speech_group(ev.split("-")[0]) in EXCLUDED_GROUPS:
@@ -288,12 +307,22 @@ class MentionsBot:
                     self.skipped_financial.add(ev)
                     self.write("skip_financial", {"event": ev})
                 continue
-            if DUE[0] < start - now <= DUE[1]:
-                out.append((ev, start))
-        return out
+            left = start - now
+            if DUE[0] < left <= DUE[1]:
+                out.append((ev, start, "main"))
+            elif (early > EARLY_END + timedelta(hours=1) and _key(ev, "early") not in self.done
+                  and early - timedelta(hours=1) < left <= early):
+                out.append((ev, start, "early"))
+        return sorted(out, key=lambda r: r[2] != "main")
 
-    async def _post_event(self, ev: str, start: datetime, now: datetime, *, forced: bool) -> None:
-        self.done.add(ev)
+    async def _post_event(self, ev: str, start: datetime, now: datetime, *, forced: bool,
+                          phase: str = "main") -> None:
+        self.done.add(_key(ev, phase))
+        early = self.events.get(_key(ev, "early")) if phase == "main" else None
+        if early is not None and early.breaker:
+            self.write("skip", {"event": ev, "phase": phase, "reason": "early phase circuit breaker"})
+            return
+        filled = {o["ticker"] for o in early.orders.values() if o.get("status") == "filled"} if early else set()
         try:
             plan = await asyncio.to_thread(plan_event, self.s, self.base, ev, start, now, self.limits.margin,
                                            transport=self.transport)
@@ -306,7 +335,7 @@ class MentionsBot:
         from albert.research import forward as F
 
         legs = plan.filter(pl.col("eligible") & pl.col("price").is_not_null()
-                           & ~pl.col("ticker").is_in(F._strs(self.blocked)))
+                           & ~pl.col("ticker").is_in(F._strs(self.blocked | filled)))
         legs = legs.sort("price").head(self.limits.max_orders_per_event)
         room = self.limits.max_collateral - self.at_risk()
         keep, total = [], 0.0
@@ -315,15 +344,17 @@ class MentionsBot:
                 break
             keep.append(r)
             total += r["price"]
-        end = start - END_BEFORE
-        self.write("plan", {"event": ev, "start": start, "end": end, "forced": forced, "legs": plan.height,
+        lead = EARLY_END if phase == "early" else END_BEFORE
+        end = start - lead
+        self.write("plan", {"event": ev, "phase": phase, "start": start, "end": end, "forced": forced,
+                            "early_filled": sorted(filled), "legs": plan.height,
                             "eligible": legs.height, "posting": len(keep), "collateral": round(total, 4),
                             "rows": plan.to_dicts()})
         if not keep:
             return
         group = await self.trader.create_order_group(self.limits.group_limit)
-        st = EventState(ev, start, end, group)
-        self.events[ev] = st
+        st = EventState(ev, start, end, group, phase=phase, lead=lead)
+        self.events[_key(ev, phase)] = st
         exp = math.floor(end.timestamp())
         try:
             shard = await self.trader.shards([r["ticker"] for r in keep])
@@ -343,10 +374,11 @@ class MentionsBot:
             oid = resp.get("order_id")
             st.orders[oid] = {"ticker": r["ticker"], "price": r["price"], "cheap": bool(r["cheap"]),
                               "coid": coid, "status": "resting"}
-            self.write("order", {"event": ev, "order_id": oid, "client_order_id": coid, "ticker": r["ticker"],
+            self.write("order", {"event": ev, "phase": phase, "order_id": oid, "client_order_id": coid,
+                                 "ticker": r["ticker"],
                                  "side": "no", "price": r["price"], "fair": r["fair_cal"], "bid": r["bid"],
                                  "ask": r["ask"], "expiration": exp, **_timing(t_send, resp)})
-        self.log(f"{ev}: {len(st.orders)} NO bids, ${self.resting_collateral():.2f} resting")
+        self.log(f"{ev} ({phase}): {len(st.orders)} NO bids, ${self.resting_collateral():.2f} resting")
 
     async def _watch(self, now: datetime, starts: dict[str, datetime]) -> None:
         for e in self.events.values():
@@ -356,7 +388,7 @@ class MentionsBot:
             reason = None
             if now >= e.end:
                 reason = "end"
-            elif moved is not None and moved - END_BEFORE <= now:
+            elif moved is not None and moved - e.lead <= now:
                 reason = f"start moved to {moved.isoformat()}"
             elif not e.breaker and await self._breaker(e):
                 reason = "circuit breaker"
@@ -402,7 +434,7 @@ class MentionsBot:
         for o in e.orders.values():
             if o.get("status") == "resting":
                 o["status"] = "closed"
-        self.write("close", {"event": e.event, "reason": reason})
+        self.write("close", {"event": e.event, "phase": e.phase, "reason": reason})
 
     async def _fills(self) -> None:
         page = await self.trader.get("/portfolio/fills", {"limit": 200})
@@ -420,7 +452,7 @@ class MentionsBot:
             self.fill_cost_today[day] = self.fill_cost_today.get(day, 0.0) + cost
             self._add_open(fr.ticker, cost, self.clock())
             o["status"] = "filled"
-            self.write("fill", {"event": e.event, **asdict(fr), "cost": round(cost, 4)})
+            self.write("fill", {"event": e.event, "phase": e.phase, **asdict(fr), "cost": round(cost, 4)})
             self.log(f"fill {fr.ticker} NO @{o['price']:.2f}")
 
     async def run(self, minutes: float, poll_s: float = 60.0, *, force_events: list[str] | None = None) -> None:

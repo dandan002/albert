@@ -734,3 +734,66 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     ~30 trades per period; basis risk (same-text Trump series meaning different days; 1.7% of
     protected/unprotected pairs settle apart). Maker on the rich leg loses (−4 to −16c Oct).
     At most a live scanner for those few series later.
+- **Four more directions, run in parallel (2026-11-17 evening; reports in
+  `data/research/{mentions_ext,counts,recurring,xvenue_leadlag}/report.md`).**
+  - *Mentions extensions* (`research/mentions_ext.py`): the live rule (6 h, 12c) holds: +8.6c/fill
+    dev → +9.0c (t 4.6) Oct–Nov 16, book Sharpe 8.4 [6.1, 15.0], 5.9 ex top-5, $6.3/week at the
+    $15 VaR. Wikimedia-pageview salience filter: trending words were the *best* fills (no filter
+    passes dev); GDELT returned 429 on every call. Earlier/longer windows and other margins
+    dilute; the dev-chosen "also trade late-listed events" cell fell +6.5 → +1.9c. Post-speech NO
+    sweep loses 5–29c in all 32 cells (a ≥ 2c YES usually means the speech is still running).
+    Polymarket mention matches: 37 fills, too thin. Open lead (dev only, not holdout-tested): an
+    extra NO bid 12 h → 6 h before start at 12c (+31% $ on the $15 book in dev; 3,987 fills at
+    +9.7c vs 3,053 at +8.8c over Mar 2025–Aug 2026). Paper test only.
+  - *Accumulating-quantity ladders* (`research/counts.py`): monthly rain (IEM CLI, 997/997
+    settlement match), weekly hot-day streaks, weekly executive orders (Federal Register lags the
+    White House by ~4 days). Kalshi fully prices the published partial sum (asks $1.00 on 928/935
+    passed strikes) and beats the nowcast where open. Frozen maker +4.9c dev → +1.6c (t 0.6) on 15
+    events, no better than quoting the mid. TSA weekly is category Economics (excluded); Truth
+    Social, x.com, spc.noaa.gov and congress.gov block us in robots.txt.
+  - *Recurring-series persistence* (`research/recurring.py`): 143 series, 9.4k events (charts, AI
+    leaderboards, post counts, approval, strait traffic). Incumbents repeat 44% after one win, 88%
+    after five, and own history adds information only at open + 1 h inside 35–65c books. Frozen
+    taker −0.8c dev → −4.3c holdout; walk-forward −0.7c with a −$190 drawdown; positive $ is one
+    2c longshot. All 71 other cells lose.
+  - *Polymarket intl leading Kalshi outside sports* (`research/xvenue_leadlag.py`): 2,415 exactly
+    matched pairs (culture, Nov 3 midterms, mentions, world; 11 families rejected on rules
+    differences). Moves are simultaneous at one minute; the "leader" gives back 30–40% of an
+    unmatched move. Frozen taker −2.1c (t −4.0) dev → −2.0c (t −4.9) holdout; zero latency is no
+    better; every one of 72 cells is negative in both periods.
+  - **Net:** nothing new to trade; the mentions NO bid stays the only live strategy.
+- **Behavioural mechanisms by market family, run in parallel (2026-11-18; reports in
+  `data/research/behav_{culture,sports,politics,micro}/report.md`).** Each agent wrote ≥ 10
+  psychology / market-structure reasons someone would trade at a bad price *before* opening data,
+  screened them on dev, froze rules, then scored the Oct 1 – Nov 17 holdout once.
+  - *Culture, entertainment, weather, science* (`research/behav_culture.py`, 19 hypotheses):
+    fandom NO at 2–35c +2.8c (t 3.7) dev → +1.4c (t 1.1) holdout, book Sharpe 2.6 → 0.75 (−0.9 ex
+    top-5); fails the |t| ≥ 2.5 Bonferroni bar. Attention buying runs backwards (heavy volume for
+    the price = informed). Dread tails, round-10°F brackets, anchoring on yesterday's high, the
+    headline-forecast bracket, pageview spikes and Musk/xAI tribalism all rejected. Post-hoc
+    lead: fandom longshots at close − 24 h settled YES 0 vs 3.7 / 2.7 expected (paper only,
+    ~$1–2/week, −$4.7 per miss against +$0.1–0.2 wins).
+  - *Sports* (`research/behav_sports.py`, 19 hypotheses, 6,858 dev / 1,948 holdout games): popular
+    teams, home teams, recency after blowouts, primetime flows, star props, late chasing,
+    American tennis players, payday and spread key numbers all null or wrong-signed. 1 of 97 dev
+    cells passed (chance level); all 3 frozen rules lose on the holdout (best t −0.31). Spreads 1c,
+    depth ample: the books are made by pros anchored to the sportsbook consensus.
+  - *Politics, elections, news* (`research/behav_politics.py`, 17 hypotheses): partisan bias
+    follows each cycle's polling miss (Dems +8.5c rich 2024, −10c 2025, −4.3c 2026 midterms);
+    drama premium is just the known deadline theta; status-quo YES is rich, not cheap; early
+    election-night moves continue. Election-night leader 60–95c +7.8c (t 2.0) → +0.2c; day-after
+    leader 80–98.5c +2.5c (t 5.9) → −3.1c. Post-hoc: 90–96c election-night leaders 53/53, but
+    three nights and the 95% lower bound (93.2%) is below breakeven (94.1%).
+  - *Cross-market microstructure* (`research/behav_micro.py`, 16 hypotheses): no round-number
+    clustering, no fee-rounding avoidance, no lock-up premium (APY only above $250), Thursday
+    pause reversal not executable, multi-outcome lag and post-settlement recycling null. Robust
+    fact: single sweeps ≤ $50 are uninformed and revert, > $200 informed (dev, Oct and Nov). Stub
+    15c past a small sweep +6.1 → +5.7c on prints (Sharpe 5.7), but the exact-book L2 replay is
+    +7.4 → −3.5c (176 fills) and prints overstate it by 1–1.4c. Refill after a small sweep +7.5c
+    both periods (Sharpe 6.5, 4.6 ex top-5) but 56% Mentions, exact-book ≈ 0 on 49 fills and the
+    October holdout was partly seen. Forward paper candidate only; it needs a WebSocket bot on
+    Mentions/non-sports books.
+  - **Net:** no new live strategy. The mentions NO bid (plus its 12 h early phase, now on paper)
+    remains the only edge. About 1,500 dev cells across the four studies; every confirmatory rule
+    that looked good on dev shrank or flipped on the holdout except the microstructure refill,
+    which is unconfirmed on the exact book.

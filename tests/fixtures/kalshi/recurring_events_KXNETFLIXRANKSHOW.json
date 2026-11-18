@@ -1,0 +1,77 @@
+{
+ "events": [
+  {
+   "category": "Entertainment",
+   "collateral_return_type": "MECNET",
+   "event_ticker": "KXNETFLIXRANKSHOW-26NOV09",
+   "exchange_index": 0,
+   "last_updated_ts": "2026-11-04T15:49:14.49259Z",
+   "mutually_exclusive": true,
+   "series_ticker": "KXNETFLIXRANKSHOW",
+   "settlement_sources": [
+    {
+     "name": "Netflix",
+     "url": "https://www.netflix.com/tudum/top10/united-states/tv"
+    }
+   ],
+   "strike_period": "",
+   "sub_title": "The chart published on Nov 10, 2026",
+   "title": "Top US Netflix Show this week?"
+  },
+  {
+   "category": "Entertainment",
+   "collateral_return_type": "MECNET",
+   "event_ticker": "KXNETFLIXRANKSHOW-26NOV02",
+   "exchange_index": 0,
+   "last_updated_ts": "2026-10-28T00:18:10.386244Z",
+   "mutually_exclusive": true,
+   "series_ticker": "KXNETFLIXRANKSHOW",
+   "settlement_sources": [
+    {
+     "name": "Netflix",
+     "url": "https://www.netflix.com/tudum/top10/united-states/tv"
+    }
+   ],
+   "strike_period": "",
+   "sub_title": "The chart published on Nov 3, 2026",
+   "title": "Top US Netflix Show this week?"
+  },
+  {
+   "category": "Entertainment",
+   "collateral_return_type": "MECNET",
+   "event_ticker": "KXNETFLIXRANKSHOW-26OCT26",
+   "exchange_index": 0,
+   "last_updated_ts": "2026-10-21T16:28:59.068532Z",
+   "mutually_exclusive": true,
+   "series_ticker": "KXNETFLIXRANKSHOW",
+   "settlement_sources": [
+    {
+     "name": "Netflix",
+     "url": "https://www.netflix.com/tudum/top10/united-states/tv"
+    }
+   ],
+   "strike_period": "",
+   "sub_title": "The chart published on Oct 27, 2026",
+   "title": "Top US Netflix Show this week?"
+  },
+  {
+   "category": "Entertainment",
+   "collateral_return_type": "MECNET",
+   "event_ticker": "KXNETFLIXRANKSHOW-26OCT19",
+   "exchange_index": 0,
+   "last_updated_ts": "2026-10-15T09:00:32.627578Z",
+   "mutually_exclusive": true,
+   "series_ticker": "KXNETFLIXRANKSHOW",
+   "settlement_sources": [
+    {
+     "name": "Netflix",
+     "url": "https://www.netflix.com/tudum/top10/united-states/tv"
+    }
+   ],
+   "strike_period": "",
+   "sub_title": "The chart published on Oct 20, 2026",
+   "title": "Top US Netflix Show this week?"
+  }
+ ],
+ "cursor": ""
+}

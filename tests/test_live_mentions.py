@@ -287,3 +287,69 @@ def test_restart_rebuilds_unsettled_fills_and_shrinks_the_room(tmp_path):
     assert bot.open_exposure() == pytest.approx(0.9)
     asyncio.run(bot.tick())
     assert sum(1 - float(b["price"]) for b in t.created) <= 1.5 - 0.9 + 1e-9
+
+
+def test_without_early_hours_nothing_posts_twelve_hours_out(tmp_path):
+    t = FakeTrader()
+    bot, _ = _bot(tmp_path, t, START - timedelta(hours=11, minutes=30))
+    asyncio.run(bot.prepare())
+    asyncio.run(bot.tick())
+    assert not t.created
+
+
+def test_early_phase_rests_to_six_hours_then_main_skips_its_filled_legs(tmp_path):
+    t = FakeTrader()
+    bot, clock = _bot(tmp_path, t, START - timedelta(hours=11, minutes=30), early_hours=12)
+    asyncio.run(bot.prepare())
+    asyncio.run(bot.tick())
+    assert len(t.created) == 6 and EV not in bot.events
+    early = bot.events[f"{EV}@early"]
+    assert early.phase == "early" and early.end == START - timedelta(hours=6)
+    assert all(b["expiration_time"] == int((START - timedelta(hours=6)).timestamp()) for b in t.created)
+    asyncio.run(bot.tick())                                   # posted once
+    assert len(t.created) == 6
+    oid, o = next(iter(early.orders.items()))
+    t.fills = [_maker_fill(t, oid, t.created[0])]
+    t.pos = {o["ticker"]: -1.0}
+    clock["now"] += timedelta(minutes=1)
+    asyncio.run(bot.tick())
+    assert o["status"] == "filled" and bot.open_exposure() == pytest.approx(o["price"])
+    clock["now"] = START - timedelta(hours=6)                 # early phase ends, the 6 h order takes over
+    asyncio.run(bot.tick())
+    assert early.closed and ("trigger", "g-1") in t.calls
+    main = bot.events[EV]
+    assert main.phase == "main" and len(main.orders) == 5
+    assert o["ticker"] not in {m["ticker"] for m in main.orders.values()}
+    assert all(b["expiration_time"] == int((START - END_BEFORE).timestamp()) for b in t.created[6:])
+    led = [json.loads(x) for x in (tmp_path / "run" / "ledger.jsonl").read_text().splitlines()]
+    assert [r["phase"] for r in led if r["kind"] == "order"] == ["early"] * 6 + ["main"] * 5
+    assert any(r["kind"] == "fill" and r["phase"] == "early" for r in led)
+
+
+def test_early_breaker_cancels_the_main_phase(tmp_path):
+    t = FakeTrader()
+    bot, clock = _bot(tmp_path, t, START - timedelta(hours=11, minutes=30), early_hours=12)
+    asyncio.run(bot.prepare())
+    asyncio.run(bot.tick())
+    hot = json.loads(json.dumps(_j(f"forward_markets_{EV}.json")))
+    for m in hot["markets"]:
+        if m["ticker"] == f"{EV}-AUTO":
+            m["yes_bid_dollars"] = "0.9600"
+    t.markets = hot
+    clock["now"] += timedelta(minutes=5)
+    asyncio.run(bot.tick())
+    assert bot.events[f"{EV}@early"].breaker and bot.events[f"{EV}@early"].closed
+    clock["now"] = START - timedelta(hours=5, minutes=30)
+    asyncio.run(bot.tick())
+    assert len(t.created) == 6 and EV not in bot.events
+    led = [json.loads(x) for x in (tmp_path / "run" / "ledger.jsonl").read_text().splitlines()]
+    assert any(r["kind"] == "skip" and r.get("reason") == "early phase circuit breaker" for r in led)
+
+
+def test_main_phases_are_served_before_early_ones():
+    bot = MentionsBot.__new__(MentionsBot)
+    bot.limits, bot.done, bot.series_info, bot.series_loader = MentionLimits(early_hours=12), set(), None, None
+    now = START - timedelta(hours=11, minutes=30)
+    starts = {EV: START, "KXVANCEMENTION-26NOV06": now + timedelta(hours=5, minutes=30)}
+    due = bot._due(now, starts, None)
+    assert [(e, p) for e, _, p in due] == [("KXVANCEMENTION-26NOV06", "main"), (EV, "early")]

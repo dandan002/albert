@@ -1,0 +1,64 @@
+[
+ {
+  "id": "876566",
+  "slug": "what-will-trump-or-melania-say-during-remarks-in-the-white-house-rose-garden",
+  "title": "What will Trump or Melania say during remarks in the White House Rose Garden?",
+  "startDate": "2026-08-19T18:12:01Z",
+  "endDate": "2026-08-20T23:59:00Z",
+  "closed": true,
+  "markets": [
+   {
+    "groupItemTitle": "Afford / Affordable / Affordability",
+    "question": "Will Trump or Melania say \"Afford / Affordable / Affordability\" during remarks in the White House Rose Garden?",
+    "clobTokenIds": "[\"6456258930482202730769267237381877247221051099841702273893827256846495384515\", \"105757024810120019731489236706750524752401399012551779879703785817293324000942\"]",
+    "outcomes": "[\"Yes\", \"No\"]",
+    "outcomePrices": "[\"0\", \"1\"]",
+    "closed": true,
+    "closedTime": "2026-08-20 22:21:15+00",
+    "startDate": "2026-08-19T18:12:05Z",
+    "endDate": "2026-08-20T23:59:00Z",
+    "conditionId": "0xab6b5b50bd52ba4362c2a3b1247e999a681fe1b0f50929d93e4f37278e025ca8",
+    "slug": "will-trump-or-melania-say-afford-affordable-affordability-during-remarks-in-the-white-house-rose-garden"
+   },
+   {
+    "groupItemTitle": "Thank 10+ times",
+    "question": "Will Trump or Melania say \"Thank\" 10+ times during remarks in the White House Rose Garden?",
+    "clobTokenIds": "[\"15317512362876299004667236148451823110121860636398239184976211445322034018803\", \"95446516967723399154224995149742774691110809554330299453724749006059450438288\"]",
+    "outcomes": "[\"Yes\", \"No\"]",
+    "outcomePrices": "[\"0\", \"1\"]",
+    "closed": true,
+    "closedTime": "2026-08-20 22:40:48+00",
+    "startDate": "2026-08-19T18:12:02Z",
+    "endDate": "2026-08-20T23:59:00Z",
+    "conditionId": "0xf90f11db03d808e262058162b8a68d88868c27358b37a07b6c94a4f928f6fa63",
+    "slug": "will-trump-or-melania-say-thank-10-times-during-remarks-in-the-white-house-rose-garden"
+   },
+   {
+    "groupItemTitle": "Foster 7+ times",
+    "question": "Will Trump or Melania say \"Foster\" 7+ times during remarks in the White House Rose Garden?",
+    "clobTokenIds": "[\"25758286793423591114967598793875559537738297551190270138914587124162459116617\", \"67468626247228269221796584251044035849257849302167315783450734141906214435558\"]",
+    "outcomes": "[\"Yes\", \"No\"]",
+    "outcomePrices": "[\"0\", \"1\"]",
+    "closed": true,
+    "closedTime": "2026-08-20 22:40:48+00",
+    "startDate": "2026-08-19T18:12:02Z",
+    "endDate": "2026-08-20T23:59:00Z",
+    "conditionId": "0x988d92915e06ae2f1a8b0f792c257fe1e8b810a58486c4770815ea05220647da",
+    "slug": "will-trump-or-melania-say-foster-7-times-during-remarks-in-the-white-house-rose-garden"
+   },
+   {
+    "groupItemTitle": "Job 6+ times",
+    "question": "Will Trump or Melania say \"Job\" 6+ times during remarks in the White House Rose Garden?",
+    "clobTokenIds": "[\"67387335761395511527018905045508938937332509242497163612438794673331870387142\", \"108157282876427748404521788464624904066451859950258275627219819481239657859054\"]",
+    "outcomes": "[\"Yes\", \"No\"]",
+    "outcomePrices": "[\"0\", \"1\"]",
+    "closed": true,
+    "closedTime": "2026-08-20 22:33:10+00",
+    "startDate": "2026-08-19T18:12:02Z",
+    "endDate": "2026-08-20T23:59:00Z",
+    "conditionId": "0xb876f8c7231b6ed528985bc39285fe69a4a50cac1735be230b255678e1d2e775",
+    "slug": "will-trump-or-melania-say-job-6-times-during-remarks-in-the-white-house-rose-garden"
+   }
+  ]
+ }
+]
