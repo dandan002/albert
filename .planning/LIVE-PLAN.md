@@ -1,5 +1,21 @@
 # Live (cash) maker pilot: plan
 
+**EXECUTIVES AT MOSTLY POLITICAL EVENTS, 2026-11-18** (user: "At a mostly political event like nyt
+dealbook include business execs and public figures like musk"): the finance filter still rejects
+executives' Mentions series (Musk, Altman, Nadella, Ellison, Luckey, Tenev, Dimon, …;
+`categories._EXEC_MENTIONS`), but the bot now trades one when its milestone venue (the text after
+the last " at " in the milestone title, e.g. "NYT DealBook Summit") also hosts, within a day, a
+speaker the filter passes (`live_mentions.political_venue`; ledger record
+`executive_at_political_event`). Company calls and events, Fed / Treasury / economic officials and
+crypto or investment events stay out, and an executive alone at their own company's event
+(Jensen at GTC) is still skipped. Limits unchanged ($15 VaR, 2 events), so at a ten-speaker summit
+the bot still takes two events. Evidence: the frozen rule (calibration and margin chosen on
+politicians) replayed on hourly candles for 27 earlier executive events (Mar 2025 – Sep 2026,
+all venues, 99% candle coverage). The 6 h order made +16.6c/fill on 80 fills (t 2.5 by event and
+by date); with the 12 h phase it made +10.1c on 103 fills (t 1.95; early +8.2c on 58). No
+executive event falls after October 1. Last year's DealBook executives (Fink, Karp, Amodei,
+Armstrong, 2025-12-03) lost 19c/fill on 6 fills, too few to read.
+
 **12 H EARLY PHASE LIVE, 2026-11-18** (user: "Deploy commit and merge", after being offered the
 promotion ahead of the 6-week paper test): `deploy/mentions-prod.conf` adds `--early-hours 12` to
 the live bot, inside the same $15 value at risk, 2 events and 12c margin, and the CLI no longer

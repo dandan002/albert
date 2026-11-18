@@ -7,6 +7,9 @@ about 6 h away, rest ONE post-only NO bid per quoted word leg at ``floor(1 − f
 ``fair = σ(−0.1156 + 1.0474·logit(mid))`` (capped one tick inside the YES bid), until start − 10
 min, and hold any fill to settlement. Events whose share of "already said" legs (bid ≥ 97c) jumped
 more than 12 points since start − 24 h are skipped (the study's outcome-blind exclusion).
+Finance-related series (``albert.categories``) are skipped, except a business executive's series
+when its milestone venue ("… at NYT DealBook Summit") also hosts, within a day, a speaker the filter
+passes (a mostly political event; user request 2026-11-18).
 
 Safety, on top of the order layer's own (``venues/kalshi_trade``: write allowlist, own-orders-only
 cancels, prod gate ``KALSHI_LIVE_ENABLED=1`` + ``--live``):
@@ -83,6 +86,14 @@ class EventState:
     lead: timedelta = END_BEFORE      # the phase ends this long before the start
 
 
+def venue(milestone_title: str | None) -> str | None:
+    """Where a speech happens, from its milestone title: the text after the last " at "
+    ("Elon Musk at NYT DealBook Summit" -> "nyt dealbook summit"); None without one."""
+    t = " ".join((milestone_title or "").split())
+    i = t.lower().rfind(" at ")
+    return t[i + 4:].strip().lower() or None if i >= 0 else None
+
+
 def _key(event: str, phase: str) -> str:
     """``events`` / ``done`` key: the event ticker for the main phase, ``<event>@early`` otherwise."""
     return event if phase == "main" else f"{event}@{phase}"
@@ -157,6 +168,10 @@ class MentionsBot:
         self.series_info: dict[str, dict] | None = None
         self.series_day: str | None = None
         self.skipped_financial: set[str] = set()
+        # Executives' series pass at a mostly political event (milestone venue shared with a
+        # speaker the filter passes; user request 2026-11-18).
+        self.venues: dict[str, str | None] = {}
+        self.allowed_exec: set[str] = set()
         run_dir.mkdir(parents=True, exist_ok=True)
 
     # -- ledger --
@@ -274,7 +289,30 @@ class MentionsBot:
         page = await self.trader.get("/milestones", {"minimum_start_date": (now - timedelta(hours=1)).strftime(
             "%Y-%m-%dT%H:%M:%SZ"), "category": "Mentions", "limit": 500})
         due = F.mention_due(page, now - timedelta(hours=1), timedelta(0), timedelta(days=2), set())
+        self.venues = {r["event"]: venue(r["ms_title"]) for r in due.iter_rows(named=True)}
         return {r["event"]: r["start"] for r in due.iter_rows(named=True)}
+
+    def is_executive(self, series: str) -> bool:
+        """A business executive's series (``categories.kalshi_mention_is_executive``); False when
+        the series list is missing or does not know the series (fail closed)."""
+        from albert.categories import kalshi_mention_is_executive
+
+        if self.series_info is None:
+            return self.series_loader is None and kalshi_mention_is_executive(series, "Mentions", None)
+        info = self.series_info.get(series)
+        return info is not None and kalshi_mention_is_executive(series, info.get("category"), info.get("title"))
+
+    def political_venue(self, ev: str, starts: dict[str, datetime]) -> bool:
+        """``ev``'s milestone venue ("… at NYT DealBook Summit") also hosts, within a day, a speaker
+        the finance filter passes: a mostly political event, where executives are traded too."""
+        from albert.research import forward as F
+
+        v = self.venues.get(ev)
+        if not v or ev not in starts:
+            return False
+        return any(o != ev and self.venues.get(o) == v and abs(s - starts[ev]) <= timedelta(days=1)
+                   and F.speech_group(o.split("-")[0]) not in EXCLUDED_GROUPS
+                   and not self.is_financial(o.split("-")[0]) for o, s in starts.items())
 
     def is_financial(self, series: str) -> bool:
         """Finance-related series (albert.categories) are never traded. Without a series list
@@ -302,7 +340,12 @@ class MentionsBot:
         for ev, start in sorted(starts.items(), key=lambda kv: kv[1]):
             if ev in self.done or F.speech_group(ev.split("-")[0]) in EXCLUDED_GROUPS:
                 continue
-            if self.is_financial(ev.split("-")[0]):
+            series = ev.split("-")[0]
+            if self.is_financial(series) and self.is_executive(series) and self.political_venue(ev, starts):
+                if ev not in self.allowed_exec:
+                    self.allowed_exec.add(ev)
+                    self.write("executive_at_political_event", {"event": ev, "venue": self.venues.get(ev)})
+            elif self.is_financial(series):
                 if ev not in self.skipped_financial:
                     self.skipped_financial.add(ev)
                     self.write("skip_financial", {"event": ev})

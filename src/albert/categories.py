@@ -45,10 +45,17 @@ _FIN_MENTIONS = re.compile(
     r"^KXFIGMENTION|FIGMA|GOOG|^KXMCDMENTION|MCDONALD|MRVL|MARVELL|MSFT|MICROSOFT|NBIS|NEBIUS|ORCL|"
     r"ORACLE|RDDT|REDDIT|^KXSNOWMENTION|SNOWFLAKE|^KXSPOTMENTION|SPOTIFY|UBER|^KXVZMENTION|VERIZON|"
     r"WDAY|WORKDAY|^KXWMTMENTION|WALMART|^KXZMMENTION|ZOOM|SPCX|SPACEX|APPLE|WWDC|NVDA|NVIDIA|TSLA|"
-    r"TESLA|BRK|BERKSHIRE|JPM|ACKMAN|DIMON|FINK|GRIFFIN|ARMSTRONG|TENEV|BOWMAN|WALLER|MIRAN|LUTNICK|"
-    r"HASSETT|ALTMAN|AMODEI|BENIOFF|NADELLA|ZUCK|JENSEN|KARP|ALTHOFF|LUCKEY|ELLISON|ELON|MUSK|"
+    r"TESLA|BRK|BERKSHIRE|JPM|BOWMAN|WALLER|MIRAN|LUTNICK|HASSETT|"
     r"INVESTMENT|BUSINESS|DIGITAL ASSET|DJTDAS|FEDMENTION|BTCMENTION|^KXWEFMENTION|ECONOMIC FORUM|"
     r"THREADGUY|^KXBARRMENTION|TBPN",
+    re.IGNORECASE)
+# Business executives and founders (the speaker, not a company call or an economic official). Their
+# series count as financial everywhere, but the mentions bot trades one when the speaker appears at
+# a mostly political event (user, 2026-11-18: "At a mostly political event like nyt dealbook include
+# business execs and public figures like musk"); see ``kalshi_mention_is_executive``.
+_EXEC_MENTIONS = re.compile(
+    r"ACKMAN|DIMON|FINK|GRIFFIN|ARMSTRONG|TENEV|ALTMAN|AMODEI|BENIOFF|NADELLA|ZUCK|JENSEN|KARP|ALTHOFF|"
+    r"LUCKEY|ELLISON|ELON|MUSK",
     re.IGNORECASE)
 
 
@@ -63,7 +70,19 @@ def kalshi_series_is_financial(series: str | None, category: str | None, title: 
         return True
     if _FIN_TITLE.search(title or "") or _FIN_TICKER.search(series or ""):
         return True
-    return category == "Mentions" and bool(_FIN_MENTIONS.search(series or "") or _FIN_MENTIONS.search(title or ""))
+    return category == "Mentions" and any(rx.search(series or "") or rx.search(title or "")
+                                          for rx in (_FIN_MENTIONS, _EXEC_MENTIONS))
+
+
+def kalshi_mention_is_executive(series: str | None, category: str | None, title: str | None = None) -> bool:
+    """A Mentions series that ``kalshi_series_is_financial`` rejects only because its speaker is a
+    business executive: no money word in the title or ticker, not a company call or event, not an
+    economic official, not a crypto or investment event."""
+    if category != "Mentions" or _FIN_TITLE.search(title or "") or _FIN_TICKER.search(series or ""):
+        return False
+    if _FIN_MENTIONS.search(series or "") or _FIN_MENTIONS.search(title or ""):
+        return False
+    return bool(_EXEC_MENTIONS.search(series or "") or _EXEC_MENTIONS.search(title or ""))
 
 
 def kalshi_financial_series(series_info: dict[str, dict]) -> frozenset[str]:
