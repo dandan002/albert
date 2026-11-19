@@ -10,7 +10,16 @@ import httpx
 import pytest
 
 from albert.config import Settings
-from albert.live_mentions import END_BEFORE, PREFIX, MentionLimits, MentionsBot, plan_event
+from albert.live_mentions import (
+    END_BEFORE,
+    PREFIX,
+    EventState,
+    MentionLimits,
+    MentionsBot,
+    fill_prob,
+    p_remaining,
+    plan_event,
+)
 from albert.venues.kalshi_trade import OrderState
 
 FIX = Path(__file__).parent / "fixtures" / "kalshi"
@@ -400,3 +409,79 @@ def test_milestone_titles_give_each_event_its_venue(tmp_path):
     bot, _ = _bot(tmp_path, FakeTrader(), START - timedelta(hours=6))
     asyncio.run(bot._milestones(START - timedelta(hours=6)))
     assert bot.venues == {EV: "the up summit"}      # "Trump delivers remarks at the UP Summit"
+
+
+def test_fill_model_shape():
+    assert fill_prob("main", 0.4, 0.02) > fill_prob("early", 0.4, 0.02)        # the 6 h order fills more
+    assert fill_prob("main", 0.4, 0.02) > max(fill_prob("main", 0.05, 0.02), fill_prob("main", 0.9, 0.02))
+    assert fill_prob("main", 0.4, 0.30) > fill_prob("main", 0.4, 0.02)         # wide books move more
+    assert fill_prob("main", 0.4, None) == fill_prob("main", 0.4, 0.5)
+    p = [p_remaining(0.4, x, "main") for x in (0, 0.1, 0.5, 0.9, 1.0)]
+    assert p[0] == pytest.approx(0.4) and p == sorted(p, reverse=True) and p[-1] == 0.0
+
+
+def _ledger(tmp_path):
+    return [json.loads(x) for x in (tmp_path / "run" / "ledger.jsonl").read_text().splitlines()]
+
+
+def test_expected_budget_rests_more_than_the_collateral_cap_then_cancels_after_a_fill(tmp_path):
+    # user 2026-11-19: limit the expected fill cost, cancel resting bids when fills push it over
+    t = FakeTrader()
+    bot, clock = _bot(tmp_path, t, START - timedelta(hours=5, minutes=50), max_collateral=40, max_expected=0.6)
+    asyncio.run(bot.prepare())
+    asyncio.run(bot.tick())
+    # cheapest first, by expected cost p x price: NUCL .025, STOC .152, AUTO .232, TAIW .148 (= .556);
+    # CHIP (.101) and GOLDE (.097) would pass 0.6. $1.87 rests, above a $1.50 collateral cap's 3 legs
+    tickers = {b["ticker"].split("-")[-1] for b in t.created}
+    assert tickers == {"NUCL", "STOC", "AUTO", "TAIW"}
+    assert bot.resting_collateral() == pytest.approx(1.87)
+    assert bot.expected(clock["now"]) <= 0.6 + 1e-9
+    orders = bot.events[EV].orders
+    oid = {o["ticker"].split("-")[-1]: k for k, o in orders.items()}
+    created = next(b for b in t.created if b["ticker"].endswith("NUCL"))
+    t.fills = [_maker_fill(t, oid["NUCL"], created)]
+    t.pos = {created["ticker"]: -1.0}
+    clock["now"] += timedelta(minutes=1)
+    asyncio.run(bot.tick())
+    # .17 filled + ~.53 resting expected > .6: AUTO (the largest expected cost) is cancelled, no more
+    assert ("DELETE", oid["AUTO"]) in t.calls
+    assert {o["ticker"].split("-")[-1] for o in orders.values() if o["status"] == "resting"} == {"STOC", "TAIW"}
+    assert bot.expected(clock["now"]) <= 0.6 + 1e-9
+    reb = [r for r in _ledger(tmp_path) if r["kind"] == "rebalance"]
+    assert len(reb) == 1 and reb[0]["cancelled"] == 1 and reb[0]["expected_before"] > 0.6
+
+
+def test_expected_budget_still_respects_the_collateral_cap(tmp_path):
+    t = FakeTrader()
+    bot, _ = _bot(tmp_path, t, START - timedelta(hours=5, minutes=50), max_collateral=1.0, max_expected=1.0)
+    asyncio.run(bot.prepare())
+    asyncio.run(bot.tick())
+    assert sum(1 - float(b["price"]) for b in t.created) <= 1.0 + 1e-9
+
+
+def test_a_fill_beyond_the_target_cancels_every_resting_bid(tmp_path):
+    t = FakeTrader()
+    bot, clock = _bot(tmp_path, t, START - timedelta(hours=5, minutes=50), max_collateral=40, max_expected=0.6)
+    asyncio.run(bot.prepare())
+    asyncio.run(bot.tick())
+    orders = bot.events[EV].orders
+    k = next(k for k, o in orders.items() if o["ticker"].endswith("AUTO"))
+    created = next(b for b in t.created if b["ticker"].endswith("AUTO"))
+    t.fills = [_maker_fill(t, k, created)]
+    clock["now"] += timedelta(minutes=1)
+    asyncio.run(bot.tick())                               # .61 filled > .6: nothing may rest
+    assert not [o for o in orders.values() if o["status"] == "resting"]
+    assert [o.order_id for o in t.resting if o.status == "resting"] == [k]      # the fake never fills it
+
+
+def test_events_over_max_events_are_logged_once(tmp_path):
+    t = FakeTrader()
+    bot, clock = _bot(tmp_path, t, START - timedelta(hours=5, minutes=50), max_events=1)
+    bot.events["KXOTHER-1"] = EventState("KXOTHER-1", START, START - END_BEFORE, None)
+    asyncio.run(bot.prepare())
+    asyncio.run(bot.tick())
+    clock["now"] += timedelta(minutes=1)
+    asyncio.run(bot.tick())
+    assert not t.created
+    skips = [r for r in _ledger(tmp_path) if r["kind"] == "skip" and r.get("reason") == "max events"]
+    assert len(skips) == 1 and skips[0]["event"] == EV and skips[0]["open_events"] == ["KXOTHER-1"]

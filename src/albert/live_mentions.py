@@ -18,11 +18,16 @@ cancels, prod gate ``KALSHI_LIVE_ENABLED=1`` + ``--live``):
   ``alb``), sits in a per-event order group (exchange-side cap on contracts matched per 15 s) and
   has ``expiration_time`` = start − 10 min, so the exchange cancels it even if this process dies;
 * markets where the account holds a position or a non-bot order are never touched;
-* collateral cap (the bot's value at risk): resting NO bids plus the larger of today's fill cost and
+* collateral cap (the bot's worst case): resting NO bids plus the larger of today's fill cost and
   the cost of every bot fill whose market has not settled yet never exceed ``max_collateral`` (so a
   fill from before midnight UTC still counts, and a restart rebuilds unsettled fills from earlier
-  runs' ledgers); no new events once today's fill cost exceeds ``max_daily_loss`` (worst case:
-  every fill loses);
+  runs' ledgers); no new events once today's fill cost exceeds ``max_daily_loss``;
+* expected-fill budget (``max_expected`` > 0; user request 2026-11-19, ``research/mentions_budget``):
+  postings also keep the expected fill cost, max(today's, unsettled fill cost) + the sum of each
+  resting bid's fill probability x price, within ``max_expected``, and after fills push it over,
+  resting bids are cancelled (largest expected cost first) until it is back under; so realized fill
+  cost passes ``max_expected`` only by fills between two passes, while more bids rest than the
+  collateral cap alone would allow;
 * circuit breaker: if a leg asked ≤ 80c at posting trades or bids at ≥ 95c (a word was said, so
   the speech has started or leaked), the event's order group is triggered (all its orders cancel);
 * if the milestone start moves earlier than 10 min from now, the event's orders are cancelled;
@@ -58,6 +63,12 @@ DUE = (timedelta(hours=5), timedelta(hours=6))      # post when start − now is
 END_BEFORE = timedelta(minutes=10)
 EARLY_END = DUE[1]                                  # an early phase rests until start − 6 h
 BREAKER_PRICE, CHEAP_ASK = 0.95, 0.80
+# Fill model (research/mentions_budget, fitted on every replayed bid 2026-08-17 .. 11-16): P(a bid
+# fills before its phase ends) = logistic(w . [1, main phase, price, price^2, log(spread)]), and the
+# share of a phase's fills by elapsed window fraction 0, 0.1, ..., 1 (fills are front-loaded).
+FILL_W = (-2.1400, 0.5058, 11.4240, -11.8087, 0.4444)
+FILL_CURVE = {"early": (0.0, 0.2807, 0.3427, 0.4819, 0.5380, 0.6737, 0.7673, 0.7953, 0.8854, 0.8936, 1.0),
+              "main": (0.0, 0.2479, 0.2923, 0.4267, 0.4485, 0.5545, 0.6484, 0.6732, 0.7761, 0.8167, 1.0)}
 SETTLE_GRACE = timedelta(minutes=15)  # a fill leaves the open exposure only this long after it, once
                                       # its market shows no position (positions can lag the fill feed)
 
@@ -71,6 +82,7 @@ class MentionLimits:
     max_orders_per_event: int = 40
     group_limit: int = 5              # exchange-side: contracts matched per rolling 15 s
     early_hours: float = 0.0          # > 7: also bid from start − early_hours to start − 6 h (0 = off)
+    max_expected: float = 0.0         # $: expected fill cost target (0 = off: max_collateral only)
 
 
 @dataclass
@@ -92,6 +104,22 @@ def venue(milestone_title: str | None) -> str | None:
     t = " ".join((milestone_title or "").split())
     i = t.lower().rfind(" at ")
     return t[i + 4:].strip().lower() or None if i >= 0 else None
+
+
+def fill_prob(phase: str, price: float, spread: float | None) -> float:
+    """P(a NO bid at ``price`` fills before its phase ends), ``FILL_W``."""
+    s = min(max(spread if spread is not None and math.isfinite(spread) else 0.5, 0.01), 0.5)
+    x = (1.0, 1.0 if phase == "main" else 0.0, price, price * price, math.log(s))
+    return 1 / (1 + math.exp(-sum(w * v for w, v in zip(FILL_W, x, strict=True))))
+
+
+def p_remaining(p0: float, elapsed: float, phase: str) -> float:
+    """P(fill in the rest of the window | not filled after ``elapsed`` (fraction) of it)."""
+    curve = FILL_CURVE["main" if phase == "main" else "early"]
+    x = min(max(elapsed, 0.0), 1.0) * 10
+    i = min(int(x), 9)
+    F = curve[i] + (curve[i + 1] - curve[i]) * (x - i)
+    return p0 * (1 - F) / max(1 - p0 * F, 1e-9)
 
 
 def _key(event: str, phase: str) -> str:
@@ -172,6 +200,7 @@ class MentionsBot:
         # speaker the filter passes; user request 2026-11-18).
         self.venues: dict[str, str | None] = {}
         self.allowed_exec: set[str] = set()
+        self.capped: set[str] = set()      # (event, phase) keys already logged as skipped by max_events
         run_dir.mkdir(parents=True, exist_ok=True)
 
     # -- ledger --
@@ -192,9 +221,52 @@ class MentionsBot:
         """Cost of bot fills whose market has not settled (worst case: they all lose)."""
         return sum(v["cost"] for v in self.open_fills.values())
 
+    def realized(self) -> float:
+        """Fill cost that can still lose: today's, or every unsettled fill's if more."""
+        return max(self.spent_today(), self.open_exposure())
+
     def at_risk(self) -> float:
-        """Resting NO bids plus fills that can still lose (today's, or all unsettled if more)."""
-        return self.resting_collateral() + max(self.spent_today(), self.open_exposure())
+        """Resting NO bids plus fills that can still lose: the worst case."""
+        return self.resting_collateral() + self.realized()
+
+    def _resting(self) -> list[tuple[EventState, str, dict[str, Any]]]:
+        return [(e, oid, o) for e in self.events.values() if not e.closed for oid, o in e.orders.items()
+                if o.get("status", "resting") == "resting"]
+
+    def expected_cost(self, e: EventState, o: dict[str, Any], now: datetime) -> float:
+        """A resting bid's expected fill cost from now to its phase end."""
+        posted = o.get("posted", now)
+        span = (e.end - posted).total_seconds()
+        elapsed = (now - posted).total_seconds() / span if span > 0 else 1.0
+        return p_remaining(o.get("p0", 1.0), elapsed, e.phase) * o["price"]
+
+    def expected(self, now: datetime) -> float:
+        """Fills that can still lose plus every resting bid's expected fill cost."""
+        return self.realized() + sum(self.expected_cost(e, o, now) for e, _, o in self._resting())
+
+    async def _rebalance(self, now: datetime) -> None:
+        """After fills: cancel resting bids, largest expected cost first, until the expected fill
+        cost is back within ``max_expected``."""
+        target = self.limits.max_expected
+        if target <= 0 or self.expected(now) <= target + 1e-9:
+            return
+        before = self.expected(now)
+        cancelled = []
+        for e, oid, o in sorted(self._resting(), key=lambda r: -self.expected_cost(r[0], r[2], now)):
+            if self.expected(now) <= target + 1e-9:
+                break
+            t_send = time.time_ns()
+            try:
+                resp = await self.trader.cancel(oid, o["ticker"])
+            except TradeError as err:      # filled or expired meanwhile: the next pass sees it
+                self.write("error", {"what": "budget cancel", "order_id": oid, "error": str(err)[:200]})
+                continue
+            o["status"] = "budget_cancel"
+            cancelled.append(oid)
+            self.write("cancel", {"event": e.event, "phase": e.phase, "order_id": oid, "reason": "expected budget",
+                                  **_timing(t_send, resp)})
+        self.write("rebalance", {"expected_before": round(before, 4), "expected_after": round(self.expected(now), 4),
+                                 "realized": round(self.realized(), 4), "cancelled": len(cancelled)})
 
     def _add_open(self, ticker: str, cost: float, since: datetime) -> None:
         cur = self.open_fills.get(ticker)
@@ -273,13 +345,19 @@ class MentionsBot:
         await self._fills()
         await self._settled(now)
         await self._watch(now, starts)
+        await self._rebalance(now)
         if self.spent_today() >= self.limits.max_daily_loss:
             self.write("no_new_events", {"spent_today": self.spent_today()})
             return True
         due = self._due(now, starts, force_events)
         for ev, start, phase in due:
-            if len({e.event for e in self.events.values() if not e.closed} - {ev}) >= self.limits.max_events:
-                break
+            busy = {e.event for e in self.events.values() if not e.closed} - {ev}
+            if len(busy) >= self.limits.max_events:
+                if _key(ev, phase) not in self.capped:          # retried every pass while due
+                    self.capped.add(_key(ev, phase))
+                    self.write("skip", {"event": ev, "phase": phase, "reason": "max events",
+                                        "open_events": sorted(busy)})
+                continue
             await self._post_event(ev, start, now, forced=bool(force_events and ev in force_events), phase=phase)
         return True
 
@@ -381,17 +459,25 @@ class MentionsBot:
                            & ~pl.col("ticker").is_in(F._strs(self.blocked | filled)))
         legs = legs.sort("price").head(self.limits.max_orders_per_event)
         room = self.limits.max_collateral - self.at_risk()
-        keep, total = [], 0.0
+        exp_room = self.limits.max_expected - self.expected(now) if self.limits.max_expected > 0 else math.inf
+        keep, total, exp_total = [], 0.0, 0.0
         for r in legs.iter_rows(named=True):
-            if total + r["price"] > room + 1e-9:
+            r["p0"] = fill_prob(phase, r["price"], (r["ask"] - r["bid"]) if r["ask"] is not None and r["bid"] is not None
+                                else None)
+            c = r["p0"] * r["price"]
+            if total + r["price"] > room + 1e-9:     # cheapest first: no later leg fits the hard cap
                 break
+            if exp_total + c > exp_room + 1e-9:     # a dearer leg can still have a smaller p x price
+                continue
             keep.append(r)
             total += r["price"]
+            exp_total += c
         lead = EARLY_END if phase == "early" else END_BEFORE
         end = start - lead
         self.write("plan", {"event": ev, "phase": phase, "start": start, "end": end, "forced": forced,
                             "early_filled": sorted(filled), "legs": plan.height,
                             "eligible": legs.height, "posting": len(keep), "collateral": round(total, 4),
+                            "expected": round(exp_total, 4),
                             "rows": plan.to_dicts()})
         if not keep:
             return
@@ -416,11 +502,12 @@ class MentionsBot:
                 continue
             oid = resp.get("order_id")
             st.orders[oid] = {"ticker": r["ticker"], "price": r["price"], "cheap": bool(r["cheap"]),
-                              "coid": coid, "status": "resting"}
+                              "coid": coid, "status": "resting", "p0": r["p0"], "posted": now}
             self.write("order", {"event": ev, "phase": phase, "order_id": oid, "client_order_id": coid,
                                  "ticker": r["ticker"],
                                  "side": "no", "price": r["price"], "fair": r["fair_cal"], "bid": r["bid"],
-                                 "ask": r["ask"], "expiration": exp, **_timing(t_send, resp)})
+                                 "ask": r["ask"], "p_fill": round(r["p0"], 4), "expiration": exp,
+                                 **_timing(t_send, resp)})
         self.log(f"{ev} ({phase}): {len(st.orders)} NO bids, ${self.resting_collateral():.2f} resting")
 
     async def _watch(self, now: datetime, starts: dict[str, datetime]) -> None:

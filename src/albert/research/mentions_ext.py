@@ -642,6 +642,9 @@ def capped_book(o: pl.DataFrame, *, var: float = VAR, max_events: int = MAX_EVEN
     room is ``var - resting bids - max(today's fill cost, unsettled fill cost)``, legs are taken
     cheapest NO bid first until the room is used; no posting once today's fill cost reaches
     ``daily_cap``. Returns the accepted orders (``filled`` / ``pnl`` as in ``o``)."""
+    # A leg priced out of range has a NaN price (``no_bid``): no order. Left in, NaN made every room
+    # test pass while it "rested" (fixed 2026-11-19; the 12 h cell's holdout book was $8.13 / wk -> $7.39).
+    o = o.filter(pl.col("price").is_not_nan())
     o = o.with_columns(pl.col("t").alias("tau")).sort("tau", "event", "price")
     acc: list[dict[str, Any]] = []
     first_seen: dict[str, bool] = {}

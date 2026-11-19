@@ -707,7 +707,11 @@ def live_mentions(
     live: bool = typer.Option(False, "--live", help="Required for prod (with KALSHI_LIVE_ENABLED=1)"),
     minutes: float = typer.Option(1440.0),
     margin: float = typer.Option(0.12, help="NO bid at floor(1 - fair - margin)"),
-    max_collateral: float = typer.Option(20.0, help="$ cap: resting NO bids + today's fill cost"),
+    max_collateral: float = typer.Option(20.0, help="$ hard cap (worst case): resting NO bids + fills not yet settled"),
+    max_expected: float = typer.Option(0.0, "--max-expected",
+                                       help="$ target for the expected fill cost (fills not yet settled + each resting "
+                                            "bid's fill probability x price); fills that push it over cancel resting "
+                                            "bids (0 = off)"),
     max_daily_loss: float = typer.Option(10.0, help="$: no new events once today's fill cost reaches this"),
     max_events: int = typer.Option(3),
     group_limit: int = typer.Option(5, help="Exchange-side: contracts matched per rolling 15 s per event"),
@@ -731,6 +735,8 @@ def live_mentions(
         raise typer.BadParameter("--force-event is for demo and paper only")
     if early_hours and early_hours <= 7:
         raise typer.BadParameter("--early-hours must be 0 (off) or more than 7")
+    if max_expected < 0 or (max_expected and max_expected > max_collateral):
+        raise typer.BadParameter("--max-expected must be 0 (off) or at most --max-collateral")
     s = settings()
     root = s.data_dir / "live" / "mentions"
     stop_file = root / "STOP"
@@ -748,7 +754,8 @@ def live_mentions(
         raise typer.BadParameter(f"{env} is not enabled for orders (prod needs KALSHI_LIVE_ENABLED=1 and --live)")
     run_dir = root / env / datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     limits = MentionLimits(margin=margin, max_collateral=max_collateral, max_daily_loss=max_daily_loss,
-                           max_events=max_events, group_limit=group_limit, early_hours=early_hours)
+                           max_events=max_events, group_limit=group_limit, early_hours=early_hours,
+                           max_expected=max_expected)
     def load_series() -> dict[str, dict]:
         from albert.ingest import kalshi_series
 
@@ -763,7 +770,8 @@ def live_mentions(
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.add_signal_handler(sig, task.cancel)
         bot.write("start", {"env": env, "limits": vars(limits), "minutes": minutes, "force_event": force_event})
-        typer.echo(f"live mentions {env}: margin {margin:.2f}, collateral cap ${max_collateral:.2f} ({run_dir})")
+        typer.echo(f"live mentions {env}: margin {margin:.2f}, collateral cap ${max_collateral:.2f}, "
+                   f"expected fill target ${max_expected:.2f} ({run_dir})")
         try:
             await bot.run(minutes, poll_s, force_events=[force_event] if force_event else None)
         except asyncio.CancelledError:

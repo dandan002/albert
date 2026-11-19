@@ -1,5 +1,35 @@
 # Live (cash) maker pilot: plan
 
+**EXPECTED-FILL BUDGET, 2026-11-19** (user: "take the expected number of fills and limiting that to
+$15 instead. Going a bit over is acceptable if more get filled" and "Have it dynamically manage s.t.
+if stuff overfills it can cancel orders; we want as close to the limit deployed as possible"):
+both bots now run `--max-expected 15 --max-collateral 40 --max-events 6`. Postings keep the
+expected fill cost, max(today's, unsettled fill cost) + each resting bid's fill probability ×
+price, within $15. When fills push it over, resting bids are cancelled, largest expected cost
+first (ledger `rebalance` / `cancel` with reason "expected budget"). Realized fill cost therefore
+passes $15 only by fills between two 60 s passes; $40 is the hard cap on resting bids + unsettled
+fills (the worst case if every bid fills and loses). The fill model (`live_mentions.FILL_W`,
+`FILL_CURVE`) is a logistic in phase, price, price² and log(spread), with fills front-loaded in the
+window. It was fitted on dev for the study and refitted on all replayed bids for the bot.
+Evidence (`research/mentions_budget`; the 12 h cell's hourly replay, $100-bankroll ledgers):
+
+| Oct 1 – Nov 16 | $/week | Sharpe | Sharpe ex-top-5 | Max DD | Peak realized | Peak resting |
+|---|---|---|---|---|---|---|
+| Old rule ($15 collateral, 2 events) | 7.12 | 8.21 | 5.54 | −7.03 | 14.14 | 15.0 |
+| Expected $15, 6 events, $40 cap (live) | 9.82 | 9.66 | 8.38 | −6.52 | 15.55 | 38.0 |
+| Expected $15, 6 events, no cancels | 9.24 | 9.06 | 7.58 | −8.84 | 18.13 | 43.5 |
+
+The dev pick was 3 events ($72.05 vs $68.71 for 6 on dev; holdout $63.84 vs $67.20). 6 was
+deployed because the user asked for the budget, not the event count, to be the binding limit.
+Top-ups (re-posting legs cut by the budget when room frees) added nothing and are not built. The
+model under-predicted holdout fills by 9% (1,115 vs 1,022), which the cancel rule absorbs.
+The same day the bot logs a `skip` (reason "max events") once per event and phase when the event
+cap blocks a posting. Before this, DealBook's Mamdani and Bieber sessions were dropped silently
+behind Vance and Carney. Correction: `mentions_ext.capped_book` counted out-of-range legs (NaN
+price) as resting, which disabled the room test. Fixed, the 12 h cell's holdout $15 book is
+$7.39/wk (Sharpe 8.84), not $8.13 (9.15). Fee re-check 2026-11-19 04:55 UTC: no fee change after
+2026-09-03, none on a mention series, Mentions series `quadratic` ×1.
+
 **EXECUTIVES AT MOSTLY POLITICAL EVENTS, 2026-11-18** (user: "At a mostly political event like nyt
 dealbook include business execs and public figures like musk"): the finance filter still rejects
 executives' Mentions series (Musk, Altman, Nadella, Ellison, Luckey, Tenev, Dimon, …;

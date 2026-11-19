@@ -797,3 +797,9 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     remains the only edge. About 1,500 dev cells across the four studies; every confirmatory rule
     that looked good on dev shrank or flipped on the holdout except the microstructure refill,
     which is unconfirmed on the exact book.
+  - *Mentions budget* (`research/mentions_budget.py`, 2026-11-19): capping the expected fill cost
+    (fills held + Σ p(fill) × price over resting bids) at $15 instead of resting collateral, and
+    cancelling resting bids when fills push it over, lifts the 12 h cell's holdout book from
+    $7.12/wk (Sharpe 8.21) to $9.82/wk (Sharpe 9.66, ex-top-5 8.38) at 6 events with a $40 hard cap;
+    realized fills peak at $15.55. Live on both bots since 2026-11-19 04:58 UTC. The research
+    `capped_book` NaN-price bug is fixed (12 h cell holdout $8.13 → $7.39/wk).
