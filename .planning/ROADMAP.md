@@ -1,6 +1,8 @@
 # Albert: Roadmap
 
-Status 2026-11-03: Phases 1-5 built (see README "Results so far"). Phase 5's 2-week paper run is the next step, then Phase 6.
+Status 2026-11-19: Phases 1-6 built. Live on Kalshi since 2026-11-07 (mentions bot); the Phase 6
+safety layer (global kill switch, account-wide daily-loss halt, order/fill audit log) went live
+2026-11-19. See `.planning/LIVE-PLAN.md`.
 
 Each phase ends with a **live smoke run that produces non-empty, sanity-checked output.**
 
@@ -70,8 +72,28 @@ Each phase ends with a **live smoke run that produces non-empty, sanity-checked 
 
 ## Phase 6: Live trading ($100, Kalshi only)
 
-- [ ] Order client: Kalshi (RSA-PSS), with an explicit enable flag, per-order and daily-loss
-      caps, a global kill switch, and a full order/fill audit log.
+Built 2026-11-19 (user: "Let's build phase 6 we're live trading already anyway"); live trading
+itself started 2026-11-07 with the mentions bot.
+
+- [x] Order client: Kalshi (RSA-PSS; the same account's Ed25519 key is preferred), with an explicit
+      enable flag, per-order and daily-loss caps, a global kill switch, and a full order/fill
+      audit log.
+  - Client (`venues/kalshi_trade.py`): prod writes need `KALSHI_LIVE_ENABLED=1` and `--live`;
+    write allowlist (no Cancel All, no batch cancel); cancels by own client_order_id prefix only;
+    per-order cap 5 contracts and $2, post-only on prod (`ORDER_LIMITS`); refuses every new order
+    while the global kill switch or the daily-loss halt is on; audits every write request, response
+    and refusal to `data/live/audit/<env>/orders-<day>.jsonl` (never headers).
+  - Bot caps (unchanged): mentions $15 expected fill cost / $40 hard cap / $15 daily fill cost;
+    makers per-run loss halt and contract caps (`live_l2.HARD_LIMITS`).
+  - Guard (`live_guard.py`, `albert live guard`, systemd `albert-guard@prod`, cancel-only client):
+    exchange-sourced fill audit (`fills.jsonl`, `order_tags.jsonl`); bot book marked to the mid or
+    settlement; account-wide day loss cap $15 (HALT until the next 00:00 UTC) and at-risk cap $60
+    (KILL); sweeps every bot order while either is on.
+  - CLI: `live kill [--live]`, `live resume [--halt]`, `live audit`; `live check` shows both switches
+    and the guard's last pass.
+  - Smoke 2026-11-19: the guard backfilled 129 account fills (100 bot fills tagged by bot, 29 manual,
+    0 untagged); with the kill switch on, a prod create was refused before sending and
+    `albert-mentions@prod` stopped within a minute; switch removed and bot restarted.
 - Polymarket US trading is on hold (2026-11-07): Polymarket is data only, so no cross-venue
   trades.
 

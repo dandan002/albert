@@ -3,6 +3,11 @@
 Restarted 2026-11-02. The previous BTC 15-minute / Deribit backtest was discarded. Its code is in
 git history before this restart.
 
+**Status 2026-11-19:** Phases 1-6 are built (`ROADMAP.md`). One strategy trades real money on
+Kalshi: pre-speech NO bids on mention markets (live since 2026-11-07), under the Phase 6 order
+client and account-wide guard. Everything live is in `LIVE-PLAN.md`; every study is in
+`research/SUMMARY.md`.
+
 ## Goal
 
 Find and exploit repeatable edges in **non-financial** prediction markets with a **$100** starting
@@ -10,14 +15,16 @@ bankroll through systematic small bets.
 
 **Changed 2026-11-03:** the target is *consistent* returns (positive in most weeks/months,
 small drawdowns), not exponential growth. Market volume does not matter: thin, minor markets
-are in scope because our size is small. Current focus is sports, after major leagues, weather,
-wallets and cross-venue arbitrage all tested efficient (README "Results so far").
+are in scope because our size is small. Major leagues, weather, wallets and cross-venue arbitrage
+all tested efficient (README "Results so far"). Current focus (2026-11-19): run the live mentions
+bot to its go/no-go (event-clustered t ≥ 2 and ≥ 60% positive weeks, on settlement) while research
+looks for a second edge.
 
 ## Venues (decided 2026-11-03; Kalshi-only execution since 2026-11-07)
 
 | Venue | Role | Auth | Notes |
 |---|---|---|---|
-| Kalshi | trade | RSA-PSS | broad non-financial coverage; `category` on events |
+| Kalshi | trade (live since 2026-11-07) | Ed25519 (preferred) or RSA-PSS | broad non-financial coverage; `category` on events |
 | Polymarket US | data only (trading on hold since 2026-11-07) | Ed25519: `X-PM-Access-Key`, `X-PM-Timestamp`, `X-PM-Signature` over `{ts_ms}{METHOD}{path}` | public data at `gateway.polymarket.us/v1`, trading at `api.polymarket.us`; keys at polymarket.us/developer after KYC; 24/7 except Thu 06:00-08:00 ET maintenance |
 | Polymarket intl | data only | none | on-chain wallet signals; US geoblocked for trading |
 
@@ -27,7 +34,11 @@ Polymarket US active markets sampled on 2026-11-03: 416 sports, 45 politics, 27 
 culture (out of 500). It is mostly sports, so wallet signals from Polymarket intl must be matched
 to US markets. The shared slugs (e.g. NFL games) should make that easier than matching to Kalshi.
 
-### Fees (as of 2026-11-03; re-check before live trading)
+### Fees (as of 2026-11-03; re-check before every live run)
+
+Kalshi fees were last re-checked 2026-11-19 via `GET /series/fee_changes` (kalshi.com's fee PDF
+returns 429 to scripts): no change after 2026-09-03. Mention series are `quadratic`, so the live
+bot's resting NO bids pay no maker fee.
 
 - **Polymarket US taker:** `0.0695 × C × p × (1 − p)`. Table tennis uses 0.10. Banker's rounding to
   $0.01. Maker rebates (tiers 2-4) and taker rebates are based on the prior month's volume.

@@ -1,5 +1,5 @@
 import json
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
 
 import typer
@@ -626,9 +626,39 @@ app.add_typer(live_app, name="live")
 ENV_OPT = typer.Option("demo", "--env", help="demo | prod")
 
 
+def _safety(env: str) -> dict:
+    """Audit log and (prod) global switches for a KalshiTrader (albert.live_guard)."""
+    from albert.live_guard import Audit, Switches
+
+    root = settings().data_dir / "live"
+    return {"audit": Audit(root / "audit" / env), "switches": Switches(root) if env == "prod" else None}
+
+
+def _echo_switches(env: str) -> None:
+    from albert.live_guard import Switches, read_status
+
+    root = settings().data_dir / "live"
+    sw = Switches(root)
+    typer.echo(f"global kill: {sw.killed() or 'off'}   daily-loss halt: {sw.halted() or 'off'}")
+    st = read_status(root, env)
+    if st is None:
+        typer.echo("guard: no status yet")
+        return
+    age = (datetime.now(UTC) - datetime.fromisoformat(st["ts"])).total_seconds()
+    typer.echo(f"guard ({age:.0f} s ago): bot day PnL ${st['day_pnl']:+.2f} (cap -${st['limits']['max_day_loss']:.2f}), "
+               f"at risk ${st['at_risk']:.2f} (cap ${st['limits']['max_at_risk']:.2f}), "
+               f"bot equity ${st['equity']:+.2f}, {st['fills_total']} account fills")
+    for tag, b in sorted(st["book"].items()):
+        r = st["resting"].get(tag, {})
+        typer.echo(f"  {tag}: {b['fills']} fills, cost ${b['cost']:.2f}, equity ${b['equity']:+.2f}, "
+                   f"unsettled ${b['unsettled_cost']:.2f} in {b['open_markets']} markets, "
+                   f"resting {r.get('orders', 0)} (${r.get('collateral', 0.0):.2f})")
+
+
 @live_app.command("check")
 def live_check(env: str = ENV_OPT) -> None:
-    """Read-only account check: key environment, balance, limits, bot vs manual orders, positions."""
+    """Read-only account check: key environment, balance, limits, bot vs manual orders, positions,
+    the global switches and the guard's last pass."""
     import asyncio
 
     from albert.live_l2 import BOT_PREFIX
@@ -651,6 +681,7 @@ def live_check(env: str = ENV_OPT) -> None:
             who = "BOT" if o in bot else "manual"
             typer.echo(f"  {who:6} {o.ticker} {o.side} @{o.price:.4f} x{o.remaining:g}")
         typer.echo(f"positions: {pos or 'none'}")
+        _echo_switches(env)
 
     asyncio.run(main())
 
@@ -664,7 +695,7 @@ def live_cancel_own(env: str = ENV_OPT, live: bool = typer.Option(False, "--live
     from albert.venues.kalshi_trade import KalshiTrader, signer_for
 
     async def main():
-        t = KalshiTrader(env, signer_for(env), allow_prod=live)
+        t = KalshiTrader(env, signer_for(env), allow_prod=live, actor="cli", **_safety(env))
         try:
             return await t.cancel_own(BOT_PREFIX)
         finally:
@@ -687,7 +718,7 @@ def live_plumbing(market: str = typer.Option(None, help="Demo market (default: p
 
     async def main():
         signer = signer_for("demo")
-        t = KalshiTrader("demo", signer)
+        t = KalshiTrader("demo", signer, actor="plumbing", audit=_safety("demo")["audit"])
         try:
             return await plumbing(t, signer, out, market=market)
         finally:
@@ -748,7 +779,7 @@ def live_mentions(
         trader = PaperTrader(KalshiTrader("prod", signer_for("prod"), allow_prod=False))
         data_env, stop_file = "prod", root / "paper" / "STOP"
     else:
-        trader = KalshiTrader(env, signer_for(env), allow_prod=live)
+        trader = KalshiTrader(env, signer_for(env), allow_prod=live, actor="albm", **_safety(env))
         data_env = env
     if not trader.writable:
         raise typer.BadParameter(f"{env} is not enabled for orders (prod needs KALSHI_LIVE_ENABLED=1 and --live)")
@@ -762,7 +793,8 @@ def live_mentions(
         return kalshi_series(s, _clients(live_loop=True)[1])
 
     bot = MentionsBot(s, env, trader, run_dir, limits=limits, base=ENVS[data_env]["rest_data"], stop_file=stop_file,
-                      log=typer.echo, series_loader=load_series)
+                      log=typer.echo, series_loader=load_series,
+                      switches=_safety(env)["switches"] if env != "paper" else None)
 
     async def main():
         task = asyncio.current_task()
@@ -828,10 +860,11 @@ def live_l2(
     s, c = _clients()
     series = kalshi_series(s, c)
     signer = signer_for(env)
-    trader = KalshiTrader(env, signer, allow_prod=live)
+    check_tag(tag)
+    safety = _safety(env)
+    trader = KalshiTrader(env, signer, allow_prod=live, actor=f"alb{tag}", **safety)
     if not trader.writable:
         raise typer.BadParameter(f"{env} is not enabled for orders (prod needs KALSHI_LIVE_ENABLED=1 and --live)")
-    check_tag(tag)
     vol = None if min_vol24h is None and max_vol24h is None else (
         min_vol24h or 0.0, max_vol24h if max_vol24h is not None else float("inf"))
     skip = set(exclude_category or ())
@@ -857,7 +890,8 @@ def live_l2(
                         order_expiry_s=expiry_s, max_cost=max_cost)
     lm = LiveMaker(run_dir, env, signer, trader, run_id=run_id, strategy=strat,
                    cfg=SimConfig(fee_info=series, writes_per_s=writes_per_s), guards=guards, pairs=[],
-                   stop_file=root / "STOP", tag=tag, carried=carried, financial_series=fin)
+                   stop_file=root / "STOP", tag=tag, carried=carried, financial_series=fin,
+                   switches=safety["switches"])
 
     async def main():
         loop = asyncio.get_running_loop()
@@ -887,6 +921,137 @@ def live_l2(
                f"equity {end['equity']:+.2f}, halted={end['halted']}  ({run_dir})")
 
 
+@live_app.command("guard")
+def live_guard(
+    env: str = typer.Option("prod", "--env", help="demo | prod"),
+    live: bool = typer.Option(False, "--live", help="Let the guard cancel bot orders (prod needs KALSHI_LIVE_ENABLED=1); "
+                              "without it the guard only records and reports"),
+    max_day_loss: float = typer.Option(15.0, help="$: bot-book loss since 00:00 UTC that halts new orders until "
+                                       "the next 00:00 UTC"),
+    max_at_risk: float = typer.Option(60.0, help="$: resting bot collateral + unsettled bot fill cost that trips "
+                                      "the global kill switch"),
+    minutes: float = typer.Option(525600.0),
+    poll_s: float = typer.Option(60.0),
+) -> None:
+    """Account-wide guard across every bot (albert.live_guard): exchange-sourced fill audit, bot-book
+    mark-to-market, daily-loss halt and at-risk kill switch. Its client can only cancel."""
+    import asyncio
+    import signal
+
+    from albert.live_guard import Guard, GuardLimits
+    from albert.venues.kalshi_trade import KalshiTrader, signer_for
+
+    if max_day_loss <= 0 or max_at_risk <= 0:
+        raise typer.BadParameter("limits must be positive")
+    trader = KalshiTrader(env, signer_for(env), allow_prod=live, actor="guard", cancel_only=True,
+                          audit=_safety(env)["audit"])
+    if live and not trader.writable:
+        raise typer.BadParameter(f"{env} is not enabled for orders (prod needs KALSHI_LIVE_ENABLED=1)")
+    g = Guard(env, trader, settings().data_dir / "live", limits=GuardLimits(max_day_loss, max_at_risk),
+              log=typer.echo)
+    typer.echo(f"live guard {env}: day loss cap ${max_day_loss:.2f}, at-risk cap ${max_at_risk:.2f}, "
+               f"cancels {'on' if trader.writable else 'off (read-only)'}")
+
+    async def main():
+        task = asyncio.current_task()
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, task.cancel)
+        try:
+            await g.run(minutes, poll_s)
+        except asyncio.CancelledError:
+            g.write("stop", {"reason": "signal"})
+        finally:
+            await trader.aclose()
+
+    asyncio.run(main())
+
+
+@live_app.command("kill")
+def live_kill(
+    reason: str = typer.Option("manual", help="Why (kept in the kill file)"),
+    live: bool = typer.Option(False, "--live", help="Also cancel every bot order now (prod, KALSHI_LIVE_ENABLED=1); "
+                              "otherwise the bots and the guard do it within a minute"),
+) -> None:
+    """Global kill switch: write data/live/KILL. Every new prod order is refused, each bot cancels its
+    own orders and exits, and the guard sweeps every bot order each pass. Undo: `albert live resume`."""
+    import asyncio
+
+    from albert.live_guard import BOT_PREFIX, Switches
+    from albert.venues.kalshi_trade import KalshiTrader, signer_for
+
+    sw = Switches(settings().data_dir / "live")
+    sw.kill(f"manual: {reason}")
+    typer.echo(f"kill switch on ({sw.kill_path})")
+    if not live:
+        return
+
+    async def main():
+        t = KalshiTrader("prod", signer_for("prod"), allow_prod=True, actor="cli", **_safety("prod"))
+        try:
+            return await t.cancel_own(BOT_PREFIX) if t.writable else None
+        finally:
+            await t.aclose()
+
+    done = asyncio.run(main())
+    typer.echo("prod not writable (KALSHI_LIVE_ENABLED); bots and guard will sweep" if done is None
+               else f"cancelled {len(done)} bot orders")
+
+
+@live_app.command("resume")
+def live_resume(halt: bool = typer.Option(False, "--halt", help="Also lift the guard's daily-loss halt early")) -> None:
+    """Remove the global kill switch (and with --halt the daily-loss halt). Bots that exited on the
+    kill switch stay down until restarted (sudo systemctl restart albert-mentions@prod)."""
+    from albert.live_guard import Switches
+
+    gone = Switches(settings().data_dir / "live").resume(halt=halt)
+    typer.echo(f"removed {', '.join(gone)}" if gone else "nothing to remove")
+
+
+@live_app.command("audit")
+def live_audit(env: str = typer.Option("prod", "--env"), days: int = typer.Option(7)) -> None:
+    """Summarise the audit log: order requests by day and actor (sent, rejected by the exchange,
+    refused by the client, cancels) and exchange fills by day and bot."""
+    import polars as pl
+
+    from albert.live_guard import Audit, tag_of
+    from albert.venues.kalshi_trade import parse_fill
+
+    a = Audit(settings().data_dir / "live" / "audit" / env)
+    since = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
+    rows = []
+    for path in sorted(a.root.glob("orders-*.jsonl")):
+        if path.stem.removeprefix("orders-") < since:
+            continue
+        for r in a.read(path.name):
+            create = r.get("method") == "POST" and r.get("path") == "/portfolio/events/orders"
+            rows.append({"day": r["ts"][:10], "actor": r.get("actor") or "?",
+                         "creates": create and r.get("status") == "ok",
+                         "rejected": create and r.get("status") not in ("ok", None) and "refused" not in r,
+                         "refused": "refused" in r,
+                         "cancels": r.get("method") == "DELETE" and r.get("status") == "ok"})
+    with pl.Config(tbl_rows=60, tbl_width_chars=160):
+        if rows:
+            typer.echo(pl.DataFrame(rows).group_by("day", "actor").agg(
+                pl.col("creates", "rejected", "refused", "cancels").sum()).sort("day", "actor"))
+        else:
+            typer.echo(f"no order requests audited since {since}")
+        tags = {r["order_id"]: r.get("client_order_id") for r in a.read("order_tags.jsonl")}
+        fills = []
+        for r in a.read("fills.jsonl"):
+            fr = parse_fill(r["fill"])
+            day = datetime.fromtimestamp(fr.ts_ms / 1000, UTC).strftime("%Y-%m-%d") if fr.ts_ms else r["seen"][:10]
+            if day >= since:
+                fills.append({"day": day, "bot": tag_of(tags.get(fr.order_id)) or "manual",
+                              "fills": 1, "contracts": fr.qty, "cost": fr.qty * fr.price + fr.fee})
+        if fills:
+            typer.echo(pl.DataFrame(fills).group_by("day", "bot").agg(
+                pl.col("fills", "contracts", "cost").sum().round(2)).sort("day", "bot"))
+        else:
+            typer.echo(f"no fills audited since {since} (the guard writes them)")
+    _echo_switches(env)
+
+
 @app.command("compact-raw")
 def compact_raw_cmd(min_age: float = typer.Option(60.0, help="Skip files younger than N seconds")) -> None:
     """Compress legacy plain-JSON raw files to .json.zst (lossless, verified, in place)."""
@@ -898,16 +1063,21 @@ def compact_raw_cmd(min_age: float = typer.Option(60.0, help="Skip files younger
 
 @app.command()
 def capture(out: str = typer.Option("tests/fixtures", help="Fixture root directory"),
-            only: str = typer.Option("", help="Capture one group only: 'vol' (record-vol pages)")) -> None:
+            only: str = typer.Option("", help="Capture one group only: 'vol' (record-vol pages) or "
+                                     "'guard' (the live guard's portfolio reads)")) -> None:
     """Record trimmed real API responses as test fixtures."""
     from pathlib import Path
 
     from albert.capture import capture as run
-    from albert.capture import capture_vol
+    from albert.capture import capture_guard, capture_vol
 
+    if only not in ("", "vol", "guard"):
+        raise typer.BadParameter("--only must be '', 'vol' or 'guard'")
+    if only == "guard":
+        for path in capture_guard(Path(out)):
+            typer.echo(path)
+        return
     s, c = _clients()
-    if only not in ("", "vol"):
-        raise typer.BadParameter("--only must be '' or 'vol'")
     for path in (capture_vol if only == "vol" else run)(s, c, Path(out)):
         typer.echo(path)
 

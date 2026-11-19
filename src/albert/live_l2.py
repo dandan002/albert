@@ -586,7 +586,7 @@ class LiveMaker:
                  holdback_ms: float = 0.0, stop_file: Path | None = None, tag: str = "q",
                  carried: dict[str, dict[str, float]] | None = None,
                  shards_allowed: frozenset[int] = frozenset({0}),
-                 financial_series: frozenset[str] = frozenset()) -> None:
+                 financial_series: frozenset[str] = frozenset(), switches=None) -> None:
         from albert.stream import Recorder
 
         guards.check()
@@ -605,6 +605,7 @@ class LiveMaker:
         # strategy reads are the same either way. A holdback only delayed every decision.
         self.clf = OnlineClassifier(holdback_ms)
         self.stop_file = stop_file
+        self.switches = switches          # albert.live_guard.Switches: global KILL or HALT stops the maker
         self.baseline: dict[str, float] = {}
         self.by_token: dict[str, list[tuple[str, bool]]] = {}
         for p in pairs:
@@ -800,6 +801,10 @@ class LiveMaker:
             if self.stop_file is not None and self.stop_file.exists():
                 b.halt("kill switch file")
                 self.rec.stopped_reason = "kill switch"
+                self.rec.stop.set()
+            if self.switches is not None and (why := self.switches.blocked()):
+                b.halt(f"global switch: {why}")
+                self.rec.stopped_reason = "global switch"
                 self.rec.stop.set()
             eq = b.equity()
             if eq < -g.max_loss:

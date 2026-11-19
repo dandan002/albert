@@ -7,13 +7,16 @@ any real money moves:
 > Is there a repeatable edge, after real fees and real execution, that can compound a $100
 > bankroll traded on Kalshi (Polymarket used as data only)?
 
-Albert ingests data from three venues, matches the same event across them, researches three
-edge hypotheses, backtests them with realistic execution, and paper-trades them on live quotes.
-**It cannot place real orders.** There is no authenticated or order-signing code in this
-repository. Live trading is Phase 6, and it has not been built.
+Albert ingests data from three venues, matches the same event across them, records live order
+books, researches edge hypotheses, backtests them with realistic execution, paper-trades them on
+live quotes, and **trades the survivors with real money on Kalshi**. Polymarket is data only.
 
-**Status (2026-11-03):** Phases 1-5 are built. Current findings are in
-[Results so far](#results-so-far).
+**Status (2026-11-19):** Phases 1-6 are built. About 70 studies have run; one edge survived its
+holdout: **pre-speech NO bids on Kalshi mention markets**, live since 2026-11-07 (24 settled fills,
++$2.82, +11.8c per fill). It runs under an order client gated by `KALSHI_LIVE_ENABLED=1` in `.env`
+plus `--live` on every run, and an account-wide guard (global kill switch, daily-loss halt,
+order/fill audit log). See [Live trading](#6-live-trading-kalshi), [Results so far](#results-so-far)
+and `.planning/LIVE-PLAN.md`.
 
 ---
 
@@ -39,7 +42,7 @@ repository. Live trading is Phase 6, and it has not been built.
 
 | Venue | Role | What Albert uses |
 |---|---|---|
-| **Kalshi** | trading venue (CFTC-regulated) | series/categories, settled + open markets, trades, bid/ask candlesticks, order books |
+| **Kalshi** | trading venue (CFTC-regulated); the whole bankroll is here | series/categories, settled + open markets, trades, bid/ask candlesticks, order books, WebSocket L2, milestones; orders, fills and positions for the live bots |
 | **Polymarket US** (`gateway.polymarket.us`) | data only (trading on hold since 2026-11-07) | markets, events, order books, BBO, price history, resolutions |
 | **Polymarket international** (`polymarket.com`) | **data only** | market metadata/resolutions (Gamma), on-chain wallet trades, leaderboards, price history (Data API v2) |
 
@@ -58,11 +61,21 @@ its trades are on-chain and attributable. Kalshi and Polymarket US trades are an
 
 ```bash
 python3 -m pip install -e ".[dev,plots]"   # Python 3.12+
-python3 -m pytest -q                        # 41 tests, offline, against recorded API responses
+python3 -m pytest -q                        # 961 tests, offline, against recorded API responses
+python3 -m pip install -e ".[archive]"      # optional: boto3 for archive-stream / restore-stream
 ```
 
-No API keys are needed for Phases 1-5. All endpoints used are public. `.env` holds Kalshi
-credentials for the future live phase and is git-ignored. Nothing in Phases 1-5 reads it.
+Research, backtests and the paper traders on public data need no keys. `.env` (git-ignored, mode
+600, read only through `albert.config.secret`) holds:
+
+| Variable | Used by |
+|---|---|
+| `KALSHI_API_KEY_ID`, `KALSHI_PRIVATE_KEY` (RSA) or `KALSHI_API_KEY_FAST_ID`, `KALSHI_PRIVATE_KEY_FAST` (Ed25519, preferred) | every `albert live ...` command, the paper mentions bot (signed reads), `albert record` |
+| `KALSHI_DEMO_API_KEY_ID`, `KALSHI_DEMO_PRIVATE_KEY` | `--env demo` |
+| `KALSHI_LIVE_ENABLED=1` | required, with `--live`, for any prod order or cancel |
+| `PANDASCORE_TOKEN` | `ingest pandascore` |
+
+Credentials never go into logs, manifests, fixtures or the audit log.
 
 All data goes to `./data` (git-ignored). Override with `ALBERT_DATA_DIR=/path`.
 
@@ -98,7 +111,17 @@ albert backtest run --strategy wallet_follow --split 2026-08-15 --delay 5
 albert paper reset --kalshi-cash 50 --pmus-cash 50
 albert paper run --interval 300 --prior 20 # Ctrl-C to stop; state persists
 albert paper status
+
+# 6. Live trading on Kalshi (real money; see "Live trading" below)
+albert live check --env prod                     # read-only: balance, bot vs manual orders, switches, guard
+albert live mentions --env paper                 # mentions bot on real markets, simulated fills
+albert live mentions --env prod --live ...       # real orders (KALSHI_LIVE_ENABLED=1 in .env too)
+albert live guard --env prod --live              # account-wide guard (systemd albert-guard@prod)
+albert live kill --live                          # global kill switch; undo with `albert live resume`
+albert paper mentions-report --env prod          # settled PnL of the live bot
 ```
+
+On the production host these run as systemd services (`deploy/systemd/`, `deploy/aws.md`).
 
 `albert` is installed as a console script. Without installing, use `python3 -m albert`.
 
@@ -125,8 +148,36 @@ albert paper status
 | `albert backtest weather` | NWS model vs Kalshi daily-high brackets: calibration vs market per decision slot, model bets through the backtester. |
 | `albert backtest maker` | Resting bids on Kalshi favorites, filled only by later real trades into our price (`--horizon`, `--ttl`, `--size`, `--cash`, `--category`). |
 | `albert paper reset/run/status` | Paper trading account (see [Paper trading](#5-paper-trading-paperpy)). Default strategy: `maker`. |
+| `albert ingest kalshi-trade-windows` | Every trade inside each game's maker-order window (complete coverage, no volume bias). |
+| `albert ingest pandascore` | Esports match and map results (needs `PANDASCORE_TOKEN`). |
+| `albert ingest elo-history`, `elo-candles` | Settled markets and a volume-blind candle sample for the Elo series. |
+| `albert research sports` | Pre-game calibration and per-series recalibration on a volume-blind sample. |
+| `albert research elo`, `elo-walk`, `esports-ratings`, `esports-reference` | Ratings + market blends for minor sports and esports (walk-forward). |
+| `albert research lead-lag` | Paired game moneylines: does Kalshi follow Polymarket intl, or the reverse? |
+| `albert record` | Records live Kalshi and Polymarket order books and trades over WebSocket into `data/raw/stream` (append-only). |
+| `albert record-vol` | Records complete vol-study events (game winners, ladders, weather), adding new markets hourly. |
+| `albert archive-stream`, `restore-stream` | Moves closed stream days to S3 (SHA-256 verified) and brings them back. |
+| `albert backtest l2` | Replays recorded order books and simulates a maker with queue position. |
+| `albert paper l2`, `paper l2-report` | Live paper maker on WebSocket books (no orders) and its markout/settlement report. |
+| `albert paper mentions-report` | Scores the mentions bot's runs (`--env prod` real fills, `--env paper` simulated): bids, fills, settled PnL by phase and event. |
 | `albert compact-raw` | Compresses legacy plain-JSON raw cache files to `.json.zst` (lossless, verified). |
-| `albert capture` | Records small real API responses into `tests/fixtures/` for parser tests. |
+| `albert capture` | Records small real API responses into `tests/fixtures/` for parser tests (`--only vol`, `--only guard`). |
+
+Live trading (`albert live ...`; prod orders need `KALSHI_LIVE_ENABLED=1` in `.env` and `--live`):
+
+| Command | What it does |
+|---|---|
+| `albert live check` | Read-only: key environment, balance, API tier, bot vs manual orders, positions, the global switches and the guard's last pass. |
+| `albert live mentions` | The pre-speech NO-bid bot (`--env prod` real orders, `--env paper` simulated fills on prod markets, `--env demo`). |
+| `albert live l2` | Live maker with real orders (`--tag` names it; stopped since 2026-11-11). |
+| `albert live guard` | Account-wide guard: exchange fill audit, bot-book mark-to-market, daily-loss halt, at-risk kill switch. Cancel-only. |
+| `albert live kill`, `live resume` | Turns the global kill switch on (`--live` also cancels every bot order now) and off (`--halt` also lifts the daily-loss halt). |
+| `albert live audit` | Order requests by day and actor (sent, exchange-rejected, client-refused, cancels) and exchange fills by day and bot. |
+| `albert live cancel-own` | Cancels every resting bot order (`alb` prefix) and nothing else. |
+| `albert live plumbing` | Demo end-to-end test of the order layer; saves responses for fixtures. |
+
+Most studies after 2026-11-05 are modules run directly, `python -m albert.research.<study>`, with
+reports in `data/research/<study>/report.md`, indexed in `.planning/research/SUMMARY.md`.
 
 Every command prints where it wrote its outputs. Every ingest writes a run manifest
 (`data/runs/*.json`) listing its parameters, output row counts, and every raw response file it
@@ -149,6 +200,12 @@ read or wrote.
                          backtest/  strategies.py ──▶ signals ──▶ engine.py ──▶ data/reports/
                                                                               │
                          paper.py (live quotes, simulated fills) ──▶ data/paper/{state.json,ledger.jsonl}
+
+ live_mentions.py, live_l2.py ──▶ venues/kalshi_trade.py ──────────▶ Kalshi (real orders)
+   stop on KILL / HALT             per-order caps, refuses on KILL/HALT,     │ fills
+                                   every request → data/live/audit/<env>/    │
+ live_guard.py (albert-guard@prod) ◀──────── GET /portfolio/fills ◀──────────┘
+   fills → data/live/audit/<env>/fills.jsonl; writes KILL / HALT.json; cancels bot orders
 ```
 
 ### 1. Data layer (`http.py`, `venues/`, `ingest.py`, `store.py`)
@@ -273,6 +330,59 @@ backoff instead of crashing; each tick prints one JSON line to stdout and rewrit
 `ALBERT_RECORD_LIVE=1` (they would add hundreds of MB a day, and the ledger already records
 every decision). A `Dockerfile` and a Compute Engine guide are in [`deploy/gcp.md`](deploy/gcp.md).
 
+### 6. Live trading (Kalshi)
+
+Real orders go only to Kalshi, from the production host in AWS us-east-2 (`deploy/aws.md`). The
+plan, every change and its evidence are in `.planning/LIVE-PLAN.md`.
+
+- **Order client** (`venues/kalshi_trade.py`). Requests are signed with Ed25519 (preferred) or
+  RSA-PSS keys from `.env`.
+  - **Gate:** a prod write needs `KALSHI_LIVE_ENABLED=1` in `.env` and `--live` on the command.
+  - **Write allowlist:** single create and cancel plus order groups only. Cancel All and batch
+    cancel are unreachable, because the account also holds the owner's manual orders.
+  - **Own orders only:** every order carries `client_order_id = alb<tag><run>-<n>`, and sweeps
+    cancel only that prefix.
+  - **Per-order caps:** 5 contracts and $2 per order, and prod orders must be post-only.
+  - **Global switches:** new orders are refused while the kill switch or the halt is on.
+  - **Audit:** every write request, response and refusal goes to the audit log (never headers).
+- **Mentions bot** (`live_mentions.py`, `albert live mentions`; systemd `albert-mentions@prod`, and
+  `albert-mentions@paper` with simulated fills on the same markets).
+  - **Bid:** one post-only NO bid per word leg at floor(1 − fair − 12c), with fair =
+    σ(−0.1156 + 1.0474·logit(mid)).
+  - **Windows:** from 12 h to 6 h before the speech (early phase), then on unfilled legs until
+    10 min before it. Bids expire at the end of each window. Fills are held to settlement.
+  - **Budget:**
+    - Expected fill cost ≤ $15, counting fills plus each resting bid's fill probability ×
+      price. When fills push it over, resting bids are cancelled, largest expected cost first.
+    - Resting bids plus unsettled fills ≤ $40.
+    - No new events after $15 of fills in a day, and at most 6 events at once.
+  - **Circuit breaker:** if a cheap leg trades or bids at ≥ 95c, the event's order group cancels
+    every order in it.
+  - **Filters:** finance speakers and earnings calls are skipped. Executives are traded only at
+    mostly political venues.
+- **Makers** (`live_l2.py`, `albert live l2`): the paper maker's quoter, with its own orders netted
+  from the book. They ran live 2026-11-08 to 11-11 and are stopped (Results).
+- **Guard** (`live_guard.py`, `albert live guard`; systemd `albert-guard@prod`), every minute.
+  Its client can only cancel.
+  1. Appends every account fill, as the exchange reports it, to the audit log, tagged with the bot
+     that placed it.
+  2. Marks every bot fill at its settlement value or at the mid.
+  3. **Daily-loss halt:** if the bots' combined loss since 00:00 UTC passes $15, it writes
+     `data/live/HALT.json` and cancels every bot order. New orders are refused until the next
+     00:00 UTC.
+  4. **At-risk limit:** if resting bot collateral plus unsettled bot fills pass $60, it turns on
+     the kill switch.
+- **Stopping:**
+  - Everything: `albert live kill` (or `touch data/live/KILL`). Every bot cancels its own orders
+    and exits.
+  - One bot: its own kill file (`data/live/mentions/STOP`, `data/live/STOP` for the makers) or
+    `sudo systemctl stop <unit>`.
+  - Shutdown cancels the bot's orders, and every order also carries an `expiration_time`.
+  - Resume with `albert live resume`, then restart the bot.
+- **Fees:** re-checked before every live start through Kalshi's `GET /series/fee_changes`
+  (kalshi.com's fee PDF returns 429 to scripts). Mention series are `quadratic` with no maker
+  fee.
+
 ---
 
 ## Strategies
@@ -281,16 +391,24 @@ every decision). A `Dockerfile` and a Compute Engine guide are in [`deploy/gcp.m
 |---|---|---|---|
 | `longshot` | Prices are miscalibrated in some category × price buckets (classic favorite-longshot bias). | Kalshi | research + backtest + paper. **No edge** once look-ahead and volume selection are fixed (Results §3). |
 | `slope` | Per-category logistic recalibration (prices too close to / too far from 50%, arXiv:2602.19520). | Kalshi | research + backtest. **No edge** on clean data (Results §3). |
-| maker favorites | Resting bids on ≥ 50c contracts earn the maker premium (Bürgi et al. 2025). | Kalshi | research only (Results §3a). Next to build: maker paper mode. |
+| maker favorites | Resting bids on ≥ 50c contracts earn the maker premium (Bürgi et al. 2025). | Kalshi | research + paper. **No edge** on a volume-blind sample (Results §5). |
 | `wallet_follow` | Some wallets have persistent skill that survives a copy delay. | Kalshi or Polymarket US (cheaper) | research + backtest + paper. **No edge** (Results §1-2). |
-| `xvenue` | The same game is priced differently on Kalshi and Polymarket US by more than fees. | both | research (indicative) + paper |
+| `xvenue` | The same game is priced differently on Kalshi and Polymarket US by more than fees. | both | research + paper. **Priced out by fees** (Results §4). |
+| L2 maker (`Quoter`) | Spread capture on recorded and live order books, with queue position. | Kalshi | backtest + paper + **live 2026-11-08 to 11-11**: −$5.17 on 75 fills; stopped (Results §10). |
+| **mentions NO bids** | Pre-speech YES prices on "will X say word W" markets spike; resting NO bids below fair get filled by those buyers. | Kalshi | **LIVE since 2026-11-07** (Results §10). |
+
+About 60 more studies (microstructure, momentum, arbitrage at measured latency, fundamental
+models, volatility models, behavioural mechanisms) are indexed in `.planning/research/SUMMARY.md`.
+None of the others survived its holdout.
 
 ---
 
 ## Fees
 
-As of 2026-11-03 (`src/albert/fees.py`). **Re-check the official pages before trading live;
-both venues change fees.**
+Model as of 2026-11-03 (`src/albert/fees.py`). **Re-check before every live run; both venues change
+fees.** Kalshi was last re-checked on 2026-11-19 through `GET /series/fee_changes`, which lists every
+scheduled series fee change: 107 rows, the latest 2026-09-03, none on a mention series. The
+mentions bot pays no fee: mention series are `quadratic` (taker only) and its bids rest.
 
 | Venue | Taker | Maker | Rounding |
 |---|---|---|---|
@@ -322,6 +440,16 @@ With a $50 venue bankroll, quarter Kelly and a 5% cap, typical orders are $1-2.5
 size, conservative fee rounding alone can remove a 1-2c edge. That is why the minimum edge is
 re-checked after rounding.
 
+**Live limits** (real orders; each layer holds even if the one above fails):
+
+| Layer | Limit | Set in |
+|---|---|---|
+| Order client, every bot | ≤ 5 contracts and ≤ $2 per order; post-only on prod; refuses new orders while `data/live/KILL` or `HALT.json` is in force | `venues/kalshi_trade.ORDER_LIMITS` |
+| Mentions bot | 1 contract per leg; expected fill cost ≤ $15 (cancels resting bids on overshoot); resting + unsettled fills ≤ $40; no new events after $15 of fills a day; ≤ 6 events; circuit breaker | `deploy/mentions-prod.conf` |
+| Makers (stopped) | 1 contract per order; contract, $-deployed and run-loss caps under fixed ceilings | `deploy/live-maker-*.conf`, `live_l2.HARD_LIMITS` |
+| Guard, across bots | bot-book loss since 00:00 UTC > $15 → halt until the next 00:00 UTC; resting + unsettled bot exposure > $60 → global kill | `deploy/guard-prod.conf` |
+| Exchange side | order groups (matched contracts per rolling 15 s), `expiration_time` on every order, `cancel_order_on_pause` | the bots |
+
 ---
 
 ## Data layout
@@ -333,6 +461,18 @@ data/
   runs/*.json                     ingest manifests (params, row counts, raw files used)
   reports/<name>-<ts>/            report.md + parquet extracts + equity.png
   paper/state.json, ledger.jsonl  paper account and full audit log
+  raw/stream/<venue>/<date>/      recorded WebSocket order books and trades (albert record, record-vol)
+  research/<study>/               study outputs: report.md + parquet (python -m albert.research.<study>)
+  paper_l2/, cache/forward/       paper maker runs; forward paper test of frozen rules
+  live/                           real orders (Kalshi)
+    KILL, HALT.json               global kill switch; guard's daily-loss halt (lapses at 00:00 UTC)
+    mentions/<env>/<run>/ledger.jsonl    mentions bot (prod, paper, demo): plans, orders, fills,
+                                         cancels, skips, halts
+    prod/<tag>/<run>/ledger.jsonl        live makers (albi, albl)
+    audit/<env>/orders-<day>.jsonl       every order request and response from any process
+    audit/<env>/fills.jsonl              every account fill as the exchange returned it
+    audit/<env>/order_tags.jsonl         order id -> client_order_id (names the bot)
+    guard/<env>/status.json, ledger.jsonl, state.json   guard's last pass, history, day start
 ```
 
 **Storage formats.** Analysis tables are Parquet (columnar, compressed, fast to scan). The raw
@@ -365,6 +505,10 @@ removed). Old manifests that list `.json` paths still resolve.
 All numbers below come from the data ingested on 2026-11-03 and are reproducible with the
 Quick start commands (reports are in `data/reports/`). **None of this is evidence of a
 tradeable edge yet.** Read it as "what survived a first honest test".
+
+Sections 1-9 are that first round. Later studies (about 60, from 2026-11-04 on) are indexed in
+`.planning/research/SUMMARY.md` with reports in `data/research/<study>/report.md`. The one edge
+they found, now traded live, is section 10.
 
 ### Data collected
 
@@ -693,9 +837,51 @@ Kalshi esports prices already contain what a results-based rating knows, includi
 from matches Kalshi never listed. Beating them would take information that is not in
 public match results (rosters and stand-ins, map vetoes, patches) or faster reaction.
 
+### 10. Pre-speech NO bids on mention markets: the one edge, live since 2026-11-07
+
+Kalshi lists "will the speaker say word W" markets for speeches, briefings and interviews.
+Before a speech, YES buyers push prices above where words actually land.
+
+**The rule:** rest a NO bid below a calibrated fair value from hours before the start to 10
+minutes before it, and hold any fill to settlement.
+
+**Frozen-rule test** (`research/mentions_history`): 548 events the rule was never fitted on,
+Apr 2025 – Aug 2026, with fills only on real prints that traded through the bid.
+
+| Margin | Profit per fill | t |
+|---|---|---|
+| 8c | +5.8c | 5.4 |
+| 12c | +7.9c | 6.4 |
+
+- 15 of 18 months positive, with no decay.
+- The plain mid earns the same and taking NO at the same time loses, so this is price pressure,
+  not information.
+- Mention series charge no maker fee.
+
+**Later changes, each frozen on earlier data before it was scored:**
+- **12 h early phase** (`research/mentions_ext`): the same bids from 12 h to 6 h before the start
+  earned +7.27c per fill on 433 fills, Oct 1 – Nov 17.
+- **Executives at mostly political venues** (such as the NYT DealBook Summit): +16.6c per fill on
+  80 fills (t 2.5) over 27 earlier executive events. None fall after October 1.
+- **$15 expected-fill budget with cancel-on-overfill** (`research/mentions_budget`), Oct 1 –
+  Nov 16, on the $100 bankroll: weekly profit $7.12 → $9.82, Sharpe 8.21 → 9.66.
+
+**Live (real money, `albert paper mentions-report --env prod`, 2026-11-19):**
+- 85 bids on 10 events, 24 filled, all settled: **+$2.82 on $11.18 of fills (+11.8c per fill)**.
+- That is too few fills to judge. Scaling waits on the go/no-go in `.planning/LIVE-PLAN.md`:
+  event-clustered t ≥ 2 and at least 60% positive weeks, on settled PnL.
+
+**The live L2 makers** (the paper maker's quoter with real orders, $5–10 each, 2026-11-08 to
+11-11) lost money and were stopped:
+
+| Maker | Fills | Profit/loss |
+|---|---|---|
+| Illiquid (`albi`) | 42 | −$1.70 |
+| Liquid (`albl`) | 33 | −$3.47 |
+
 ### What this means for the $100 goal
 
-Nothing found so far supports "exponential growth". The honest summary:
+The honest summary of the first round (sections 1-9) still stands. Section 10 is the exception:
 
 - **The insider/high-win-rate thesis fails** on this data: skill does not persist out of
   sample, and copying it after a realistic delay loses money.
@@ -717,8 +903,8 @@ Nothing found so far supports "exponential growth". The honest summary:
 - **NWS weather data does not beat Kalshi weather prices.** The market is better calibrated
   than a calibrated NBM + observations model at every decision time, and already-decided
   brackets are priced at 0c/100c.
-- Do not fund anything. The maker paper trader keeps running as a live check of the fill
-  model (live fill rates vs simulated), not as a money-maker.
+- **Only the mentions NO bid is funded** (section 10), at about $15 of expected fills at a time,
+  under the limits in [Risk and sizing](#risk-and-sizing). Everything else stays research.
 
 ---
 
@@ -749,6 +935,16 @@ Nothing found so far supports "exponential growth". The honest summary:
 - **College basketball** has no Polymarket intl tag, so live xvenue covers NBA, NFL, NHL, MLB,
   NCAAF and WNBA.
 - **Soccer and other three-way markets** are not matched.
+- **Live mentions fill model.** Research fills only on prints that trade *through* the bid, which
+  assumes we are never ahead in the queue. The paper bot runs beside the live one so simulated and
+  real fills can be compared. The budget's fill-probability model under-predicted holdout fills by
+  9%.
+- **The guard fails open.** If `albert-guard@prod` stops, the bots keep their own limits and keep
+  trading (systemd restarts the guard after 30 s). Its day start is its first pass of the UTC day,
+  so a guard that was down at midnight misses losses taken before it came back.
+- **REST fills carry no client_order_id.** The guard looks each order up once to name the bot.
+  An order the exchange no longer returns stays untagged and out of the bot book (`live check`
+  shows the count).
 
 ---
 
@@ -769,7 +965,8 @@ Ground rules (from `AGENTS.md`):
 5. Fills happen at executable bid/ask with real fees.
 6. Win rate is not edge.
 7. Public information only.
-8. Live trading is gated.
+8. Live trading is gated: paper results first, explicit owner enablement, hard per-order and
+   daily-loss caps, and a kill switch. Credentials come only from `.env`.
 
 Code map:
 
@@ -779,19 +976,27 @@ Code map:
 | `src/albert/venues/` | per-venue fetchers + normalizers |
 | `src/albert/ingest.py` | ingest pipelines → tables + manifests |
 | `src/albert/matching.py` | cross-venue matching |
-| `src/albert/research/` | calibration, wallets, follow signals, gaps |
+| `src/albert/research/` | every study: calibration, wallets, follow signals, gaps, then ~70 modules indexed in `.planning/research/SUMMARY.md` (`vol_metrics.py` computes the Sharpe/volatility every strategy reports) |
 | `src/albert/backtest/` | strategies → signals, event-driven engine, Monte Carlo |
 | `src/albert/fees.py`, `risk.py` | fee schedules, Kelly sizing, risk caps |
 | `src/albert/paper.py` | paper trader |
+| `src/albert/stream.py`, `archive.py` | WebSocket order-book recorder; S3 archive of recorded days |
+| `src/albert/backtest/l2.py`, `paper_l2.py` | order-book replay with queue position; live paper maker |
+| `src/albert/venues/kalshi_trade.py`, `kalshi_auth.py` | Kalshi order client (gate, allowlist, caps, switches, audit) and request signing |
+| `src/albert/live_mentions.py`, `paper_trader.py` | live mentions bot; simulated-fill trader for its paper twin |
+| `src/albert/live_l2.py` | live maker (stopped) |
+| `src/albert/live_guard.py` | global kill switch, daily-loss halt, audit log, the guard service |
 | `src/albert/pipeline.py`, `reports.py`, `cli.py` | orchestration, report writer, CLI |
 | `src/albert/capture.py` | fixture recorder |
+| `deploy/` | systemd units and their argument files, host notes (`aws.md`) |
 
 ---
 
 ## Roadmap
 
-See `.planning/ROADMAP.md`. Phases 1-5 are built. **Phase 6 (live trading with $100) is not
-started.** It should only begin after paper trading has run for at least 2 weeks or 100 signals
-and the results agree with the backtest. It will need Kalshi RSA-PSS and Polymarket US Ed25519
-order clients, an explicit enable flag, per-venue caps, a global kill switch and an
-order/fill audit log.
+See `.planning/ROADMAP.md`. Phases 1-6 are built. **Phase 6 (live trading, Kalshi only)** is the
+order client (`venues/kalshi_trade.py`: enable flag, write allowlist, per-order caps, own-orders-only
+cancels), the live bots (`live_mentions.py` live; the makers in `live_l2.py` stopped), and the
+account-wide guard (`live_guard.py`, `albert live guard`): global kill switch (`albert live kill` /
+`albert live resume`), a daily-loss halt across every bot, and an audit log of every order request
+and every exchange fill (`albert live audit`). Polymarket US trading is on hold.

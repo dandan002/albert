@@ -161,3 +161,24 @@ def capture_portfolio(root: Path, env: str = "prod") -> list[Path]:
                 {"market_tickers": resting["orders"][0]["ticker"]}), 3))
         out.append(_write(root, "kalshi", "account_limits", t.get("/account/limits"), 5))
     return out
+
+
+def capture_guard(root: Path, env: str = "prod") -> list[Path]:
+    """Read-only responses the live guard parses (``albert.live_guard``): one bot order looked up by
+    id (fills carry no client_order_id) and markets by ticker (a settled bot market plus an open
+    one). GET requests only."""
+    from albert.venues.kalshi_trade import KalshiTrader
+
+    out: list[Path] = []
+    with KalshiTrader.sync(env) as t:
+        bot = [o for o in t.get("/portfolio/orders", {"status": "executed", "limit": 200}).get("orders") or []
+               if (o.get("client_order_id") or "").startswith("alb")]
+        if not bot:
+            raise RuntimeError("no executed bot order to record")
+        out.append(_write(root, "kalshi", "portfolio_order_single",
+                          _redact(t.get(f"/portfolio/orders/{bot[0]['order_id']}")), 3))
+        live = t.get("/markets", {"status": "open", "limit": 1}).get("markets") or []
+        tickers = [bot[0]["ticker"], *(m["ticker"] for m in live)]
+        out.append(_write(root, "kalshi", "markets_by_tickers",
+                          t.get("/markets", {"tickers": ",".join(tickers), "limit": 100}), 3))
+    return out

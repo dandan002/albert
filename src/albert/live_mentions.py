@@ -31,7 +31,9 @@ cancels, prod gate ``KALSHI_LIVE_ENABLED=1`` + ``--live``):
 * circuit breaker: if a leg asked ≤ 80c at posting trades or bids at ≥ 95c (a word was said, so
   the speech has started or leaked), the event's order group is triggered (all its orders cancel);
 * if the milestone start moves earlier than 10 min from now, the event's orders are cancelled;
-* kill switch file and SIGTERM cancel every ``albm`` order and stop.
+* kill switch file and SIGTERM cancel every ``albm`` order and stop; so does the global
+  ``data/live/KILL`` (prod). The guard's daily-loss halt (``data/live/HALT.json``) closes open
+  events and pauses posting until it lapses (``albert.live_guard``).
 
 Early phase (``early_hours``; live since 2026-11-18 at the user's request, with the paper bot
 running alongside; ``research/mentions_ext`` Q2 ``L12h/m12c/extend``): the same NO bids are also posted ``early_hours`` before the start and rest
@@ -176,8 +178,12 @@ class MentionsBot:
     def __init__(self, s, env: str, trader, run_dir: Path, *, limits: MentionLimits, base: str,
                  stop_file: Path, transport=None, clock: Callable[[], datetime] | None = None,
                  log: Callable[[str], None] = print,
-                 series_loader: Callable[[], dict[str, dict]] | None = None) -> None:
+                 series_loader: Callable[[], dict[str, dict]] | None = None, switches=None) -> None:
         self.s, self.env, self.trader, self.run_dir = s, env, trader, run_dir
+        # Account-wide switches (albert.live_guard.Switches; prod only): the global KILL stops the bot
+        # like its own kill file; the guard's daily-loss HALT closes open events and pauses posting.
+        self.switches = switches
+        self.global_halt: str | None = None
         self.limits, self.base, self.stop_file, self.transport = limits, base, stop_file, transport
         self.clock = clock or (lambda: datetime.now(UTC))
         self.log = log
@@ -332,6 +338,8 @@ class MentionsBot:
         now = self.clock()
         if self.stop_file.exists():
             self.halt("kill file")
+        if self.switches is not None and (k := self.switches.killed()):
+            self.halt(f"global kill: {k}")
         if self.halted:
             await self.shutdown(self.halted)
             return False
@@ -344,6 +352,16 @@ class MentionsBot:
         starts = await self._milestones(now)
         await self._fills()
         await self._settled(now)
+        if self.switches is not None and (h := self.switches.halted(now)):
+            for e in [e for e in self.events.values() if not e.closed]:
+                await self._close(e, "global halt")
+            if h != self.global_halt:
+                self.global_halt = h
+                self.write("global_halt", {"reason": h})
+            return True
+        if self.global_halt:
+            self.write("global_halt_lifted", {"reason": self.global_halt})
+            self.global_halt = None
         await self._watch(now, starts)
         await self._rebalance(now)
         if self.spent_today() >= self.limits.max_daily_loss:

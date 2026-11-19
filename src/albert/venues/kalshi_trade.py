@@ -13,6 +13,13 @@ Safety rules enforced here, not left to callers:
   orders, and the bot must never cancel or trade anything it did not create.
 * **Own orders only.** Every order carries ``client_order_id`` = ``<prefix><run>-<n>``;
   ``cancel_own`` lists resting orders and cancels only those with the bot's prefix.
+* **Per-order caps** (``ORDER_LIMITS``, every bot): at most 5 contracts and $2 of cost per order, and
+  prod orders must be post-only (every strategy is a maker). Raising them is a code change.
+* **Global switches** (``switches``, ``albert.live_guard.Switches``): while ``data/live/KILL`` exists or
+  the guard's daily-loss halt is in force, every new order is refused. Cancels always go through.
+* **Audit** (``audit``, ``albert.live_guard.Audit``): every write request and its outcome, and every
+  refused order, is appended to ``data/live/audit/<env>/orders-<day>.jsonl``. Headers are never logged.
+* **Cancel-only clients** (``cancel_only``; the guard's): creates and order-group writes are refused.
 * **Write budget.** A client-side token bucket mirrors the account's Write bucket (Basic tier:
   100 tokens/s, capacity 100; create costs 10, cancel 2; ``GET /account/endpoint_costs``), and a
   429 backs off and retries.
@@ -23,11 +30,14 @@ Direction (docs: Order direction): V2 orders quote the YES leg. A bid for YES at
 """
 
 import asyncio
+import json
+import os
 import re
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -71,6 +81,9 @@ WRITE_ALLOW = [
     ("PUT", re.compile(r"^/portfolio/order_groups/[0-9a-fA-F-]{8,}/(reset|trigger)$")),
 ]
 WRITE_COST = {"POST": 10.0, "PUT": 10.0, "DELETE": 2.0}   # tokens (DELETE order: 2)
+# Per-order ceilings for every bot (Phase 6). Mentions and the makers send 1 contract per order.
+ORDER_LIMITS = {"max_count": 5.0, "max_cost": 2.0}
+AUDIT_RESPONSE_CHARS = 2000
 
 
 class TradeError(RuntimeError):
@@ -81,6 +94,15 @@ class TradeError(RuntimeError):
 
 class NotAllowed(RuntimeError):
     pass
+
+
+class Refused(TradeError):
+    """An order this client would not send (global switch, per-order cap, cancel-only client).
+    Status 0; a ``TradeError`` so a bot handles it like an exchange reject and carries on."""
+
+    def __init__(self, reason: str, what: str) -> None:
+        super().__init__(0, reason, what)
+        self.reason = reason
 
 
 def signer_for(env: str) -> KalshiSigner:
@@ -263,10 +285,12 @@ class KalshiTrader:
     def __init__(self, env: str, signer: KalshiSigner, *, allow_prod: bool = False,
                  subaccount: int | None = None, write_rate: float = 100.0,
                  write_capacity: float = 100.0, transport: httpx.AsyncBaseTransport | None = None,
-                 timeout: float = 10.0) -> None:
+                 timeout: float = 10.0, actor: str = "", audit=None, switches=None,
+                 cancel_only: bool = False) -> None:
         if env not in ENVS:
             raise NotAllowed(f"unknown environment {env!r}")
         self.env, self.signer, self.subaccount = env, signer, subaccount
+        self.actor, self.audit, self.switches, self.cancel_only = actor, audit, switches, cancel_only
         self.writable = True
         try:
             check_writable(env, allow_prod)
@@ -282,13 +306,64 @@ class KalshiTrader:
     async def aclose(self) -> None:
         await self.http.aclose()
 
+    def _audit(self, rec: dict[str, Any]) -> None:
+        if self.audit is None:
+            return
+        try:
+            self.audit.order({"ts": datetime.now(UTC).isoformat(), "env": self.env, "actor": self.actor,
+                              "pid": os.getpid(), **rec})
+        except OSError:
+            pass                    # a full disk must not block a cancel
+
+    def refusal(self, body: dict[str, Any]) -> str | None:
+        """Why this order must not be sent, or None."""
+        if self.cancel_only:
+            return "cancel-only client"
+        if self.switches is not None and (why := self.switches.blocked()):
+            return f"global switch: {why}"
+        count = float(body.get("count") or 0)
+        yes = float(body.get("price") or 0)
+        price = yes if body.get("side") == "bid" else 1 - yes
+        if count > ORDER_LIMITS["max_count"] + 1e-9:
+            return f"count {count:g} > per-order cap {ORDER_LIMITS['max_count']:g}"
+        if count * price > ORDER_LIMITS["max_cost"] + 1e-9:
+            return f"cost ${count * price:.2f} > per-order cap ${ORDER_LIMITS['max_cost']:.2f}"
+        if self.env == "prod" and not body.get("post_only"):
+            return "prod orders must be post-only"
+        return None
+
     async def _send(self, method: str, path: str, *, params: dict[str, Any] | None = None,
                     body: dict[str, Any] | None = None, what: str = "") -> Any:
-        if method != "GET":
-            if not self.writable:
-                raise NotAllowed(f"{self.env} is read-only for this client")
-            if not _write_allowed(method, path):
-                raise NotAllowed(f"write not allowed: {method} {path}")
+        if method == "GET":
+            return await self._request(method, path, params=params, body=body, what=what)
+        if not self.writable:
+            raise NotAllowed(f"{self.env} is read-only for this client")
+        if not _write_allowed(method, path):
+            raise NotAllowed(f"write not allowed: {method} {path}")
+        if self.cancel_only and method != "DELETE":
+            self._audit({"method": method, "path": path, "params": params, "body": body,
+                         "refused": "cancel-only client"})
+            raise Refused("cancel-only client", what or f"{method} {path}")
+        t0 = time.perf_counter()
+        rec: dict[str, Any] = {"method": method, "path": path, "params": params, "body": body}
+        try:
+            data = await self._request(method, path, params=params, body=body, what=what)
+        except TradeError as err:
+            rec.update(status=err.status, error=str(err.body)[:AUDIT_RESPONSE_CHARS])
+            raise
+        except Exception as err:
+            rec.update(status=None, error=repr(err)[:AUDIT_RESPONSE_CHARS])
+            raise
+        else:
+            rec.update(status="ok", response=data if len(json.dumps(data, default=str)) <= AUDIT_RESPONSE_CHARS
+                       else str(data)[:AUDIT_RESPONSE_CHARS])
+            return data
+        finally:
+            rec["ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            self._audit(rec)
+
+    async def _request(self, method: str, path: str, *, params: dict[str, Any] | None,
+                       body: dict[str, Any] | None, what: str) -> Any:
         backoff = 0.05
         for _ in range(6):
             if method != "GET":
@@ -355,8 +430,11 @@ class KalshiTrader:
 
     # -- writes --
     async def create(self, body: dict[str, Any]) -> dict[str, Any]:
-        return await self._send("POST", "/portfolio/events/orders", body=body,
-                                what=f"create {body.get('client_order_id')}")
+        what = f"create {body.get('client_order_id')}"
+        if self.writable and (why := self.refusal(body)):
+            self._audit({"method": "POST", "path": "/portfolio/events/orders", "body": body, "refused": why})
+            raise Refused(why, what)
+        return await self._send("POST", "/portfolio/events/orders", body=body, what=what)
 
     async def warm(self, n: int = 4) -> None:
         """Open (or keep alive) ``n`` pooled connections with concurrent cheap reads, so a burst
