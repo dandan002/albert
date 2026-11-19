@@ -121,12 +121,12 @@ class FakeTrader:
         self.calls.append(("delete_group", gid))
 
 
-def _bot(tmp_path, trader, now, **lim):
+def _bot(tmp_path, trader, now, switches=None, **lim):
     s = Settings(data_dir=tmp_path)
     clock = {"now": now}
     bot = MentionsBot(s, "demo", trader, tmp_path / "run", limits=MentionLimits(**lim), base=BASE,
                       stop_file=tmp_path / "STOP", transport=_transport(), clock=lambda: clock["now"],
-                      log=lambda *_: None)
+                      log=lambda *_: None, switches=switches)
     return bot, clock
 
 
@@ -485,3 +485,49 @@ def test_events_over_max_events_are_logged_once(tmp_path):
     assert not t.created
     skips = [r for r in _ledger(tmp_path) if r["kind"] == "skip" and r.get("reason") == "max events"]
     assert len(skips) == 1 and skips[0]["event"] == EV and skips[0]["open_events"] == ["KXOTHER-1"]
+
+
+# ---- account-wide switches (live_guard.Switches) ---------------------------------------------------
+def test_global_kill_cancels_bot_orders_and_stops(tmp_path):
+    from albert.live_guard import Switches
+
+    manual = OrderState("m1", "manual-xyz", "KXOTHER-1", "yes", 0.5, "resting", 1, 0, 1, 0, None)
+    t = FakeTrader(resting=[manual])
+    sw = Switches(tmp_path / "live")
+    bot, clock = _bot(tmp_path, t, START - timedelta(hours=5, minutes=30), switches=sw)
+    asyncio.run(bot.prepare())
+    asyncio.run(bot.tick())
+    assert [o for o in t.resting if o.status == "resting" and o.client_order_id.startswith(PREFIX)]
+    sw.kill("manual: test")
+    clock["now"] += timedelta(minutes=1)
+    assert asyncio.run(bot.tick()) is False
+    assert "global kill" in bot.halted and manual.status == "resting"
+    assert not [o for o in t.resting if o.status == "resting" and o.client_order_id.startswith(PREFIX)]
+
+
+def test_global_halt_closes_open_events_and_pauses_posting_until_it_lapses(tmp_path):
+    from albert.live_guard import Switches
+
+    t = FakeTrader()
+    sw = Switches(tmp_path / "live")
+    now = START - timedelta(hours=5, minutes=30)
+    bot, clock = _bot(tmp_path, t, now, switches=sw)
+    asyncio.run(bot.prepare())
+    sw.halt("guard: bot day PnL $-16.00 < -$15.00", now + timedelta(minutes=30), now)
+    assert asyncio.run(bot.tick()) is True and not t.created          # due, but halted: nothing posts
+    sw.resume(halt=True)
+    clock["now"] += timedelta(minutes=1)
+    asyncio.run(bot.tick())
+    n = len(t.created)
+    assert n and bot.events[EV].orders
+    sw.halt("guard: bot day PnL $-16.00 < -$15.00", clock["now"] + timedelta(minutes=30), clock["now"])
+    clock["now"] += timedelta(minutes=1)
+    assert asyncio.run(bot.tick()) is True                              # keeps running
+    assert bot.events[EV].closed and ("trigger", "g-1") in t.calls
+    assert not [o for o in t.resting if o.status == "resting"]
+    clock["now"] += timedelta(minutes=40)                               # lapsed
+    asyncio.run(bot.tick())
+    assert len(t.created) == n                                          # a closed event is not re-posted
+    kinds = [r["kind"] for r in _ledger(tmp_path)]
+    assert kinds.count("global_halt") == 2 and kinds.count("global_halt_lifted") == 2
+    assert next(r for r in _ledger(tmp_path) if r["kind"] == "close")["reason"] == "global halt"

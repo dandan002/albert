@@ -1,0 +1,18 @@
+[Unit]
+Description=albert: account-wide live guard (%i): fill audit, daily-loss halt, at-risk kill switch (cancel-only client)
+After=network-online.target time-sync.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/albert
+EnvironmentFile=-/home/ubuntu/albert/deploy/guard-%i.conf
+ExecStart=/home/ubuntu/albert/.venv/bin/python -m albert live guard --env %i $GUARD_ARGS
+# The guard never creates orders; it only cancels bot (alb*) orders when a switch is on.
+KillSignal=SIGTERM
+TimeoutStopSec=30
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

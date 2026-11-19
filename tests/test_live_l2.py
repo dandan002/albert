@@ -8,6 +8,7 @@ import copy
 import json
 import time
 import uuid
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import httpx
@@ -696,3 +697,14 @@ def test_financial_series_are_never_quoted(tmp_path):
     prep = json.loads((tmp_path / "ledger.jsonl").read_text().splitlines()[0])
     assert prep["financial"] == ["KXGDPCN-26DEC31-T5"]
     asyncio.run(lm.shutdown())
+
+
+def test_global_switch_stops_a_maker(tmp_path):
+    from albert.live_guard import Switches
+
+    sw = Switches(tmp_path / "live")
+    lm = LiveMaker(tmp_path, "demo", None, FakeTrader(), run_id="R", strategy=Quoter(),
+                   cfg=SimConfig(), guards=LiveGuards(), pairs=[], switches=sw)
+    sw.halt("guard: loss", datetime.now(UTC) + timedelta(hours=1))
+    asyncio.run(asyncio.wait_for(lm.guard_loop(), 5))
+    assert lm.rec.stopped_reason == "global switch" and lm.broker.halted.startswith("global switch: halt")
