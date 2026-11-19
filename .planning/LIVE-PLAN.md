@@ -1,5 +1,50 @@
 # Live (cash) maker pilot: plan
 
+**PHASE 6 SAFETY LAYER, 2026-11-19** (user: "Let's build phase 6 we're live trading already anyway"):
+the roadmap's Phase 6 item (order client with enable flag, per-order and daily-loss caps, global kill
+switch, full order/fill audit log) is complete. New on top of each bot's own limits:
+
+- **Global kill switch** `data/live/KILL` (`albert live kill [--reason] [--live]`, or `touch`): the
+  order client refuses every new prod order, `albert-mentions@prod` cancels its orders and exits
+  (systemd leaves it down), a maker stops, and the guard cancels every `alb*` order each pass.
+  Undo: `albert live resume`, then `sudo systemctl start albert-mentions@prod`. The paper bot is not
+  affected (it sends no orders).
+- **Guard** `albert-guard@prod` (`deploy/guard-prod.conf`, `albert.live_guard`), every 60 s:
+  - appends every account fill from `GET /portfolio/fills` to `data/live/audit/prod/fills.jsonl`.
+    REST fills carry no client_order_id, so each order is looked up once (`order_tags.jsonl`) to name
+    its bot.
+  - marks every bot fill: settled markets at the settlement value, open ones at the mid (two-sided
+    book) or else the last price.
+  - **day loss**: bot-book equity below its 00:00 UTC level by more than $15 writes
+    `data/live/HALT.json` until the next 00:00 UTC. New orders are refused, bot orders are cancelled,
+    and the mentions bot closes open events and keeps running. The halt lapses on its own.
+  - **at risk**: resting bot collateral + cost of unsettled bot fills above $60 turns on KILL, which
+    only a person removes. Mentions caps itself at $40, so crossing $60 means a bug.
+  - its client is cancel-only and cannot create orders. Status: `albert live check --env prod`.
+- **Order client** (`venues/kalshi_trade.py`): per-order cap of 5 contracts and $2; prod orders must be
+  post-only; refusals raise `Refused` (a `TradeError`, so bots carry on as on an exchange reject).
+  Every write request, response, error and refusal goes to `data/live/audit/<env>/orders-<day>.jsonl`
+  with actor, pid and latency, never headers. Summary: `albert live audit`.
+- **Limits chosen**: the $15 day loss matches the user's "$15 VaR" / `--max-daily-loss 15`. It is a
+  mark-to-market loss, so it binds after the bot's own fill-cost cap only when several bots run or
+  something is wrong. $60 at risk is above mentions' $40 hard cap plus the stopped makers' $15.
+- **Bot book since inception** (guard, 2026-11-19, everything settled):
+
+  | Bot | Fills | Cost | Profit/loss |
+  |---|---|---|---|
+  | `albm` mentions | 25 | $11.18 | +$2.82 |
+  | `albi` illiquid maker | 42 | $7.76 | −$1.70 |
+  | `albl` liquid maker | 33 | $10.47 | −$3.47 |
+
+- **Smoke on prod** (2026-11-19 21:18 UTC, nothing resting or scheduled):
+  - The kill switch refused a create on a settled market before anything was sent; the refusal is in
+    the audit.
+  - The mentions bot logged `halt` "global kill" and exited; the guard status showed the kill.
+  - `live resume` lifted it and the bot was restarted.
+  - Fee re-check the same hour: 107 series fee changes, latest 2026-09-03, none on a mention series.
+- **Not built**: a guard heartbeat check in the bots (if the guard dies, bots keep their own limits
+  and trade on; systemd restarts the guard).
+
 **EXPECTED-FILL BUDGET, 2026-11-19** (user: "take the expected number of fills and limiting that to
 $15 instead. Going a bit over is acceptable if more get filled" and "Have it dynamically manage s.t.
 if stuff overfills it can cancel orders; we want as close to the limit deployed as possible"):

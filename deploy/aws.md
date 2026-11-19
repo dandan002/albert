@@ -20,13 +20,23 @@
     SSE-S3), keys `raw/stream/<venue>/<date>/<file>`. The instance role `albert-ec2-ssm` has an inline
     policy `albert-archive-s3` with Put/Get on `raw/stream/*` and List on the bucket only: no delete.
     Needs `pip install -e '.[archive]'` (boto3). Restore a day: `albert restore-stream <date>`.
-  - `albert-paper` (deploy/paper-loop.sh) → data/paper_l2
-  - `albert-forward` (deploy/forward-loop.sh, LEADS="mentions fcs rain") → data/cache/forward
-  - `albert-mentions@demo` (albert live mentions --env demo; args in deploy/mentions-demo.conf)
-  - prod pilot later: `albert-mentions@prod` with deploy/mentions-prod.conf containing
-    `MENTIONS_ARGS=--live ...` AND `KALSHI_LIVE_ENABLED=1` in .env (both required).
-- Update code: from the Mac, `rsync -az --exclude data/ --exclude .venv/ --exclude .env ./ albert:albert/`
-  then `sudo systemctl restart albert-...`.
+  - `albert-mentions@prod` (REAL ORDERS, running) with deploy/mentions-prod.conf containing
+    `MENTIONS_ARGS=--live ...` AND `KALSHI_LIVE_ENABLED=1` in .env (both required);
+    `albert-mentions@paper` (running) alongside it on the same markets with simulated fills.
+  - Stopped, units kept: `albert-paper` (deploy/paper-loop.sh → data/paper_l2), `albert-paper-illiquid`,
+    `albert-forward` (deploy/forward-loop.sh → data/cache/forward), `albert-mentions@demo`
+    (deploy/mentions-demo.conf), `albert-live-maker@{liquid,illiquid}` (real orders; held off by
+    `data/live/STOP`).
+  - `albert-guard@prod` (albert live guard; args in deploy/guard-prod.conf): account-wide daily-loss
+    halt and at-risk kill switch over every bot, exchange-sourced fill audit in data/live/audit/prod.
+    Global kill: `albert live kill [--live]`; undo `albert live resume`; status `albert live check --env prod`.
+- Install or update a unit: `sudo cp deploy/systemd/<unit> /etc/systemd/system/ && sudo systemctl
+  daemon-reload`. The services run the working tree in `~/albert`, so a code change takes effect on
+  restart. Restarting `albert-mentions@prod` cancels its resting orders, so check
+  `albert live check --env prod` first and re-check Kalshi fees (`GET /series/fee_changes`).
+- Update code: this host is the primary working copy (since 2026-11-07). From the Mac (older
+  backup): `rsync -az --exclude data/ --exclude .venv/ --exclude .env ./ albert:albert/` then
+  `sudo systemctl restart albert-...`.
 - Pull data back: `rsync -az albert:albert/data/raw/stream/ data/raw/stream/` (append-only).
 - Emergency direct SSH (only if SSM is down): `aws ec2 authorize-security-group-ingress --region us-east-2
   --group-id sg-04dc0331e14485794 --protocol tcp --port 22 --cidr <your ip>/32`, then revoke it after.
