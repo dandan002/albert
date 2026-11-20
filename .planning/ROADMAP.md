@@ -17,6 +17,9 @@ Each phase ends with a **live smoke run that produces non-empty, sanity-checked 
       trades/activity/positions/leaderboard.
 - [x] Polymarket US: public gateway markets/events/series, order books, BBO, price history,
       settlements.
+- [x] Hyperliquid (data only, 2026-11-20): HIP-4 outcome metadata and candles (`ingest hl`), and
+      a continuous WebSocket recording of non-financial outcome books and trades with
+      addresses (`record-hl`, unit `albert-record-hl`).
 - [x] Typed Parquet tables (real decimal and timestamp columns, not strings) plus run manifests.
 - [x] Decide the non-financial category/tag list from observed values.
 

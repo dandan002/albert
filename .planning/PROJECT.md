@@ -27,6 +27,7 @@ looks for a second edge.
 | Kalshi | trade (live since 2026-11-07) | Ed25519 (preferred) or RSA-PSS | broad non-financial coverage; `category` on events |
 | Polymarket US | data only (trading on hold since 2026-11-07) | Ed25519: `X-PM-Access-Key`, `X-PM-Timestamp`, `X-PM-Signature` over `{ts_ms}{METHOD}{path}` | public data at `gateway.polymarket.us/v1`, trading at `api.polymarket.us`; keys at polymarket.us/developer after KYC; 24/7 except Thu 06:00-08:00 ET maintenance |
 | Polymarket intl | data only | none | on-chain wallet signals; US geoblocked for trading |
+| Hyperliquid | data only (2026-11-20) | none | HIP-4 outcome markets via `api.hyperliquid.xyz` (no robots.txt: owner allowed it); Terms section 1.6 bars US persons, so never traded |
 
 Bankroll: all on Kalshi. Polymarket (US and intl) is used only as data: prices, signals, wallets.
 

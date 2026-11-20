@@ -290,7 +290,8 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     nflverse release files fetched via api.github.com (github.com blocks the download path for AI
     agents; the NFL study went with it). Kept: Kalshi, Polymarket APIs, ESPN API host (no
     robots.txt; www.espn.com blocks AI crawlers), MLB Stats API, IEM. The rain model is being
-    rebuilt on IEM inputs only.
+    rebuilt on IEM inputs only. Added 2026-11-20 (owner): `api.hyperliquid.xyz` (no robots.txt;
+    `hyperliquid.xyz` allows all), data only.
   - **Mentions NO-bid pattern is stable** (`mentions_history.py`): the frozen round-2 rule (NO bid
     at bias-corrected mid + 8c/12c from 6 h before the speech to start − 10 min, trade-through
     fills on real prints, circuit breaker) on 548 events round 2 never saw (Apr 2025 – Aug 16
@@ -803,3 +804,19 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     $7.12/wk (Sharpe 8.21) to $9.82/wk (Sharpe 9.66, ex-top-5 8.38) at 6 events with a $40 hard cap;
     realized fills peak at $15.55. Live on both bots since 2026-11-19 04:58 UTC. The research
     `capped_book` NaN-price bug is fixed (12 h cell holdout $8.13 → $7.39/wk).
+- **Hyperliquid HIP-4 outcome markets: data collection started (2026-11-20; data only).**
+  Hyperliquid's Terms (section 1.6) bar US persons, so it is never traded. Kalshi stays the only venue.
+  - *Universe (2026-11-20).* 313 live outcomes, about 160 non-financial: European soccer match
+    results (EPL, La Liga, Serie A, Bundesliga, Ligue 1), NBA/NFL/esports match winners, and
+    EPL/UCL/NFL/NBA season winners. The rest are perp/crypto price binaries, IPO, Fed-rate and
+    recurring crypto questions (excluded). No politics, mentions, weather or culture.
+  - *Data.* `albert-record-hl` records every non-financial outcome's full book and trades
+    (side 0; side 1 is the same book mirrored at 1 − p: 12 of 12 markets had identical trade
+    hashes and sizes). Every trade carries buyer and seller addresses. `albert ingest hl` writes
+    `hl_outcomes` and `hl_candles` (1 h back to listing, 1 m for the last 3.5 days).
+  - *Planned check (after about 2 weeks of recording; frozen rules, dev/holdout):* (a) price
+    agreement and lead-lag against Kalshi on matched soccer/NBA/NFL markets (prior: PM intl and
+    PM US both agree with Kalshi within about 0.4c and neither leads); (b) whether identifiable
+    Hyperliquid wallets' flow predicts Kalshi moves or outcomes (prior: PM wallets show no
+    persistence, rank correlation 0.02). Any trade would be on Kalshi only and needs
+    event-clustered t ≥ 2, ≥ 60% positive weeks, and Sharpe/vol from `vol_metrics`.
