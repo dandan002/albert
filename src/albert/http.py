@@ -167,17 +167,43 @@ class CachedClient:
         write_raw(raw_path, record)
         return Fetched(url, params, fetched_at, raw_path, payload, from_cache=False)
 
+    def post(self, path: str, body: dict[str, Any], *, cache: bool = True,
+             tag: str | None = None) -> Fetched:
+        """POST a JSON ``body`` (APIs such as Hyperliquid's ``/info`` take their query that way).
+        Cached and recorded like :meth:`get`; the key covers the method, URL and canonical body,
+        so it never collides with a GET of the same URL. The raw record keeps the body."""
+        url = f"{self.base_url}{path}"
+        canonical = json.dumps(body if tag is None else {**body, "__tag": tag}, sort_keys=True,
+                               separators=(",", ":"))
+        key = hashlib.sha256(f"POST {url} {canonical}".encode()).hexdigest()[:24]
+        if cache:
+            cached = self.raw_dir / f"{key}{RAW_SUFFIX}"
+            if cached.exists():
+                record = read_raw(cached)
+                return Fetched(url, body, datetime.fromisoformat(record["fetched_at"]), cached,
+                               record["response"], from_cache=True)
+        payload = self._request(url, {}, body=body)
+        fetched_at = datetime.now(UTC)
+        if not cache and not self.record_live:
+            return Fetched(url, body, fetched_at, None, payload, from_cache=False)
+        name = key if cache else f"{key}-{fetched_at.strftime('%Y%m%dT%H%M%S%fZ')}"
+        raw_path = self.raw_dir / f"{name}{RAW_SUFFIX}"
+        write_raw(raw_path, {"venue": self.venue, "url": url, "method": "POST", "body": body,
+                             "fetched_at": fetched_at.isoformat(), "response": payload})
+        return Fetched(url, body, fetched_at, raw_path, payload, from_cache=False)
+
     @staticmethod
     def cache_key(url: str, params: dict[str, Any]) -> str:
         canonical = f"{url}?{urlencode(sorted((k, str(v)) for k, v in params.items()))}"
         return hashlib.sha256(canonical.encode()).hexdigest()[:24]
 
-    def _request(self, url: str, params: dict[str, Any]) -> Any:
+    def _request(self, url: str, params: dict[str, Any], *, body: dict[str, Any] | None = None) -> Any:
         delay = 1.0
         for attempt in range(1, self.max_retries + 1):
             self._throttle()
             try:
-                response = self._http.get(url, params=params)
+                response = (self._http.get(url, params=params) if body is None
+                            else self._http.post(url, json=body))
             except httpx.TransportError as error:
                 if attempt == self.max_retries:
                     raise HttpError(f"{url}: {error}") from error
@@ -191,7 +217,7 @@ class CachedClient:
                 delay *= 2
                 continue
             if response.status_code >= 400:
-                raise HttpError(f"{url} {params} -> {response.status_code}: {response.text[:300]}")
+                raise HttpError(f"{url} {params or body} -> {response.status_code}: {response.text[:300]}")
             # JSON APIs return parsed JSON; CSV/text endpoints (e.g. IEM) return the raw text.
             if "json" in response.headers.get("content-type", "") or response.text.lstrip()[:1] in ("[", "{"):
                 return response.json()

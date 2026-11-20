@@ -2,6 +2,7 @@
 # Continuous L2 recording: one run per day, each re-selecting the market universe.
 #   RECORD_CMD=record      (default) `albert record`: random sample (markets closing within 7 days)
 #   RECORD_CMD=record-vol  `albert record-vol`: complete vol-study events, refreshed hourly in-run
+#   RECORD_CMD=record-hl   `albert record-hl`: Hyperliquid outcome books and trades (data only)
 # Stop with: touch data/$RECORD_CMD.stop   (or kill the loop's PID in data/$RECORD_CMD.pid).
 # On macOS, wrap in `caffeinate -is` so the machine does not sleep.
 set -u

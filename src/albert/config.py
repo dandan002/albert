@@ -18,6 +18,7 @@ class Settings:
     pmus_base: str = "https://gateway.polymarket.us/v1"
     iem_base: str = "https://mesonet.agron.iastate.edu"
     pandascore_base: str = "https://api.pandascore.co"
+    hl_base: str = "https://api.hyperliquid.xyz"   # data only (Terms bar US persons)
     # Save live (uncached) responses too. Off by default: a long-running paper/live loop would
     # write hundreds of MB a day, and its decisions are already in the ledger.
     record_live: bool = field(default_factory=lambda: os.environ.get("ALBERT_RECORD_LIVE", "0") == "1")
