@@ -220,8 +220,9 @@ data/tables/book_checkpoints/... full book every 5 min per market (derived), for
   [I].
 - **Market universe and survivorship.** The recorder subscribes from a market list chosen *before*
   the market's outcome or final volume is known (for example every open game moneyline in leagues
-  X, Y, Z from listing until settlement). Write that list into the hourly manifest. Lesson 2 in
-  `docs/HANDOFF.md` (sampling on final volume fabricated edges) applies with full force [L].
+  X, Y, Z from listing until settlement). Write that list into the hourly manifest. The earlier
+  version of this project's lesson (sampling on final volume fabricated edges) applies with full
+  force [L].
 - **Consumer speed.** Read the socket in an asyncio task that only timestamps and enqueues frames.
   A separate task compresses and writes. Error 25 (buffer overflow) is the failure to watch for [V].
 
