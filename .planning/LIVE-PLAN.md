@@ -1,5 +1,19 @@
 # Live (cash) maker pilot: plan
 
+**STATUS, 2026-11-20 22:00 UTC** (read-only check; no bot restarted or changed):
+
+- **Running:** `albert-mentions@prod` (live) and `@paper` since 2026-11-19 21:19 / 21:18 UTC, 0 restarts,
+  no errors; `albert-guard@prod`; recorders `albert-record`, `albert-record-vol`, `albert-record-hl`;
+  `albert-archive.timer` (daily 08:00 UTC). Both live makers are stopped.
+- **No mentions event since the restart, by design:** the Mentions milestone calendar has nothing the
+  bot trades. 145 of 150 upcoming milestones are earnings calls (excluded); the others are the Trump
+  monthly window series (Nov 30, excluded), Jensen Huang's NVIDIA GTC DC keynote (Dec 1; an executive,
+  traded only at a mostly political event) and the FOMC press conference (Dec 9, financial). Speech
+  milestones usually appear a few days ahead. Last live trades: Nov 18 (Vance, Carney).
+- **Account:** balance $97.28; the only resting order is the manual KXIMPEACH-29-JAN20 NO; kill and
+  halt off; bot book unchanged from the table below (−$2.35 across bots). Paper mentions since
+  2026-11-18: 34 orders, 1 fill.
+
 **PHASE 6 SAFETY LAYER, 2026-11-19** (user: "Let's build phase 6 we're live trading already anyway"):
 the roadmap's Phase 6 item (order client with enable flag, per-order and daily-loss caps, global kill
 switch, full order/fill audit log) is complete. New on top of each bot's own limits:

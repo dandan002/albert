@@ -806,7 +806,7 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     `capped_book` NaN-price bug is fixed (12 h cell holdout $8.13 → $7.39/wk).
 - **Hyperliquid HIP-4 outcome markets: data collection started (2026-11-20; data only).**
   Hyperliquid's Terms (section 1.6) bar US persons, so it is never traded. Kalshi stays the only venue.
-  - *Universe (2026-11-20).* 313 live outcomes, about 160 non-financial: European soccer match
+  - *Universe (2026-11-20).* 319 outcomes, 162 non-financial: European soccer match
     results (EPL, La Liga, Serie A, Bundesliga, Ligue 1), NBA/NFL/esports match winners, and
     EPL/UCL/NFL/NBA season winners. The rest are perp/crypto price binaries, IPO, Fed-rate and
     recurring crypto questions (excluded). No politics, mentions, weather or culture.
@@ -814,9 +814,21 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     (side 0; side 1 is the same book mirrored at 1 − p: 12 of 12 markets had identical trade
     hashes and sizes). Every trade carries buyer and seller addresses. `albert ingest hl` writes
     `hl_outcomes` and `hl_candles` (1 h back to listing, 1 m for the last 3.5 days).
+  - *Status (merged in PR #14).* Recorder: 162 coins on 2 connections, 0 errors, about 150 MB/day.
+    Ingest: 564k candles for the 133 traded sports outcomes, hourly from 2026-09-04. Rough
+    notional since September: EPL ~$10.4M, NFL ~$4.8M, UCL ~$4.3M, NBA ~$3.9M, La Liga ~$2.1M,
+    Ligue 1 / Bundesliga / Serie A ~$0.5M each. Before matching to Kalshi, normalize sport labels
+    (`football`, `Football`, `football/soccer` all occur).
   - *Planned check (after about 2 weeks of recording; frozen rules, dev/holdout):* (a) price
     agreement and lead-lag against Kalshi on matched soccer/NBA/NFL markets (prior: PM intl and
     PM US both agree with Kalshi within about 0.4c and neither leads); (b) whether identifiable
     Hyperliquid wallets' flow predicts Kalshi moves or outcomes (prior: PM wallets show no
     persistence, rank correlation 0.02). Any trade would be on Kalshi only and needs
     event-clustered t ≥ 2, ≥ 60% positive weeks, and Sharpe/vol from `vol_metrics`.
+- **Earnings-call mentions, re-asked 2026-11-20 (no new run; from `mentions_history` and
+  `pre_event`).** The NO-bid rule does not hold on earnings calls. At the live 12c margin:
+  +2.0c/fill (t 0.5) before Aug 17, +3.1c (t 0.4) Aug 17–Sep, +0.8c (t 0.2) October, −0.5c Nov 1–5;
+  184 events, 374 fills, about +1.5c pooled, against +6 to +13c for speeches. Book (Aug 20 – Oct
+  30, $5/order): Sharpe 1.6 [−3.6, 3.2], −2.5 without the top-5 events, vol 186%, max DD −$46. The
+  8c margin and the raw-mid control are flat too. Untested: the 12 h early phase and anything after
+  Nov 5. They also stay out of scope as financial (`albert.categories`).

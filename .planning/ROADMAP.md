@@ -20,6 +20,9 @@ Each phase ends with a **live smoke run that produces non-empty, sanity-checked 
 - [x] Hyperliquid (data only, 2026-11-20): HIP-4 outcome metadata and candles (`ingest hl`), and
       a continuous WebSocket recording of non-financial outcome books and trades with
       addresses (`record-hl`, unit `albert-record-hl`).
+- [x] Raw stream archive (2026-11-20): closed days go to S3 (Intelligent-Tiering, SHA-256
+      verified, the host role cannot delete) by the daily `albert-archive.timer`, keeping 4 days on
+      disk; readers fail loudly on an archived day (`albert restore-stream <day> --venue <v>`).
 - [x] Typed Parquet tables (real decimal and timestamp columns, not strings) plus run manifests.
 - [x] Decide the non-financial category/tag list from observed values.
 
@@ -30,6 +33,9 @@ Each phase ends with a **live smoke run that produces non-empty, sanity-checked 
       path.
       Start with rule-based matching on title/date/entities, then do a manual review pass.
 - [x] Measure match quality and price-gap distributions.
+- [ ] Hyperliquid vs Kalshi (about 2026-12-04, after 2 weeks of recording): normalize sport
+      labels, match soccer/NBA/NFL markets, then the frozen lead-lag and wallet-flow checks
+      (`.planning/research/SUMMARY.md`).
 
 ## Phase 3: Research
 
