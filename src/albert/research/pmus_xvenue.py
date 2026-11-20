@@ -36,6 +36,8 @@ from typing import Any
 import numpy as np
 import polars as pl
 
+from albert.archive import require_day
+
 NAME = "pmus_xvenue"
 LEAGUES = {"KXNBAGAME": "nba", "KXNCAAMBGAME": "cbb", "KXNCAAWBGAME": "wcbb", "KXNCAAFGAME": "cfb",
            "KXNFLGAME": "nfl", "KXNHLGAME": "nhl"}
@@ -710,6 +712,7 @@ def l2_at(s, queries: pl.DataFrame, *, log=print) -> pl.DataFrame:
     for i, ((hr, conn), tickers) in enumerate(sorted(want.items())):
         h = datetime.fromtimestamp(hr * 3600, UTC)
         day = root / h.strftime("%Y-%m-%d")
+        require_day(day)
         files = sorted(day.glob(f"{h:%H}-{conn}.jsonl.zst")) + sorted(day.glob(f"{h:%H}-{conn}-*.jsonl.zst"))
         for path in files:
             books: dict[str, dict[str, dict[float, float]]] = {}
@@ -843,6 +846,7 @@ def server_quotes(s, tickers: list[str], start: str, end: str, *, log=print) -> 
                         conns[c].add(t)
         h = datetime.fromtimestamp(hr * 3600, UTC)
         day = root / h.strftime("%Y-%m-%d")
+        require_day(day)
         for conn, held in sorted(conns.items()):
             files = sorted(day.glob(f"{h:%H}-{conn}.jsonl.zst")) + sorted(day.glob(f"{h:%H}-{conn}-*.jsonl.zst"))
             for path in files:

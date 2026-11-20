@@ -7,5 +7,9 @@ Wants=network-online.target
 Type=oneshot
 User=ubuntu
 WorkingDirectory=/home/ubuntu/albert
+# Instance role albert-ec2-ssm only (Put/Get raw/stream/*, List; no delete), never an `aws login`
+# session that may sit in ~/.aws/config.
+Environment=AWS_CONFIG_FILE=/dev/null
+Environment=AWS_SHARED_CREDENTIALS_FILE=/dev/null
 ExecStart=/home/ubuntu/albert/.venv/bin/python -m albert archive-stream --keep-days 4
 Nice=10

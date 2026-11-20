@@ -14,12 +14,23 @@
 - Services (systemd, `sudo systemctl status albert-*`):
   - `albert-record` (deploy/record-loop.sh --paired-days 3 --skip-vol) → data/raw/stream
   - `albert-record-vol` (RECORD_CMD=record-vol deploy/record-loop.sh --ladder-interval-ms 1000) → data/raw/stream: the
-    vol-study families (`stream.vol_family`), never recorded by `albert-record` as well
-  - `albert-archive.timer` (**not installed yet**: bucket and policy below still to be created) → `albert-archive.service` (daily 08:00 UTC, `albert archive-stream --keep-days 4`):
-    closed raw stream days → S3 bucket `albert-archive-091914201487` (us-east-2, private, versioned,
-    SSE-S3), keys `raw/stream/<venue>/<date>/<file>`. The instance role `albert-ec2-ssm` has an inline
-    policy `albert-archive-s3` with Put/Get on `raw/stream/*` and List on the bucket only: no delete.
-    Needs `pip install -e '.[archive]'` (boto3). Restore a day: `albert restore-stream <date>`.
+    vol-study families (`stream.vol_family`), never recorded by `albert-record` as well.
+    Disk floors: record-vol stops below 20 GB free, record below 10 GB (`--min-free-gb`); while
+    under the floor systemd restarts it every minute and it exits at once ("stopped: low disk" in
+    data/record-vol.log). That is what stopped vol recording 2026-11-18 03:12 → 11-20.
+  - `albert-archive.timer` (installed 2026-11-20) → `albert-archive.service` (daily 08:00 UTC,
+    `albert archive-stream --keep-days 4`): closed raw stream days → S3 bucket
+    `albert-archive-091914201487` (us-east-2; Block Public Access on, bucket-owner-enforced, versioned,
+    SSE-S3 with a bucket key, TLS-only bucket policy, tag `project=albert`), keys
+    `raw/stream/<venue>/<date>/<file>`, uploaded as `INTELLIGENT_TIERING` (no retrieval fee or
+    restore step; 30 days untouched → Infrequent Access, 90 → Archive Instant Access). Lifecycle: a
+    day-0 transition of `raw/` to Intelligent-Tiering (safety net) and abort of stale multipart
+    uploads after 7 days. The instance role `albert-ec2-ssm` has an inline policy `albert-archive-s3`:
+    Put/Get on `raw/stream/*` and List on the bucket, nothing else (no delete). The unit sets
+    `AWS_CONFIG_FILE=/dev/null` so it always runs as that role, never as an `aws login` session left
+    in `~/.aws`. Needs boto3 (`pip install -e '.[archive]'`). Restore a day:
+    `albert restore-stream <date> [--venue pm]`; research readers raise `ArchivedError` on an
+    archived day instead of reading fewer files. Run it now: `sudo systemctl start albert-archive`.
   - `albert-mentions@prod` (REAL ORDERS, running) with deploy/mentions-prod.conf containing
     `MENTIONS_ARGS=--live ...` AND `KALSHI_LIVE_ENABLED=1` in .env (both required);
     `albert-mentions@paper` (running) alongside it on the same markets with simulated fills.
