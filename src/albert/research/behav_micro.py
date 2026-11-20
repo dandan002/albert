@@ -43,6 +43,8 @@ from zoneinfo import ZoneInfo
 import numpy as np
 import polars as pl
 
+from albert.archive import require_day
+
 warnings.filterwarnings("ignore", message="Sortedness of columns cannot be checked")
 
 OUT = Path("data/research/behav_micro")
@@ -453,6 +455,7 @@ def k_files(start: str, end: str) -> list[Path]:
     out = []
     for day in sorted(p.name for p in root.iterdir() if p.is_dir()):
         if start <= day <= end:
+            require_day(root / day)
             out += sorted(p for p in (root / day).glob("*-k*.jsonl.zst") if not p.name.endswith(".part"))
     return out
 

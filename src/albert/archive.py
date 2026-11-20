@@ -4,8 +4,9 @@
 still write into it (``date <= today - keep_days``, UTC). Each file goes up with a single PUT that
 carries its SHA-256, which S3 verifies on receipt; a HEAD then re-checks size and checksum. Only
 after every file of the day has passed is the local copy deleted, and the day's directory keeps an
-``_archived.json`` marker listing each file (name, size, sha256) and its key. The bucket policy
-grants no delete, and an existing key with different content is never overwritten.
+``_archived.json`` marker listing each file (name, size, sha256) and its key. The host's IAM policy
+grants no delete, the bucket is versioned, objects land in S3 Intelligent-Tiering, and an existing
+key with different content is never overwritten.
 
 Readers call :func:`check_local` so a backtest over an archived day fails loudly instead of
 silently running on fewer files; ``albert restore-stream <date>`` brings a day back byte-identical.
@@ -14,6 +15,7 @@ silently running on fewer files; ``albert restore-stream <date>`` brings a day b
 from __future__ import annotations
 
 import base64
+import functools
 import hashlib
 import json
 import os
@@ -26,6 +28,9 @@ from typing import Any
 MARKER = "_archived.json"
 VENUES = ("kalshi", "pm")
 PREFIX = "raw/stream"
+# No retrieval fees and no restore step (unlike Glacier): objects untouched for 30 days drop to
+# the Infrequent Access tier, 90 days to Archive Instant Access, and a GET still works at once.
+STORAGE_CLASS = "INTELLIGENT_TIERING"
 
 
 class ArchivedError(FileNotFoundError):
@@ -96,7 +101,8 @@ def archive_day(client, bucket: str, venue: str, day_dir: Path, *, delete_local:
         head = _remote(client, bucket, key)
         if head is None:
             with open(p, "rb") as f:
-                client.put_object(Bucket=bucket, Key=key, Body=f, ChecksumSHA256=digest)
+                client.put_object(Bucket=bucket, Key=key, Body=f, ChecksumSHA256=digest,
+                                  StorageClass=STORAGE_CLASS)
             head, status = _remote(client, bucket, key), "uploaded"
         else:
             status = "already"
@@ -174,4 +180,20 @@ def check_local(venue_root: Path, start: str | None = None, end: str | None = No
             missing.append(d)
     if missing:
         raise ArchivedError(f"{venue_root.name} stream days {', '.join(missing)} are archived in S3; "
-                            f"run `albert restore-stream {missing[0]}` (one per day) first")
+                            f"run `albert restore-stream {missing[0]} --venue {venue_root.name}` "
+                            "(one per day) first")
+
+
+@functools.lru_cache(maxsize=4096)
+def _incomplete(day_dir: str) -> bool:
+    marker = _read_marker(Path(day_dir))
+    return marker is not None and any(not (Path(day_dir) / r["name"]).exists() for r in marker["files"])
+
+
+def require_day(day_dir: Path) -> None:
+    """Raise :class:`ArchivedError` if this one stream day is archived and not fully restored. For
+    readers that glob a day directory directly instead of going through ``stream_files``. The
+    answer is cached per process (restoring happens in another process)."""
+    if _incomplete(str(day_dir)):
+        raise ArchivedError(f"{day_dir.parent.name} stream day {day_dir.name} is archived in S3; run "
+                            f"`albert restore-stream {day_dir.name} --venue {day_dir.parent.name}` first")

@@ -55,6 +55,8 @@ from typing import Any
 import numpy as np
 import polars as pl
 
+from albert.archive import require_day
+
 OUT = Path("data/research/behav_sports")
 ESPN_CACHE = Path("data/cache/behav_sports/espn")
 ESPN_ROOT = "https://site.api.espn.com/apis/site/v2/sports"
@@ -1231,6 +1233,7 @@ def l2_top_at_hours(wanted: dict[datetime, set[str]], max_gap_lines: int = 20000
     rows = []
     for hour, tickers in sorted(wanted.items()):
         d = STREAM / hour.strftime("%Y-%m-%d")
+        require_day(d)
         for f in sorted(d.glob(f"{hour:%H}-*.jsonl.zst")):
             with open(f, "rb") as fh:
                 r = io.TextIOWrapper(zstandard.ZstdDecompressor().stream_reader(fh), encoding="utf-8")
