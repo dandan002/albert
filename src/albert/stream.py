@@ -47,6 +47,7 @@ import zstandard
 from websockets.asyncio.client import connect
 
 from albert.categories import kalshi_series_is_financial, pm_is_non_financial
+from albert.venues import hyperliquid as hl
 from albert.venues import kalshi as k
 from albert.venues.kalshi_auth import KalshiSigner
 
@@ -56,6 +57,9 @@ KALSHI_PRIVATE_WS = "wss://warp-ws.kalshi.com/trade-api/ws/v2"   # fill and user
 KALSHI_WS_PATH = "/trade-api/ws/v2"
 KALSHI_REST = "https://api.elections.kalshi.com/trade-api/v2"   # market data: cached shared host
 PM_WS = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
+HL_WS = hl.WS_URL          # Hyperliquid: public data only (see venues/hyperliquid.py)
+HL_INFO = "https://api.hyperliquid.xyz/info"
+HL_SEND_GAP = 0.05         # Hyperliquid accepts at most 2000 sent messages a minute per IP
 FLUSH_SECONDS = 30.0
 HOUR_NS = 3600 * 10**9
 ZSTD_LEVEL = 9  # measured on pilot data: ~25% smaller than level 3, negligible CPU
@@ -607,6 +611,78 @@ class Recorder:
                 await self._sleep_or_stop(backoff)
                 backoff = min(backoff * 2, 60.0)
 
+    async def hl_conn(self, conn: str, coins: list[str], added: asyncio.Queue) -> None:
+        """Record Hyperliquid ``l2Book`` and ``trades`` for side-0 outcome coins on one
+        connection. ``coins`` is shared with :class:`HlUniverse`: a coin appended there is also
+        put on ``added`` and subscribed at once, and every reconnect subscribes the whole list.
+        Each ``l2Book`` message is a full book (up to 20 levels a side), so any file replays on
+        its own; the first ``trades`` message after a subscribe repeats recent trades (dedupe on
+        ``tid``). Pongs are not recorded."""
+        self._writer("hl", conn)
+        st = self.stats[conn]
+        backoff = 1.0
+        while not self.stop.is_set():
+            try:
+                async with connect(HL_WS, max_size=2**24, open_timeout=20, ping_interval=None) as ws:
+                    st.connects += 1
+                    backoff = 1.0
+                    initial = list(coins)          # snapshot and drain together: no await between
+                    while not added.empty():
+                        added.get_nowait()
+
+                    async def subscribe(c: str) -> None:
+                        for typ in ("l2Book", "trades"):
+                            await ws.send(json.dumps({"method": "subscribe",
+                                                      "subscription": {"type": typ, "coin": c}}))
+                            await asyncio.sleep(HL_SEND_GAP)
+
+                    async def subscriber(first: list[str] = initial) -> None:
+                        for c in first:
+                            await subscribe(c)
+                        while True:
+                            await subscribe(await added.get())
+
+                    async def keepalive() -> None:
+                        while True:
+                            await asyncio.sleep(30)
+                            await ws.send(json.dumps({"method": "ping"}))
+
+                    helpers = [asyncio.create_task(subscriber()), asyncio.create_task(keepalive())]
+                    stopper = asyncio.create_task(self.stop.wait())
+                    try:
+                        while True:
+                            recv = asyncio.create_task(ws.recv())
+                            done, _ = await asyncio.wait({recv, stopper, *helpers},
+                                                         return_when=asyncio.FIRST_COMPLETED)
+                            if stopper in done:
+                                recv.cancel()
+                                return
+                            for h in helpers:
+                                if h in done:
+                                    recv.cancel()
+                                    h.result()      # re-raise a send failure: reconnect
+                            frame = recv.result()
+                            if isinstance(frame, bytes):
+                                frame = frame.decode()
+                            try:
+                                channel = json.loads(frame).get("channel", "?")
+                            except (json.JSONDecodeError, AttributeError):
+                                channel = "non_json"
+                            st.by_type[channel] += 1
+                            if channel == "pong":
+                                continue
+                            if channel == "error":
+                                st.errors.append(frame[:300])
+                            self._record("hl", conn, frame)
+                    finally:
+                        for h in helpers:
+                            h.cancel()
+            except Exception as exc:  # noqa: BLE001
+                st.errors.append(f"{type(exc).__name__}: {exc}"[:300])
+            if not self.stop.is_set():
+                await self._sleep_or_stop(backoff)
+                backoff = min(backoff * 2, 60.0)
+
     async def book_checks(self, every: float, sample: int, depth: int = 5, conn: str = "rest") -> None:
         """Every ``every`` seconds compare the rebuilt book with REST ``/orderbook`` for a few
         markets. The REST response is recorded too. A mismatch can be a race (a delta in flight),
@@ -753,3 +829,97 @@ async def record_vol(rec: Recorder, uni: VolUniverse, *, minutes: float, initial
         subscribe(initial)
         if check_sample:
             tg.create_task(rec.book_checks(check_every, check_sample, conn="rest_vol"))
+
+
+# ---- Hyperliquid HIP-4 outcome markets (public data only) -------------------------------------
+def fetch_hl_meta() -> str:
+    """The current ``outcomeMeta`` response, verbatim text (recorded as an ``hlmeta`` frame)."""
+    r = httpx.post(HL_INFO, json={"type": "outcomeMeta"}, timeout=30,
+                   headers={"User-Agent": "albert-research/0.2"})
+    r.raise_for_status()
+    return r.text
+
+
+@dataclass
+class HlUniverse:
+    """Which coins ``record_hl`` subscribed and on which connection. Hyperliquid allows 10
+    WebSocket connections and 1000 subscriptions per IP, so connections are few and fixed
+    (``h<n>``, ``chunk`` coins each) and new coins are added to them in place; each coin costs
+    two subscriptions (``l2Book`` and ``trades``)."""
+    chunk: int = 150
+    max_coins: int = 450
+    conns: list[dict[str, Any]] = field(default_factory=list)
+    added: list[dict[str, Any]] = field(default_factory=list)
+    skipped: set[str] = field(default_factory=set)
+    unknown_templates: set[str] = field(default_factory=set)
+    refreshes: list[dict[str, Any]] = field(default_factory=list)
+    _seen: set[str] = field(default_factory=set)
+
+    def assign(self, coins: list[str], at: datetime) -> list[dict[str, Any]]:
+        """Place new coins (never one twice). Returns connections opened by this call; coins for
+        connections that already run are put on their queue."""
+        opened: list[dict[str, Any]] = []
+        for c in coins:
+            if c in self._seen:
+                continue
+            if len(self._seen) >= self.max_coins:
+                self.skipped.add(c)
+                continue
+            self._seen.add(c)
+            self.skipped.discard(c)
+            conn = next((x for x in self.conns if len(x["coins"]) < self.chunk), None)
+            if conn is None:
+                conn = {"conn": f"h{len(self.conns)}", "coins": [], "queue": asyncio.Queue(),
+                        "opened_at": at.isoformat()}
+                self.conns.append(conn)
+                opened.append(conn)
+            conn["coins"].append(c)
+            self.added.append({"coin": c, "conn": conn["conn"], "added_at": at.isoformat()})
+            if conn not in opened:
+                conn["queue"].put_nowait(c)
+        return opened
+
+    def manifest(self) -> dict[str, Any]:
+        return {"conns": [{"conn": c["conn"], "coins": len(c["coins"]), "opened_at": c["opened_at"]}
+                          for c in self.conns],
+                "coins": self.added, "skipped": sorted(self.skipped),
+                "unknown_templates": sorted(self.unknown_templates), "refreshes": self.refreshes}
+
+
+async def record_hl(rec: Recorder, uni: HlUniverse, *, minutes: float, initial_meta: str,
+                    fetch_meta: Callable[[], str], refresh_every: float, min_free_gb: float) -> None:
+    """Record every non-financial outcome in ``initial_meta`` and, every ``refresh_every``
+    seconds, the new ones in a fresh ``outcomeMeta`` (each response is itself recorded as an
+    ``hlmeta`` frame, so the metadata of markets that later settle is kept), until ``minutes``
+    pass or ``rec.stop`` is set."""
+
+    async with asyncio.TaskGroup() as tg:
+        def take(text: str) -> int:
+            rec._record("hl", "hlmeta", text)
+            meta = json.loads(text)
+            uni.unknown_templates |= set(hl.unknown_templates(meta))
+            before = len(uni.added)
+            for conn in uni.assign(hl.non_financial_coins(meta), datetime.now(UTC)):
+                tg.create_task(rec.hl_conn(conn["conn"], conn["coins"], conn["queue"]))
+            return len(uni.added) - before
+
+        async def refresher() -> None:
+            while not rec.stop.is_set():
+                await rec._sleep_or_stop(refresh_every)
+                if rec.stop.is_set():
+                    return
+                entry: dict[str, Any] = {"at": datetime.now(UTC).isoformat()}
+                try:
+                    entry["added"] = take(await asyncio.to_thread(fetch_meta))
+                except Exception as exc:  # noqa: BLE001 - a failed listing must not stop recording
+                    entry["error"] = f"{type(exc).__name__}: {exc}"[:300]
+                uni.refreshes.append(entry)
+
+        async def timer() -> None:
+            await rec._sleep_or_stop(minutes * 60)
+            rec.stop.set()
+
+        tg.create_task(disk_guard(rec, min_free_gb))
+        tg.create_task(timer())
+        tg.create_task(refresher())
+        take(initial_meta)

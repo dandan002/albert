@@ -45,6 +45,7 @@ and `.planning/LIVE-PLAN.md`.
 | **Kalshi** | trading venue (CFTC-regulated); the whole bankroll is here | series/categories, settled + open markets, trades, bid/ask candlesticks, order books, WebSocket L2, milestones; orders, fills and positions for the live bots |
 | **Polymarket US** (`gateway.polymarket.us`) | data only (trading on hold since 2026-11-07) | markets, events, order books, BBO, price history, resolutions |
 | **Polymarket international** (`polymarket.com`) | **data only** | market metadata/resolutions (Gamma), on-chain wallet trades, leaderboards, price history (Data API v2) |
+| **Hyperliquid** (`api.hyperliquid.xyz`) | **data only** (its Terms bar US persons; no order client, ever) | HIP-4 outcome markets: `outcomeMeta`, candles, and a WebSocket recording of every non-financial outcome's book and trades, with buyer and seller addresses |
 
 US residents are geoblocked from trading on polymarket.com. Albert only reads its public data
 and never places orders there. Polymarket intl is where the wallet signals come from, because
@@ -53,7 +54,9 @@ its trades are on-chain and attributable. Kalshi and Polymarket US trades are an
 "Non-financial" means Albert excludes Kalshi categories `Financials`, `Economics`, `Crypto`,
 `Commodities` and `Companies`; Polymarket intl tags such as `crypto`, `finance`, `fed` and
 `stocks`; and Polymarket US categories `finance` and `crypto`. See
-`src/albert/categories.py`.
+`src/albert/categories.py`. On Hyperliquid only the sports templates (and outcomes of sports
+questions) count; price binaries, IPO, rate and recurring crypto markets are excluded, and an
+unseen template stays out until reviewed (`venues/hyperliquid.py`).
 
 ---
 
@@ -138,6 +141,7 @@ On the production host these run as systemd services (`deploy/systemd/`, `deploy
 | `albert ingest pm-markets` | Polymarket intl events and markets with resolutions (`--open` for live markets). |
 | `albert ingest pm-wallets` | Leaderboard wallets (per category) and their trades, paged month by month, then backfills resolutions for every market they traded. |
 | `albert ingest pmus` | Polymarket US markets: game moneylines plus politics/culture/science. Closed ingests need `--start/--end`, because the venue has more than 2M closed markets. |
+| `albert ingest hl` | Hyperliquid HIP-4 outcomes (all, flagged `non_financial`) and candles (`--intervals 1h,1m`; the venue keeps the latest 5000 each) for every live non-financial outcome. Paced by request weight. |
 | `albert match` | Builds `match_kalshi_pm` and `match_pmus_pm` (and, with `--fuzzy`, review-only title candidates). |
 | `albert research calibration` | Favorite-longshot tables: hit rate vs price, after-fee edge of buying YES or NO, by category. |
 | `albert research wallets` | Wallet skill scores and an out-of-sample persistence test. |
@@ -156,12 +160,13 @@ On the production host these run as systemd services (`deploy/systemd/`, `deploy
 | `albert research lead-lag` | Paired game moneylines: does Kalshi follow Polymarket intl, or the reverse? |
 | `albert record` | Records live Kalshi and Polymarket order books and trades over WebSocket into `data/raw/stream` (append-only). |
 | `albert record-vol` | Records complete vol-study events (game winners, ladders, weather), adding new markets hourly. |
+| `albert record-hl` | Records Hyperliquid outcome books and trades (non-financial, side 0) into `data/raw/stream/hl`, adding new markets hourly; each hourly `outcomeMeta` is kept as an `hlmeta` frame. |
 | `albert archive-stream`, `restore-stream` | Moves closed stream days to S3 (SHA-256 verified) and brings them back. |
 | `albert backtest l2` | Replays recorded order books and simulates a maker with queue position. |
 | `albert paper l2`, `paper l2-report` | Live paper maker on WebSocket books (no orders) and its markout/settlement report. |
 | `albert paper mentions-report` | Scores the mentions bot's runs (`--env prod` real fills, `--env paper` simulated): bids, fills, settled PnL by phase and event. |
 | `albert compact-raw` | Compresses legacy plain-JSON raw cache files to `.json.zst` (lossless, verified). |
-| `albert capture` | Records small real API responses into `tests/fixtures/` for parser tests (`--only vol`, `--only guard`). |
+| `albert capture` | Records small real API responses into `tests/fixtures/` for parser tests (`--only vol`, `--only guard`, `--only hl`). |
 
 Live trading (`albert live ...`; prod orders need `KALSHI_LIVE_ENABLED=1` in `.env` and `--live`):
 
@@ -461,7 +466,9 @@ data/
   runs/*.json                     ingest manifests (params, row counts, raw files used)
   reports/<name>-<ts>/            report.md + parquet extracts + equity.png
   paper/state.json, ledger.jsonl  paper account and full audit log
-  raw/stream/<venue>/<date>/      recorded WebSocket order books and trades (albert record, record-vol)
+  raw/stream/<venue>/<date>/      recorded WebSocket order books and trades (albert record,
+                                  record-vol; venue hl: albert record-hl). Days older than 4 go
+                                  to S3 (albert archive-stream); restore-stream brings one back
   research/<study>/               study outputs: report.md + parquet (python -m albert.research.<study>)
   paper_l2/, cache/forward/       paper maker runs; forward paper test of frozen rules
   live/                           real orders (Kalshi)
@@ -495,6 +502,8 @@ removed). Old manifests that list `.json` paths still resolve.
 | `pm_leaderboard` | wallet, period, category | PnL/volume ranks (the sampling frame) |
 | `pm_price_history` | token_id, ts | price points |
 | `pmus_markets` / `pmus_open_markets` | slug | Polymarket US: long/short sides, settlement, fee coefficient, min qty |
+| `hl_outcomes` | outcome | Hyperliquid HIP-4 outcomes: template, question, sport, competition, participants, scheduled start, `non_financial`, `seen_at` |
+| `hl_candles` | coin, interval, t | Hyperliquid side-0 candles (OHLC, contracts, trade count) |
 | `match_kalshi_pm`, `match_pmus_pm` | n/a | exact cross-venue matches |
 | `wallet_scores`, `signals_wallet_follow` | n/a | research outputs |
 

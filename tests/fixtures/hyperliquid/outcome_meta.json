@@ -1,0 +1,449 @@
+{
+ "deployers": [
+  {
+   "deployer": "0x08e9c89f46dccee91bdb85c6532eb93a4c335efe",
+   "subDeployers": [
+    [
+     "registerAndAssociateNamedOutcomeFromTemplate",
+     [
+      "0x1c867861e0cffb0eba07d9d94f716189c130dac6"
+     ]
+    ],
+    [
+     "registerQuestionFromTemplate",
+     [
+      "0x1c867861e0cffb0eba07d9d94f716189c130dac6"
+     ]
+    ]
+   ],
+   "venue": "skew"
+  },
+  {
+   "deployer": "0x0c46eb73fae2816f219fcf11f50d6d3c59b5819e",
+   "subDeployers": [
+    [
+     "registerAndAssociateNamedOutcomeFromTemplate",
+     [
+      "0x6947a610ef50f8b5d4b59abcd94dd75aaaa645b9"
+     ]
+    ],
+    [
+     "registerQuestionFromTemplate",
+     [
+      "0x6947a610ef50f8b5d4b59abcd94dd75aaaa645b9"
+     ]
+    ]
+   ],
+   "venue": "out"
+  }
+ ],
+ "feeScale": "1.0",
+ "outcomes": [
+  {
+   "deployerFeeScale": "1.0",
+   "description": "",
+   "name": "template:sportsContestDraw2",
+   "outcome": 38348,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "Yes"
+    },
+    {
+     "name": "No"
+    }
+   ],
+   "venue": "out"
+  },
+  {
+   "deployerFeeScale": "1.0",
+   "description": "participant:Racing Santander",
+   "name": "template:sportsContestParticipant2",
+   "outcome": 38347,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "Yes"
+    },
+    {
+     "name": "No"
+    }
+   ],
+   "venue": "out"
+  },
+  {
+   "deployerFeeScale": "1.0",
+   "description": "other",
+   "name": "template fallback",
+   "outcome": 1472,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "Yes"
+    },
+    {
+     "name": "No"
+    }
+   ],
+   "venue": "out"
+  },
+  {
+   "deployerFeeScale": "1.0",
+   "description": "participant:Arsenal",
+   "name": "template:sportsTournamentParticipant",
+   "outcome": 1473,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "Yes"
+    },
+    {
+     "name": "No"
+    }
+   ],
+   "venue": "out"
+  },
+  {
+   "deployerFeeScale": "1.0",
+   "description": "participant:Manchester City",
+   "name": "template:sportsTournamentParticipant",
+   "outcome": 1474,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "Yes"
+    },
+    {
+     "name": "No"
+    }
+   ],
+   "venue": "out"
+  },
+  {
+   "deployerFeeScale": "1.0",
+   "description": "participant:Liverpool",
+   "name": "template:sportsTournamentParticipant",
+   "outcome": 1475,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "Yes"
+    },
+    {
+     "name": "No"
+    }
+   ],
+   "venue": "out"
+  },
+  {
+   "description": "index:2",
+   "name": "Recurring Named Outcome",
+   "outcome": 41301,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "Yes"
+    },
+    {
+     "name": "No"
+    }
+   ]
+  },
+  {
+   "description": "other",
+   "name": "Recurring Fallback",
+   "outcome": 41298,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "Yes"
+    },
+    {
+     "name": "No"
+    }
+   ]
+  },
+  {
+   "deployerFeeScale": "1.0",
+   "description": "",
+   "name": "template:policyRateDecrease",
+   "outcome": 19989,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "Yes"
+    },
+    {
+     "name": "No"
+    }
+   ],
+   "venue": "out"
+  },
+  {
+   "deployerFeeScale": "1.0",
+   "description": "",
+   "name": "template:policyRateIncrease",
+   "outcome": 19990,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "Yes"
+    },
+    {
+     "name": "No"
+    }
+   ],
+   "venue": "out"
+  },
+  {
+   "deployerFeeScale": "1.0",
+   "description": "",
+   "name": "template:policyRateNoChange",
+   "outcome": 19988,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "Yes"
+    },
+    {
+     "name": "No"
+    }
+   ],
+   "venue": "out"
+  },
+  {
+   "deployerFeeScale": "1.0",
+   "description": "other",
+   "name": "template fallback",
+   "outcome": 19987,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "Yes"
+    },
+    {
+     "name": "No"
+    }
+   ],
+   "venue": "out"
+  },
+  {
+   "deployerFeeScale": "1.0",
+   "description": "other",
+   "name": "template fallback",
+   "outcome": 38346,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "Yes"
+    },
+    {
+     "name": "No"
+    }
+   ],
+   "venue": "out"
+  },
+  {
+   "deployerFeeScale": "1.0",
+   "description": "participant:Real Sociedad",
+   "name": "template:sportsContestParticipant2",
+   "outcome": 38349,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "Yes"
+    },
+    {
+     "name": "No"
+    }
+   ],
+   "venue": "out"
+  },
+  {
+   "description": "index:1",
+   "name": "Recurring Named Outcome",
+   "outcome": 41300,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "Yes"
+    },
+    {
+     "name": "No"
+    }
+   ]
+  },
+  {
+   "description": "index:0",
+   "name": "Recurring Named Outcome",
+   "outcome": 41299,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "Yes"
+    },
+    {
+     "name": "No"
+    }
+   ]
+  },
+  {
+   "deployerFeeScale": "1.0",
+   "description": "perp:xyz:XYZ100|priceDescription:the Hyperliquid xyz:XYZ100 perp trade|seconds:90|threshold:28455|time:20261120-2100",
+   "name": "template:binaryPrice",
+   "outcome": 34924,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "template:Yes"
+    },
+    {
+     "name": "template:No"
+    }
+   ],
+   "venue": "skew"
+  },
+  {
+   "deployerFeeScale": "1.0",
+   "description": "competition:NBA|contestType:Match|countedPlay:the full game including overtime|officialSource:National Basketball Association (NBA)|participantA:Indiana Pacers|participantB:Oklahoma City Thunder|resolutionDeadline:20270224-0030|scheduledStart:20261124-0030|season:2026/27|shortNameA:IND|shortNameB:OKC|sport:Basketball|stage:Regular Season",
+   "name": "template:sportsContestWinner",
+   "outcome": 41418,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "template:{shortNameA}"
+    },
+    {
+     "name": "template:{shortNameB}"
+    }
+   ],
+   "venue": "out"
+  },
+  {
+   "deployerFeeScale": "1.0",
+   "description": "perp:xyz:CL|priceDescription:xyz:CL-USDC perp mark|seconds:3|target:105|time:20261201-0000",
+   "name": "template:priceTouch",
+   "outcome": 22102,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "template:Yes"
+    },
+    {
+     "name": "template:No"
+    }
+   ],
+   "venue": "out"
+  },
+  {
+   "deployerFeeScale": "1.0",
+   "description": "company:Anthropic|listingDeadline:20270501-0359|marketCapThresholdB:1500",
+   "name": "template:companyIpoFirstDayMarketCap",
+   "outcome": 19821,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "template:Yes"
+    },
+    {
+     "name": "template:No"
+    }
+   ],
+   "venue": "skew"
+  },
+  {
+   "description": "company:Anthropic|dateTime:20261130-2359",
+   "name": "template:companyIpoConfirmed",
+   "outcome": 5112,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "template:Yes"
+    },
+    {
+     "name": "template:No"
+    }
+   ],
+   "venue": "txyz"
+  },
+  {
+   "description": "class:priceBinary|underlying:SOL|expiry:20261121-0600|targetPrice:72.697|period:1d",
+   "name": "Recurring",
+   "outcome": 41296,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "Yes"
+    },
+    {
+     "name": "No"
+    }
+   ]
+  },
+  {
+   "description": "feed:https://data.chain.link/streams/btc-usd-twap-60s-streams|instrument:BTC/USD|priceDescription:BTC/USD|seconds:60|shortName:BTC|threshold:61813.77|time:20261120-1145",
+   "name": "template:binaryPriceExternal",
+   "outcome": 41572,
+   "quoteToken": "USDC",
+   "sideSpecs": [
+    {
+     "name": "template:Yes"
+    },
+    {
+     "name": "template:No"
+    }
+   ],
+   "venue": "fox"
+  }
+ ],
+ "questions": [
+  {
+   "description": "competition:Spanish La Liga|contestType:Match|countedPlay:regulation time, 90 minutes plus stoppage time|officialSource:Spanish La Liga|participantA:Racing Santander|participantB:Real Sociedad|resolutionDeadline:20270222-1515|scheduledStart:20261122-1515|season:2026/27|sport:Soccer|stage:Matchday 13",
+   "fallbackOutcome": 38346,
+   "name": "template:sportsContestResult",
+   "namedOutcomes": [
+    38347,
+    38348,
+    38349
+   ],
+   "question": 672,
+   "settledNamedOutcomes": []
+  },
+  {
+   "description": "competition:English Premier League|officialSource:English Premier League|resolutionDeadline:20270605-1200|season:2026/2027|sport:football/soccer",
+   "fallbackOutcome": 1472,
+   "name": "template:sportsTournamentWinner",
+   "namedOutcomes": [
+    1473,
+    1474,
+    1475
+   ],
+   "question": 198,
+   "settledNamedOutcomes": []
+  },
+  {
+   "description": "decisionDeadline:20270127-1900|decisionLabel:December 2026|institution:Federal Open Market Committee|officialSource:Federal Open Market Committee|policyMeasure:the upper bound of the target range for the federal funds rate|scheduledDecision:20261209-1900",
+   "fallbackOutcome": 19987,
+   "name": "template:policyRateDecision",
+   "namedOutcomes": [
+    19988,
+    19989,
+    19990
+   ],
+   "question": 545,
+   "settledNamedOutcomes": []
+  },
+  {
+   "description": "class:priceBucket|underlying:BTC|expiry:20261121-0600|priceThresholds:60669,63146|period:1d",
+   "fallbackOutcome": 41298,
+   "name": "Recurring",
+   "namedOutcomes": [
+    41299,
+    41300,
+    41301
+   ],
+   "question": 675,
+   "settledNamedOutcomes": []
+  }
+ ]
+}

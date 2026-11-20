@@ -14,6 +14,10 @@ signals and on high-performing accounts, then runs systematic small-stake bets.
   there and never build geoblock workarounds (VPNs, proxies, third-party wallets).
   **Polymarket US** (docs.polymarket.us) public market data may be used as a reference price or
   signal; trading there is on hold, so build no Polymarket US order client.
+  **Hyperliquid** (api.hyperliquid.xyz) HIP-4 outcome markets: public data only. Its Terms of Use
+  (section 1.6) bar anyone residing or located in the US and section 3.1.5 forbids circumventing that, so
+  never place orders there, build no Hyperliquid order client, and never route around the
+  restriction through the API, another wallet or another host (decided 2026-11-20).
 - **Non-financial:** exclude crypto, financial-index, rates, and economics-release contracts. The
   exact category list is decided from real Kalshi `category` / Polymarket tag values, not guessed.
 

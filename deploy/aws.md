@@ -18,6 +18,10 @@
     Disk floors: record-vol stops below 20 GB free, record below 10 GB (`--min-free-gb`); while
     under the floor systemd restarts it every minute and it exits at once ("stopped: low disk" in
     data/record-vol.log). That is what stopped vol recording 2026-11-18 03:12 → 11-20.
+  - `albert-record-hl` (RECORD_CMD=record-hl deploy/record-loop.sh; since 2026-11-20) →
+    data/raw/stream/hl: Hyperliquid HIP-4 outcome books and trades, non-financial outcomes only,
+    side 0, new markets added hourly on the same 1-2 connections (Hyperliquid allows 10
+    connections and 1000 subscriptions per IP). About 150 MB a day. Public data, never traded.
   - `albert-archive.timer` (installed 2026-11-20) → `albert-archive.service` (daily 08:00 UTC,
     `albert archive-stream --keep-days 4`): closed raw stream days → S3 bucket
     `albert-archive-091914201487` (us-east-2; Block Public Access on, bucket-owner-enforced, versioned,

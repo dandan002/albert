@@ -10,6 +10,7 @@ from albert.categories import pm_is_non_financial, pmus_is_non_financial
 from albert.config import Settings, secret
 from albert.http import CachedClient
 from albert.store import read_table, write_manifest, write_table
+from albert.venues import hyperliquid as hl
 from albert.venues import kalshi as k
 from albert.venues import pandascore as ps
 from albert.venues import polymarket as pm
@@ -24,6 +25,7 @@ class Clients:
     pmus: pmus.PolymarketUS
     iem: wx.IEM | None = None
     pandascore: "ps.PandaScore | None" = None
+    hl: "hl.Hyperliquid | None" = None
 
     @classmethod
     def build(cls, s: Settings, *, record_live: bool = True) -> "Clients":
@@ -46,6 +48,9 @@ class Clients:
             pandascore=ps.PandaScore(CachedClient(
                 "pandascore", s.pandascore_base, s.raw_dir, min_interval=1.1, record_live=record_live,
                 headers={"Authorization": f"Bearer {token}"})) if (token := secret("PANDASCORE_TOKEN")) else None,
+            # Data only (Terms bar US persons). Pacing is by request weight inside hl.Hyperliquid.
+            hl=hl.Hyperliquid(CachedClient("hyperliquid", s.hl_base, s.raw_dir, min_interval=0.1,
+                                           record_live=record_live)),
         )
 
 
@@ -696,4 +701,42 @@ def ingest_pmus(s: Settings, c: Clients, *, closed: bool, start: datetime | None
                                      {"closed": closed, "start": start, "end": end,
                                       "max_pages": max_pages},
                                      result.tables, result.raw_files)
+    return result
+
+
+# ---- Hyperliquid (data only) ----------------------------------------------------------------
+HL_CANDLE_SPAN = {"1m": timedelta(minutes=5000), "5m": timedelta(minutes=5 * 5000),
+                  "15m": timedelta(minutes=15 * 5000), "1h": timedelta(hours=5000)}
+
+
+def ingest_hl(s: Settings, c: Clients, *, intervals: tuple[str, ...] = ("1h", "1m"),
+              max_outcomes: int | None = None) -> IngestResult:
+    """Hyperliquid HIP-4 outcome markets (public data; never traded): the current
+    ``outcomeMeta`` -> ``hl_outcomes`` (every outcome, with ``non_financial``), then candles for
+    each live non-financial outcome (side 0; the venue keeps the latest 5000 per interval) ->
+    ``hl_candles``. Re-runs upsert, so outcomes that settle stay in the table."""
+    assert c.hl is not None
+    result = IngestResult()
+    meta = c.hl.outcome_meta()
+    result.raw_files.append(meta.raw_path)
+    outcomes = hl.outcome_frame(meta.payload).with_columns(pl.lit(meta.fetched_at).alias("seen_at"))
+    _require_rows("hl_outcomes", outcomes)
+    write_table(s.tables_dir, "hl_outcomes", outcomes, key=["outcome"])
+    result.tables["hl_outcomes"] = outcomes.height
+    coins = hl.non_financial_coins(meta.payload)[:max_outcomes]
+    rows: list[dict] = []
+    now = datetime.now(meta.fetched_at.tzinfo)
+    for coin in coins:
+        for interval in intervals:
+            f = c.hl.candles(coin, interval, now - HL_CANDLE_SPAN[interval], now)
+            result.raw_files.append(f.raw_path)
+            rows.extend(hl.candle_rows(f.payload))
+    candles = pl.DataFrame(rows, schema=hl.CANDLE_SCHEMA)
+    _require_rows("hl_candles", candles)
+    write_table(s.tables_dir, "hl_candles", candles, key=["coin", "interval", "t"])
+    result.tables["hl_candles"] = candles.height
+    result.manifest = write_manifest(s.data_dir, "ingest hl", {
+        "intervals": list(intervals), "max_outcomes": max_outcomes, "coins": coins,
+        "unknown_templates": hl.unknown_templates(meta.payload),
+    }, result.tables, [p for p in result.raw_files if p is not None])
     return result

@@ -1,0 +1,18 @@
+[Unit]
+Description=albert: Hyperliquid HIP-4 outcome books and trades recorder (non-financial; public data, never traded)
+After=network-online.target time-sync.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/albert
+Environment=PYTHON=/home/ubuntu/albert/.venv/bin/python
+Environment=RECORD_CMD=record-hl
+ExecStart=/home/ubuntu/albert/deploy/record-loop.sh
+Restart=always
+RestartSec=60
+KillMode=control-group
+TimeoutStopSec=90
+
+[Install]
+WantedBy=multi-user.target

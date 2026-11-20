@@ -226,6 +226,23 @@ def ingest_pmus(
                    end=_day(end) if end else None, max_pages=max_pages).summary())
 
 
+@ingest_app.command("hl")
+def ingest_hl_cmd(
+    intervals: str = typer.Option("1h,1m", help="Candle intervals (1m, 5m, 15m, 1h); the venue keeps "
+                                  "the latest 5000 of each"),
+    max_outcomes: int = typer.Option(None, help="Only the first N non-financial outcomes (soonest first)"),
+) -> None:
+    """Hyperliquid HIP-4 outcome markets (public data; never traded): outcomes and candles."""
+    from albert.ingest import HL_CANDLE_SPAN
+    from albert.ingest import ingest_hl as run
+
+    ivs = tuple(i.strip() for i in intervals.split(",") if i.strip())
+    if bad := [i for i in ivs if i not in HL_CANDLE_SPAN]:
+        raise typer.BadParameter(f"unknown intervals {bad}; choose from {list(HL_CANDLE_SPAN)}")
+    s, c = _clients()
+    typer.echo(run(s, c, intervals=ivs, max_outcomes=max_outcomes).summary())
+
+
 # ---- matching / research / backtest ------------------------------------------------------------
 research_app = typer.Typer(help="Research reports (written to data/reports).", no_args_is_help=True)
 backtest_app = typer.Typer(help="Backtests over strategy signals.", no_args_is_help=True)
@@ -1063,16 +1080,22 @@ def compact_raw_cmd(min_age: float = typer.Option(60.0, help="Skip files younger
 
 @app.command()
 def capture(out: str = typer.Option("tests/fixtures", help="Fixture root directory"),
-            only: str = typer.Option("", help="Capture one group only: 'vol' (record-vol pages) or "
-                                     "'guard' (the live guard's portfolio reads)")) -> None:
+            only: str = typer.Option("", help="Capture one group only: 'vol' (record-vol pages), "
+                                     "'guard' (the live guard's portfolio reads) or 'hl' "
+                                     "(Hyperliquid outcome data)")) -> None:
     """Record trimmed real API responses as test fixtures."""
     from pathlib import Path
 
     from albert.capture import capture as run
-    from albert.capture import capture_guard, capture_vol
+    from albert.capture import capture_guard, capture_hl, capture_vol
 
-    if only not in ("", "vol", "guard"):
-        raise typer.BadParameter("--only must be '', 'vol' or 'guard'")
+    if only not in ("", "vol", "guard", "hl"):
+        raise typer.BadParameter("--only must be '', 'vol', 'guard' or 'hl'")
+    if only == "hl":
+        s, c = _clients()
+        for path in capture_hl(c, Path(out)):
+            typer.echo(path)
+        return
     if only == "guard":
         for path in capture_guard(Path(out)):
             typer.echo(path)
@@ -1246,6 +1269,64 @@ def record_vol_cmd(
     typer.echo(f"{len(uni.markets)} markets on {len(uni.conns)} connections, {len(files)} files, "
                f"{total / 1e6:.1f} MB compressed, {sum(st['frames'] for st in stats.values())} frames, "
                f"{gaps} seq gaps, book checks {matched}/{len(checks)} matched")
+    typer.echo(f"manifest: {path}")
+
+
+@app.command("record-hl")
+def record_hl_cmd(
+    minutes: float = typer.Option(1440.0, help="How long to record"),
+    refresh_min: float = typer.Option(60.0, help="Minutes between outcomeMeta refreshes (new markets)"),
+    chunk: int = typer.Option(150, help="Coins per WebSocket connection (2 subscriptions each)"),
+    max_coins: int = typer.Option(450, help="Coin cap (Hyperliquid: 1000 subscriptions per IP)"),
+    min_free_gb: float = typer.Option(10.0, help="Stop when free disk drops below this"),
+) -> None:
+    """Record Hyperliquid HIP-4 outcome books and trades (non-financial markets, side 0; public
+    data, never traded) into data/raw/stream/hl, adding new markets every hour. Trades carry the
+    buyer and seller addresses; each hourly outcomeMeta is recorded as an `hlmeta` frame."""
+    import asyncio
+    import signal
+    from dataclasses import asdict
+    from pathlib import Path
+
+    from albert.store import write_manifest
+    from albert.stream import HlUniverse, Recorder, fetch_hl_meta, record_hl
+    from albert.venues import hyperliquid as hl
+
+    s = settings()
+    started = datetime.now(UTC)
+    initial = fetch_hl_meta()
+    coins = hl.non_financial_coins(json.loads(initial))
+    typer.echo(f"recording {min(len(coins), max_coins)} Hyperliquid outcome coins for {minutes:g} min, "
+               f"refreshing every {refresh_min:g} min")
+    if not coins:
+        raise typer.Exit("no non-financial Hyperliquid outcomes")
+    rec = Recorder(s.raw_dir / "stream", None)
+    uni = HlUniverse(chunk=chunk, max_coins=max_coins)
+
+    async def main():
+        loop = asyncio.get_running_loop()
+
+        def on_signal(name: str) -> None:
+            rec.stopped_reason = f"signal {name}"
+            rec.stop.set()
+
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, on_signal, sig.name)
+        await record_hl(rec, uni, minutes=minutes, initial_meta=initial, fetch_meta=fetch_hl_meta,
+                        refresh_every=refresh_min * 60, min_free_gb=min_free_gb)
+
+    asyncio.run(main())
+    files = rec.close()
+    stats = {conn: st.as_dict() for conn, st in rec.stats.items()}
+    path = write_manifest(s.data_dir, "record-hl", {
+        "minutes": minutes, "refresh_min": refresh_min, "chunk": chunk, "max_coins": max_coins,
+        "min_free_gb": min_free_gb, "started_at": started, **uni.manifest(),
+    }, {"files": [asdict(f) for f in files], "stats": stats, "stopped_reason": rec.stopped_reason},
+        [Path(f.path) for f in files])
+    total = sum(f.bytes for f in files)
+    typer.echo(f"{len(uni.added)} coins on {len(uni.conns)} connections, {len(files)} files, "
+               f"{total / 1e6:.1f} MB compressed, {sum(st['frames'] for st in stats.values())} frames, "
+               f"{sum(st['error_count'] for st in stats.values())} errors")
     typer.echo(f"manifest: {path}")
 
 

@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 MARKER = "_archived.json"
-VENUES = ("kalshi", "pm")
+VENUES = ("kalshi", "pm", "hl")
 PREFIX = "raw/stream"
 # No retrieval fees and no restore step (unlike Glacier): objects untouched for 30 days drop to
 # the Infrequent Access tier, 90 days to Archive Instant Access, and a GET still works at once.

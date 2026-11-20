@@ -182,3 +182,59 @@ def capture_guard(root: Path, env: str = "prod") -> list[Path]:
         out.append(_write(root, "kalshi", "markets_by_tickers",
                           t.get("/markets", {"tickers": ",".join(tickers), "limit": 100}), 3))
     return out
+
+
+def capture_hl(c: Clients, root: Path) -> list[Path]:
+    """Hyperliquid HIP-4 outcome data (public, never traded): ``outcomeMeta`` trimmed to one
+    question per question template (3 named outcomes plus the fallback) and one standalone
+    outcome per template, then ``l2Book``, ``recentTrades``, ``candleSnapshot`` and a few
+    WebSocket frames for one live non-financial outcome that has traded."""
+    import asyncio
+
+    from websockets.asyncio.client import connect
+
+    from albert.venues import hyperliquid as hl
+
+    assert c.hl is not None
+    meta = c.hl.outcome_meta().payload
+    questions, members = [], set()
+    for q in meta["questions"]:
+        if q["name"] in {x["name"] for x in questions}:
+            continue
+        q = {**q, "namedOutcomes": q["namedOutcomes"][:3]}
+        questions.append(q)
+        members |= set(q["namedOutcomes"]) | {q["fallbackOutcome"]}
+    in_any = {o for q in meta["questions"] for o in [*q["namedOutcomes"], q["fallbackOutcome"]]}
+    standalone: dict[str, dict] = {}
+    for o in meta["outcomes"]:
+        if o["outcome"] not in in_any:
+            standalone.setdefault(o["name"], o)
+    trimmed = {
+        "outcomes": [o for o in meta["outcomes"] if o["outcome"] in members] + list(standalone.values()),
+        "questions": questions,
+        "deployers": [{**d, "subDeployers": [[name, addrs[:1]] for name, addrs in d["subDeployers"][:2]]}
+                      for d in meta["deployers"][:2]],
+        "feeScale": meta["feeScale"],
+    }
+    paths = [_write(root, "hyperliquid", "outcome_meta", trimmed, n=100)]
+    coin = next(x for x in hl.non_financial_coins(meta) if c.hl.recent_trades(x).payload)
+    now = datetime.now(UTC)
+    paths.append(_write(root, "hyperliquid", "l2_book", c.hl.l2_book(coin).payload))
+    paths.append(_write(root, "hyperliquid", "recent_trades", c.hl.recent_trades(coin).payload))
+    paths.append(_write(root, "hyperliquid", "candle_snapshot",
+                        c.hl.candles(coin, "1h", now - timedelta(days=3), now).payload))
+
+    async def frames() -> list[str]:
+        got: dict[str, str] = {}
+        async with connect(hl.WS_URL, open_timeout=20, ping_interval=None) as ws:
+            for typ in ("l2Book", "trades"):
+                await ws.send(json.dumps({"method": "subscribe", "subscription": {"type": typ, "coin": coin}}))
+            await ws.send(json.dumps({"method": "ping"}))
+            async with asyncio.timeout(60):
+                while len(got) < 4:
+                    d = json.loads(await ws.recv())
+                    got.setdefault(d["channel"], json.dumps(_trim(d, 3), separators=(",", ":")))
+        return [got[k] for k in sorted(got)]
+
+    paths.append(_write_text(root, "hyperliquid", "ws_frames.jsonl", "\n".join(asyncio.run(frames()))))
+    return paths
