@@ -1,0 +1,685 @@
+{
+ "_source": "GET /markets?series_ticker=KXTRUMPAPPROVE&status=open (one event) and each leg's /orderbook?depth=10, fetched_at=2026-11-21T01:42:05.541664+00:00",
+ "markets": [
+  {
+   "ticker": "KXTRUMPAPPROVE-26NOV21-U38.0",
+   "event_ticker": "KXTRUMPAPPROVE-26NOV21",
+   "close_time": "2026-11-21T17:59:00Z",
+   "strike_type": "less",
+   "rules_primary": "If Trump's RCP approval average is below 38.0% at exactly 1:00 PM ET on Nov 21, 2026, then the market resolves to Yes.",
+   "status": "active",
+   "result": "",
+   "yes_bid_dollars": "0.0100",
+   "yes_ask_dollars": "0.0200",
+   "yes_bid_size_fp": "60.70",
+   "yes_ask_size_fp": "20.30",
+   "last_price_dollars": "0.0100"
+  },
+  {
+   "ticker": "KXTRUMPAPPROVE-26NOV21-E38.6",
+   "event_ticker": "KXTRUMPAPPROVE-26NOV21",
+   "close_time": "2026-11-21T17:59:00Z",
+   "strike_type": "between",
+   "floor_strike": 38.6,
+   "rules_primary": "If Trump's RCP approval average is exactly 38.6% at exactly 1:00 PM ET on Nov 21, 2026, then the market resolves to Yes.",
+   "status": "active",
+   "result": "",
+   "yes_bid_dollars": "0.0100",
+   "yes_ask_dollars": "0.0200",
+   "yes_bid_size_fp": "60.70",
+   "yes_ask_size_fp": "19.30",
+   "last_price_dollars": "0.0100"
+  },
+  {
+   "ticker": "KXTRUMPAPPROVE-26NOV21-E38.5",
+   "event_ticker": "KXTRUMPAPPROVE-26NOV21",
+   "close_time": "2026-11-21T17:59:00Z",
+   "strike_type": "between",
+   "floor_strike": 38.5,
+   "rules_primary": "If Trump's RCP approval average is exactly 38.5% at exactly 1:00 PM ET on Nov 21, 2026, then the market resolves to Yes.",
+   "status": "active",
+   "result": "",
+   "yes_bid_dollars": "0.0200",
+   "yes_ask_dollars": "0.0600",
+   "yes_bid_size_fp": "7.70",
+   "yes_ask_size_fp": "35.00",
+   "last_price_dollars": "0.0200"
+  },
+  {
+   "ticker": "KXTRUMPAPPROVE-26NOV21-E38.4",
+   "event_ticker": "KXTRUMPAPPROVE-26NOV21",
+   "close_time": "2026-11-21T17:59:00Z",
+   "strike_type": "between",
+   "floor_strike": 38.4,
+   "rules_primary": "If Trump's RCP approval average is exactly 38.4% at exactly 1:00 PM ET on Nov 21, 2026, then the market resolves to Yes.",
+   "status": "active",
+   "result": "",
+   "yes_bid_dollars": "0.7700",
+   "yes_ask_dollars": "0.8000",
+   "yes_bid_size_fp": "210.98",
+   "yes_ask_size_fp": "17.00",
+   "last_price_dollars": "0.7700"
+  },
+  {
+   "ticker": "KXTRUMPAPPROVE-26NOV21-E38.3",
+   "event_ticker": "KXTRUMPAPPROVE-26NOV21",
+   "close_time": "2026-11-21T17:59:00Z",
+   "strike_type": "between",
+   "floor_strike": 38.3,
+   "rules_primary": "If Trump's RCP approval average is exactly 38.3% at exactly 1:00 PM ET on Nov 21, 2026, then the market resolves to Yes.",
+   "status": "active",
+   "result": "",
+   "yes_bid_dollars": "0.1600",
+   "yes_ask_dollars": "0.2000",
+   "yes_bid_size_fp": "1.00",
+   "yes_ask_size_fp": "2.00",
+   "last_price_dollars": "0.1800"
+  },
+  {
+   "ticker": "KXTRUMPAPPROVE-26NOV21-E38.2",
+   "event_ticker": "KXTRUMPAPPROVE-26NOV21",
+   "close_time": "2026-11-21T17:59:00Z",
+   "strike_type": "between",
+   "floor_strike": 38.2,
+   "rules_primary": "If Trump's RCP approval average is exactly 38.2% at exactly 1:00 PM ET on Nov 21, 2026, then the market resolves to Yes.",
+   "status": "active",
+   "result": "",
+   "yes_bid_dollars": "0.0100",
+   "yes_ask_dollars": "0.0200",
+   "yes_bid_size_fp": "60.70",
+   "yes_ask_size_fp": "13.06",
+   "last_price_dollars": "0.0100"
+  },
+  {
+   "ticker": "KXTRUMPAPPROVE-26NOV21-E38.1",
+   "event_ticker": "KXTRUMPAPPROVE-26NOV21",
+   "close_time": "2026-11-21T17:59:00Z",
+   "strike_type": "between",
+   "floor_strike": 38.1,
+   "rules_primary": "If Trump's RCP approval average is exactly 38.1% at exactly 1:00 PM ET on Nov 21, 2026, then the market resolves to Yes.",
+   "status": "active",
+   "result": "",
+   "yes_bid_dollars": "0.0100",
+   "yes_ask_dollars": "0.0200",
+   "yes_bid_size_fp": "60.70",
+   "yes_ask_size_fp": "19.30",
+   "last_price_dollars": "0.0100"
+  },
+  {
+   "ticker": "KXTRUMPAPPROVE-26NOV21-E38.0",
+   "event_ticker": "KXTRUMPAPPROVE-26NOV21",
+   "close_time": "2026-11-21T17:59:00Z",
+   "strike_type": "between",
+   "floor_strike": 38,
+   "rules_primary": "If Trump's RCP approval average is exactly 38.0% at exactly 1:00 PM ET on Nov 21, 2026, then the market resolves to Yes.",
+   "status": "active",
+   "result": "",
+   "yes_bid_dollars": "0.0100",
+   "yes_ask_dollars": "0.0200",
+   "yes_bid_size_fp": "60.70",
+   "yes_ask_size_fp": "19.30",
+   "last_price_dollars": "0.0100"
+  },
+  {
+   "ticker": "KXTRUMPAPPROVE-26NOV21-A38.6",
+   "event_ticker": "KXTRUMPAPPROVE-26NOV21",
+   "close_time": "2026-11-21T17:59:00Z",
+   "strike_type": "greater",
+   "floor_strike": 38.6,
+   "rules_primary": "If Trump's RCP approval average is above 38.6% at exactly 1:00 PM ET on Nov 21, 2026, then the market resolves to Yes.",
+   "status": "active",
+   "result": "",
+   "yes_bid_dollars": "0.0100",
+   "yes_ask_dollars": "0.0200",
+   "yes_bid_size_fp": "60.70",
+   "yes_ask_size_fp": "19.30",
+   "last_price_dollars": "0.0100"
+  }
+ ],
+ "orderbooks": {
+  "KXTRUMPAPPROVE-26NOV21-U38.0": {
+   "orderbook_fp": {
+    "no_dollars": [
+     [
+      "0.4800",
+      "80.00"
+     ],
+     [
+      "0.5700",
+      "51.00"
+     ],
+     [
+      "0.6100",
+      "52.00"
+     ],
+     [
+      "0.6200",
+      "50.00"
+     ],
+     [
+      "0.6700",
+      "1.00"
+     ],
+     [
+      "0.6800",
+      "250.00"
+     ],
+     [
+      "0.7800",
+      "1.00"
+     ],
+     [
+      "0.9400",
+      "1.00"
+     ],
+     [
+      "0.9500",
+      "199.00"
+     ],
+     [
+      "0.9800",
+      "20.30"
+     ]
+    ],
+    "yes_dollars": [
+     [
+      "0.0100",
+      "60.70"
+     ]
+    ]
+   }
+  },
+  "KXTRUMPAPPROVE-26NOV21-E38.6": {
+   "orderbook_fp": {
+    "no_dollars": [
+     [
+      "0.2600",
+      "1.00"
+     ],
+     [
+      "0.3300",
+      "1.00"
+     ],
+     [
+      "0.3400",
+      "54.00"
+     ],
+     [
+      "0.3500",
+      "9.00"
+     ],
+     [
+      "0.4000",
+      "1.00"
+     ],
+     [
+      "0.6600",
+      "1.00"
+     ],
+     [
+      "0.7800",
+      "1.00"
+     ],
+     [
+      "0.9400",
+      "1.00"
+     ],
+     [
+      "0.9500",
+      "200.00"
+     ],
+     [
+      "0.9800",
+      "19.30"
+     ]
+    ],
+    "yes_dollars": [
+     [
+      "0.0100",
+      "60.70"
+     ]
+    ]
+   }
+  },
+  "KXTRUMPAPPROVE-26NOV21-E38.5": {
+   "orderbook_fp": {
+    "no_dollars": [
+     [
+      "0.3300",
+      "1.00"
+     ],
+     [
+      "0.3500",
+      "9.00"
+     ],
+     [
+      "0.4000",
+      "1.00"
+     ],
+     [
+      "0.6200",
+      "165.00"
+     ],
+     [
+      "0.6600",
+      "1.00"
+     ],
+     [
+      "0.7000",
+      "10.44"
+     ],
+     [
+      "0.7100",
+      "109.00"
+     ],
+     [
+      "0.8100",
+      "1.00"
+     ],
+     [
+      "0.9300",
+      "201.00"
+     ],
+     [
+      "0.9400",
+      "35.00"
+     ]
+    ],
+    "yes_dollars": [
+     [
+      "0.0100",
+      "81.00"
+     ],
+     [
+      "0.0200",
+      "7.70"
+     ]
+    ]
+   }
+  },
+  "KXTRUMPAPPROVE-26NOV21-E38.4": {
+   "orderbook_fp": {
+    "no_dollars": [
+     [
+      "0.0700",
+      "1002.18"
+     ],
+     [
+      "0.0800",
+      "767.00"
+     ],
+     [
+      "0.0900",
+      "1198.00"
+     ],
+     [
+      "0.1000",
+      "394.00"
+     ],
+     [
+      "0.1100",
+      "1.00"
+     ],
+     [
+      "0.1400",
+      "1.00"
+     ],
+     [
+      "0.1600",
+      "196.47"
+     ],
+     [
+      "0.1700",
+      "200.00"
+     ],
+     [
+      "0.1900",
+      "11.00"
+     ],
+     [
+      "0.2000",
+      "17.00"
+     ]
+    ],
+    "yes_dollars": [
+     [
+      "0.4200",
+      "1.00"
+     ],
+     [
+      "0.4500",
+      "1.00"
+     ],
+     [
+      "0.4800",
+      "1.00"
+     ],
+     [
+      "0.5300",
+      "2.00"
+     ],
+     [
+      "0.5400",
+      "2.00"
+     ],
+     [
+      "0.7200",
+      "100.00"
+     ],
+     [
+      "0.7300",
+      "300.00"
+     ],
+     [
+      "0.7400",
+      "100.00"
+     ],
+     [
+      "0.7600",
+      "31.31"
+     ],
+     [
+      "0.7700",
+      "210.98"
+     ]
+    ]
+   }
+  },
+  "KXTRUMPAPPROVE-26NOV21-E38.3": {
+   "orderbook_fp": {
+    "no_dollars": [
+     [
+      "0.4400",
+      "1.00"
+     ],
+     [
+      "0.7000",
+      "10.00"
+     ],
+     [
+      "0.7100",
+      "1.00"
+     ],
+     [
+      "0.7200",
+      "5.00"
+     ],
+     [
+      "0.7300",
+      "1.00"
+     ],
+     [
+      "0.7500",
+      "1.00"
+     ],
+     [
+      "0.7600",
+      "1.00"
+     ],
+     [
+      "0.7800",
+      "200.00"
+     ],
+     [
+      "0.7900",
+      "85.00"
+     ],
+     [
+      "0.8000",
+      "2.00"
+     ]
+    ],
+    "yes_dollars": [
+     [
+      "0.0300",
+      "45.00"
+     ],
+     [
+      "0.0400",
+      "16.00"
+     ],
+     [
+      "0.0500",
+      "1.00"
+     ],
+     [
+      "0.0800",
+      "1.00"
+     ],
+     [
+      "0.0900",
+      "1.00"
+     ],
+     [
+      "0.1200",
+      "200.00"
+     ],
+     [
+      "0.1300",
+      "11.00"
+     ],
+     [
+      "0.1400",
+      "26.00"
+     ],
+     [
+      "0.1500",
+      "1.00"
+     ],
+     [
+      "0.1600",
+      "1.00"
+     ]
+    ]
+   }
+  },
+  "KXTRUMPAPPROVE-26NOV21-E38.2": {
+   "orderbook_fp": {
+    "no_dollars": [
+     [
+      "0.4800",
+      "61.00"
+     ],
+     [
+      "0.6600",
+      "1.00"
+     ],
+     [
+      "0.6700",
+      "44.00"
+     ],
+     [
+      "0.6800",
+      "57.00"
+     ],
+     [
+      "0.7300",
+      "35.00"
+     ],
+     [
+      "0.7400",
+      "95.00"
+     ],
+     [
+      "0.8200",
+      "1.00"
+     ],
+     [
+      "0.9400",
+      "1.00"
+     ],
+     [
+      "0.9500",
+      "200.00"
+     ],
+     [
+      "0.9800",
+      "13.06"
+     ]
+    ],
+    "yes_dollars": [
+     [
+      "0.0100",
+      "60.70"
+     ]
+    ]
+   }
+  },
+  "KXTRUMPAPPROVE-26NOV21-E38.1": {
+   "orderbook_fp": {
+    "no_dollars": [
+     [
+      "0.4900",
+      "64.00"
+     ],
+     [
+      "0.6600",
+      "1.00"
+     ],
+     [
+      "0.6800",
+      "49.00"
+     ],
+     [
+      "0.6900",
+      "55.00"
+     ],
+     [
+      "0.7300",
+      "33.00"
+     ],
+     [
+      "0.7400",
+      "95.00"
+     ],
+     [
+      "0.8900",
+      "1.00"
+     ],
+     [
+      "0.9400",
+      "1.00"
+     ],
+     [
+      "0.9500",
+      "200.00"
+     ],
+     [
+      "0.9800",
+      "19.30"
+     ]
+    ],
+    "yes_dollars": [
+     [
+      "0.0100",
+      "60.70"
+     ]
+    ]
+   }
+  },
+  "KXTRUMPAPPROVE-26NOV21-E38.0": {
+   "orderbook_fp": {
+    "no_dollars": [
+     [
+      "0.3300",
+      "1.00"
+     ],
+     [
+      "0.3500",
+      "9.00"
+     ],
+     [
+      "0.4000",
+      "1.00"
+     ],
+     [
+      "0.5900",
+      "50.00"
+     ],
+     [
+      "0.6700",
+      "1.00"
+     ],
+     [
+      "0.6800",
+      "250.00"
+     ],
+     [
+      "0.8900",
+      "1.00"
+     ],
+     [
+      "0.9400",
+      "1.00"
+     ],
+     [
+      "0.9500",
+      "200.00"
+     ],
+     [
+      "0.9800",
+      "19.30"
+     ]
+    ],
+    "yes_dollars": [
+     [
+      "0.0100",
+      "60.70"
+     ]
+    ]
+   }
+  },
+  "KXTRUMPAPPROVE-26NOV21-A38.6": {
+   "orderbook_fp": {
+    "no_dollars": [
+     [
+      "0.4000",
+      "1.00"
+     ],
+     [
+      "0.4500",
+      "1.00"
+     ],
+     [
+      "0.6700",
+      "1.00"
+     ],
+     [
+      "0.8600",
+      "500.00"
+     ],
+     [
+      "0.8900",
+      "1.00"
+     ],
+     [
+      "0.9300",
+      "250.00"
+     ],
+     [
+      "0.9400",
+      "1.00"
+     ],
+     [
+      "0.9500",
+      "200.00"
+     ],
+     [
+      "0.9600",
+      "100.00"
+     ],
+     [
+      "0.9800",
+      "19.30"
+     ]
+    ],
+    "yes_dollars": [
+     [
+      "0.0100",
+      "60.70"
+     ]
+    ]
+   }
+  }
+ }
+}

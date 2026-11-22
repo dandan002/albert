@@ -1,0 +1,20 @@
+[Unit]
+Description=albert: forward paper tests of the swarm leads (culture maker NO, HITS album units, approval NO; never sends an order)
+After=network-online.target time-sync.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/albert
+Environment=PYTHONUNBUFFERED=1
+# $25 paper bankroll per rule (user, 2026-11-21: "assuming $20-30 bankroll initially").
+# Stop: touch data/paper_forward/STOP (or systemctl stop). Score: python -m albert.paper_forward report
+ExecStart=/home/ubuntu/albert/.venv/bin/python -m albert.paper_forward run --bankroll 25
+Nice=10
+MemoryMax=700M
+Restart=on-failure
+RestartSec=120
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

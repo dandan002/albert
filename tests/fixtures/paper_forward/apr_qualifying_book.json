@@ -1,0 +1,60 @@
+{
+ "_source": "albert.research.approval2 recorder book row (data/research/approval2/forward/), GET /markets/KXTRUMPAPPROVE-26NOV21-E38.5/orderbook?depth=10 fetched_at=2026-11-20T22:38:44.096144+00:00; levels as recorded",
+ "ticker": "KXTRUMPAPPROVE-26NOV21-E38.5",
+ "orderbook": {
+  "orderbook_fp": {
+   "yes_dollars": [
+    [
+     "0.0100",
+     "291.00"
+    ],
+    [
+     "0.0200",
+     "27.01"
+    ]
+   ],
+   "no_dollars": [
+    [
+     "0.1800",
+     "1.00"
+    ],
+    [
+     "0.2000",
+     "1.00"
+    ],
+    [
+     "0.2300",
+     "50.00"
+    ],
+    [
+     "0.2800",
+     "1.00"
+    ],
+    [
+     "0.3500",
+     "9.00"
+    ],
+    [
+     "0.3600",
+     "52.00"
+    ],
+    [
+     "0.6300",
+     "1.00"
+    ],
+    [
+     "0.7500",
+     "1.00"
+    ],
+    [
+     "0.8400",
+     "1.00"
+    ],
+    [
+     "0.9000",
+     "200.01"
+    ]
+   ]
+  }
+ }
+}

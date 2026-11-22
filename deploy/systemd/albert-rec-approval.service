@@ -1,0 +1,13 @@
+[Unit]
+Description=albert: approval recorder snapshot (Rasmussen tracker, Kalshi approval quotes and depth-10 books; public data)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/albert
+ExecStart=/home/ubuntu/albert/.venv/bin/python -m albert.research.approval2 record
+Nice=10
+MemoryMax=800M
+TimeoutStartSec=15min

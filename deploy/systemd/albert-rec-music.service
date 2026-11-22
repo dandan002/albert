@@ -1,0 +1,13 @@
+[Unit]
+Description=albert: music-chart recorder snapshot (HITS chart posts, Apple/iTunes charts, Kalshi chart and ladder quotes; public data)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/albert
+ExecStart=/home/ubuntu/albert/.venv/bin/python -m albert.research.music_charts record
+Nice=10
+MemoryMax=800M
+TimeoutStartSec=20min
