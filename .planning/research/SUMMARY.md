@@ -832,3 +832,95 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
   30, $5/order): Sharpe 1.6 [−3.6, 3.2], −2.5 without the top-5 events, vol 186%, max DD −$46. The
   8c margin and the raw-mid control are flat too. Untested: the 12 h early phase and anything after
   Nov 5. They also stay out of scope as financial (`albert.categories`).
+- **Culture, approval and executive-action swarm (2026-11-20/21; 8 research agents + 3 skeptics;
+  reports in `data/research/{netflix,music_charts,culture_recurring,approval2,exec_actions,
+  recurring_alt,culture_flow,ta_recurring}/report.md`, reviews in `.../review.md`).** User: "agent
+  swarm approach to researching strategies on culture markets like top Netflix shows weekly and
+  other repetitive markets. Full research freedom, including alternative info", plus approval
+  ratings, executive orders and (added) technical indicators. Each agent wrote hypotheses before
+  outcome data, froze rules on dev (≤ Sep 30), scored Oct 1 – Nov 20 once; candidates went to an
+  adversarial reviewer.
+  - *Netflix* (`netflix.py`, 54 dev cells): the weekly #1 is decided before any allowed daily data
+    is public (winner ~0.94 by Sun 18:00 ET, ~0.98 by Mon 18:00 ET). What's on Netflix daily pages
+    (allowed; live ~18:00Z D to 00:38Z D+1) pick the winner 45–59% and lose when traded. Late-week
+    NO on 1–10c legs: 41/41 dev → 8 legs, 1 loss, −7.6c holdout; favourite 90–98c Sunday:
+    −27.7%/$ holdout (global movies). netflix.com is robots-blocked except ClaudeBot (not used);
+    FlixPatrol, Reelgood blocked. **No edge.**
+  - *Music charts* (`music_charts.py`, ≥ 83 dev cells): HITS Daily Double (allowed) posts album
+    projections Tue ~16:00 ET; Kalshi's Luminate ladders absorb them over ~24 h. Frozen taker
+    claimed dev +20.8c (t 3.75), holdout +16.7c (t 1.83, 14 events). **Review: weakened** — HITS
+    edits tables in place (a traded holdout row did not exist yet at decision) and `publishedAt`
+    precedes visibility by 20–45 min. Corrected (first-published tables, act ≥ 45 min after the
+    stamp): dev +17.4c t 3.06, holdout +10.4c t 1.22 (14 fills, 5 decision hours), Sharpe ex top-5
+    −3.1. The post-decision drift toward the HITS price is real (+3.4c at 1 h t 3.0, +7.8c at 24 h
+    t 3.9). Billboard #1/#2, the HITS Friday final and the Sunday Billboard 200 reveal are priced.
+    billboard.com, Spotify charts, chartmasters blocked; kworb's Spotify pages treated as blocked.
+    **Paper candidate (KXALBUMEQUIV only, clock from first sighting, frozen tables, book-sized).**
+  - *Other culture/tech* (`culture_recurring.py`, 118 cells): universe led by Rotten Tomatoes
+    ($32M/3 mo), OpenRouter shares, LMArena; Kalshi has no box-office series now. RT favourite
+    85–97c at T−6h: 29/29 dev, 6/6 holdout, ~+6c (exact p 0.11 pooled), $0.2/week. RT robots.txt
+    returns 403 → treated as blocked (so culture.py's Wayback RT data is out under the policy).
+    **No tradable edge**; OpenRouter in-week share needs a recorder.
+  - *Approval* (`approval2.py`, 170 cells): pollster front-running fails (the ladder moves when
+    Rasmussen publishes, before RCP enters it, 15/16 days). Frozen NO on 5–15c KXTRUMPAPPROVE legs at
+    01:00 ET: dev +1.8c t 0.5 → holdout +4.6c t 2.63. **Review: weakened** — under the $5 cap the
+    code picked legs alphabetically; random pick ≈ +2.9c (t 1.5), all legs +2.6c (t 1.4); losing-leg
+    count p ≈ 0.07; pooled Sep–Nov +3.7c t 2.3, Sharpe 4.8 (3.8 ex top-5), $0.76/week. A generic
+    near-expiry 5–15c longshot premium (positive 4–23 h out, both sides of the mode), not a trend
+    bet. VoteHub, Silver Bulletin, NYT blocked. **At most a free paper side-job (~$25/yr).**
+  - *Executive actions* (`exec_actions.py`, 228 cells): White House presidential-actions feed
+    (allowed, timestamped) rebuilds all 448 KXTRUMPACT/ACTD/NOMNUM results; Federal Register rebuilds
+    all 125 KXEOWEEK. Nowcast taker on KXTRUMPACT dev +20.0c t 4.5 → holdout +1.4c t 0.16 (White
+    House activity fell in Oct–Nov). Kalshi prints 1–16 s after each post; televised signings
+    priced ≥ 90c beforehand. **No edge.** Post-hoc NO-only lead (+19.9c dev, 7 holdout fills).
+  - *Other recurring* (`recurring_alt.py`, 113 cells, 152 series): PortWatch publishes after the
+    week; the Tuesday release lands 40–60 min before close and is swept within a second (the feature
+    service has no verifiable robots.txt). Strait NO 10–20c: dev +5.9c → holdout −7.3c. Truth
+    Social/ActBlue 3–10c NO: pennies, post-hoc. **No edge.**
+  - *Technical indicators* (`ta_recurring.py`, 2,268 cells, 31,939 volume-blind markets): 0 pass
+    Holm; frozen Donchian-48 exec-actions trend +12.3c → +0.15c; resting bids lose 1–5c/fill to
+    adverse selection and indicators add ~1c; post-publication moves revert. **No edge** (same as
+    `ta_calendar` on sports/weather).
+  - *Cross-family flow* (`culture_flow.py`, 272 cells): Polymarket twins agree within 0.35–0.73c and
+    don't lead; Netflix specialist wallets persist on Polymarket (top 20 +19.8%/$ holdout, t 5.9) but
+    following them on Kalshi loses (−2.4c). **Mentions mechanism carries over:** maker NO selling YES
+    at mid + 12c on ≤ 5c legs at close − 72 h, 37 series: dev +8.9c/fill t 2.4 (80 fills) → holdout
+    +12.5c t 7.7 (88 fills, 47 events); 24 h weaker, 6 h ≈ 0. Named before holdout scoring but not
+    the frozen primary. **Review: weakened, not refuted** — trade prints reproduce the candle fills
+    exactly (89 vs 88 fills, +12.56c); 2 exact-book fills matched; pooled 169 fills +10.8c t 5.3,
+    4.1% resolved YES vs 15% break-even; all 7 losers followed ≥ 200 contracts of informed flow;
+    69% of holdout orders sat on books with no YES bid; leave-one-family/week ≥ +11c; no unseen data
+    yet. Cash-aware book: $0.59/week on the $57 not used by mentions (Sharpe 9.0 on a near-loss-free
+    sample; dev book at $40 Sharpe 4.5). **Best paper candidate** (rules in `culture_flow/review.md`:
+    live book, 1 contract post-only, real two-sided mid ≤ 5c, ≤ 3 legs per event, $20 cash cap; pass
+    at ≥ 150 fills / 10 weeks, t ≥ 2, ≥ +5c/fill, < 10% YES, Sharpe ex top-5 > 1).
+  - **Net:** no new live strategy. Two paper tests worth running (culture maker NO; HITS → album
+    units), one free side-job (approval longshot NO). Recorders built and smoke-tested, none
+    scheduled: `python -m albert.research.{netflix,music_charts,culture_recurring,approval2,
+    exec_actions,recurring_alt} record`.
+  - *Shared fix (2026-11-21):* `vol_metrics.load_marks` marked books with no bid (0) and no ask (1)
+    at 50c and read only fixed candle files. It now uses the mid only when 0 < bid < ask < 1 (else
+    the last trade) and also reads per-study caches (`data/cache/*/candles/`,
+    `data/research/*/candles/`, `ta_recurring/candles_marks.parquet`). Sharpe/vol of earlier
+    NO-on-longshot ledgers re-run through `vol_metrics` will change (lower vol).
+  - *Open policy questions (user):* (1) a robots.txt that returns 403 (RT treated as blocked; RCP's
+    archived robots copy used by approval2 and approval.py); (2) kworb.net's YouTube list in the
+    culture_recurring recorder (YouTube's data API is blocked); (3) What's on Netflix's own in-app
+    tracking treated as allowed while netflix.com is blocked except ClaudeBot.
+  - **Forward paper tests started 2026-11-21 01:45 UTC** (user: "Let's do paper tests assuming $20-30
+    bankroll initially and run recorders for each promising strategy"): `albert.paper_forward`
+    (systemd `albert-paper-forward`, no order client, Kalshi public data only), $25 paper bankroll per
+    rule, append-only ledgers in `data/paper_forward/<rule>/ledger.jsonl`, hourly marks in
+    `marks.jsonl`. **cmn** = culture maker NO as in `culture_flow/review.md` (REST book at close −
+    72 h, real two-sided mid ≤ 5c, 1 lot at ceil(mid + 12c), cheapest NO first, ≤ 3 legs/event,
+    resting collateral + open positions ≤ $25; legs past a cap are shadow orders, tracked not
+    booked; fill = first YES-taker print strictly through). **hits** = HITS first-sight trigger
+    (listing polled every 5 min Tue 13-21 ET, else 30 min; raw post frozen), frozen dev fit,
+    KXALBUMEQUIV only, edge ≥ 5c after fee, ≤ displayed size / 10 contracts / 4% of bankroll per
+    order, 5% per event, quotes logged at +1/+6/+24 h. **apr** = 1 NO at 1 − bid on every
+    KXTRUMPAPPROVE leg with 5c < mid ≤ 15c and spread ≤ 10c at settlement − 12 h (every qualifying
+    leg, so no tie-break). Pass bars unchanged from the reviews (cmn ≥ 150 fills over ≥ 10 weeks;
+    hits 8-10 Tuesdays; apr ≈ 200 fills). Recorders scheduled: `albert-rec-music.timer` (hourly,
+    every 10 min Tue/Fri HITS windows and Sun reveal) and `albert-rec-approval.timer` (5 min Mon-Fri
+    12-18 UTC, else 30 min). Not scheduled (no edge): netflix, culture_recurring, exec_actions,
+    recurring_alt. Score: `python -m albert.paper_forward report`.

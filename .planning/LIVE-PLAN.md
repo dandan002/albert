@@ -1,5 +1,13 @@
 # Live (cash) maker pilot: plan
 
+**UPDATE, 2026-11-21 01:50 UTC**: new paper service `albert-paper-forward` (`albert.paper_forward`;
+never sends an order, Kalshi public data only), started 01:45 UTC: forward paper tests of the swarm's
+culture maker NO (`cmn`), HITS → KXALBUMEQUIV (`hits`) and approval NO (`apr`) rules, $25 paper
+bankroll each (user: "assuming $20-30 bankroll initially"). New recorder timers `albert-rec-music.timer`
+and `albert-rec-approval.timer`. Kill file `data/paper_forward/STOP`; score with
+`python -m albert.paper_forward report`. First decisions: cmn 2026-11-21 04:59 UTC (Netflix weekly),
+apr 06:00 UTC, hits at the first HITS preview (Tue 2026-11-24). Existing bots untouched.
+
 **STATUS, 2026-11-20 22:00 UTC** (read-only check; no bot restarted or changed):
 
 - **Running:** `albert-mentions@prod` (live) and `@paper` since 2026-11-19 21:19 / 21:18 UTC, 0 restarts,

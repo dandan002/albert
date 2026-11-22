@@ -55,6 +55,23 @@ Each phase ends with a **live smoke run that produces non-empty, sanity-checked 
 - [x] Fixed two biases: decisions anchored on scheduled expiry (not actual close), and
       volume-blind samples (`ingest kalshi-detail --series`, `--universe population`). The
       Phase 5 longshot edge is withdrawn.
+- [x] Culture / approval / executive-action swarm (2026-11-20/21; `.planning/research/SUMMARY.md`):
+      Netflix, music charts, other culture/tech, approval, executive actions, other recurring
+      series, cross-family flow and technical indicators. No new live strategy.
+- [ ] Forward paper tests from the swarm: **running since 2026-11-21** (`albert.paper_forward`,
+      systemd `albert-paper-forward`, $25 paper bankroll per rule; `python -m albert.paper_forward report`):
+  - Culture maker NO (`cmn`): 1-contract post-only NO bid at ceil(mid + 12c) on real two-sided legs
+    with mid ≤ 5c, close − 72 h, cheapest NO first, ≤ 3 legs per event, ≤ $25 cash
+    (`data/research/culture_flow/review.md`). Pass: ≥ 150 fills over ≥ 10 weeks, t ≥ 2, ≥ +5c/fill,
+    < 10% YES, Sharpe ex top-5 > 1.
+  - HITS → KXALBUMEQUIV taker (`hits`): first sighting of the week's first preview, frozen tables,
+    book-sized (`data/research/music_charts/review.md`). Pass: 8-10 forward Tuesdays, t ≥ 2,
+    Sharpe ex top-5 > 1.
+  - Approval 5–15c NO (`apr`): every qualifying leg, 1 contract (no tie-break). Needs about 200 fills.
+- [x] Forward recorders for the promising leads scheduled 2026-11-21: `albert-rec-music.timer`,
+      `albert-rec-approval.timer`. Not scheduled (no edge): netflix, culture_recurring, exec_actions,
+      recurring_alt.
+- [ ] Settle the robots edge cases (403 robots.txt, kworb's YouTube list, What's on Netflix).
 
 ## Phase 4: Backtester
 
