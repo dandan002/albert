@@ -63,3 +63,24 @@ def test_ledger_metrics_concentration_and_basis():
     assert m["pnl_usd"] == pytest.approx(10.0 - 4.1 - 5.0)
     assert m["positions"] == 2 and m["events"] == 2
     assert m["days"] == 20
+
+
+def test_load_marks_one_sided_books_and_study_aliases(tmp_path):
+    # kalshi_candles schema: a missing bid is 0 and a missing ask is 1 (as in data/tables/kalshi_candles)
+    (tmp_path / "data/tables").mkdir(parents=True)
+    pl.DataFrame({"ticker": ["A", "A", "A"], "end_ts": [_ts(1, 1), _ts(1, 2), _ts(1, 3)],
+                  "yes_bid_close": [0.0, 0.02, 0.0], "yes_ask_close": [1.0, 0.04, 0.03],
+                  "price_close": [None, 0.03, 0.05]}).write_parquet(tmp_path / "data/tables/kalshi_candles.parquet")
+    # an xcat-style study cache (bid/ask/price), and a period-tagged cache whose 1-minute rows are ignored
+    (tmp_path / "data/research/s1/candles").mkdir(parents=True)
+    pl.DataFrame({"ticker": ["B"], "end_ts": [_ts(1, 1)], "bid": [0.40], "ask": [0.44], "price": [0.41]}
+                 ).write_parquet(tmp_path / "data/research/s1/candles/part-0.parquet")
+    (tmp_path / "data/cache/s2/candles").mkdir(parents=True)
+    pl.DataFrame({"ticker": ["C", "C"], "end_ts": [_ts(1, 1), _ts(1, 2)], "period": [60, 1],
+                  "bid_close": [0.10, 0.90], "ask_close": [0.12, 0.92], "p_close": [0.11, 0.91]}
+                 ).write_parquet(tmp_path / "data/cache/s2/candles/part-0.parquet")
+    pl.DataFrame({"ticker": ["C"]}).write_parquet(tmp_path / "data/cache/s2/candles/index.parquet")  # skipped
+    m = M.load_marks(["A", "B", "C"], root=tmp_path)
+    got = {(r["ticker"], r["ts"].hour): round(r["yes_mid"], 4) for r in m.iter_rows(named=True)}
+    # A: empty book with no trade -> no mark (not 50c); two-sided -> mid; bid 0 -> last trade
+    assert got == {("A", 2): 0.03, ("A", 3): 0.05, ("B", 1): 0.42, ("C", 1): 0.11}
