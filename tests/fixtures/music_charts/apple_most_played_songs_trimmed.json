@@ -1,0 +1,90 @@
+{
+ "feed": {
+  "title": "Top Songs",
+  "id": "https://rss.marketingtools.apple.com/api/v2/us/music/most-played/100/songs.json",
+  "author": {
+   "name": "Apple",
+   "url": "https://www.apple.com/"
+  },
+  "links": [
+   {
+    "self": "https://rss.marketingtools.apple.com/api/v2/us/music/most-played/100/songs.json"
+   }
+  ],
+  "copyright": "Copyright \u00a9 2026 Apple Inc. All rights reserved.",
+  "country": "us",
+  "icon": "https://www.apple.com/favicon.ico",
+  "updated": "Fri, 20 Nov 2026 22:34:03 +0000",
+  "results": [
+   {
+    "artistName": "Ella Langley",
+    "id": "1844932150",
+    "name": "Choosin' Texas",
+    "releaseDate": "2025-10-17",
+    "kind": "songs",
+    "artistId": "1384373733",
+    "artistUrl": "https://music.apple.com/us/artist/ella-langley/1384373733",
+    "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/e2/91/4d/e2914d0a-7f1d-f04c-fbf4-c50b38548838/196873638690.jpg/100x100bb.jpg",
+    "genres": [
+     {
+      "genreId": "6",
+      "name": "Country",
+      "url": "https://itunes.apple.com/us/genre/id6"
+     },
+     {
+      "genreId": "34",
+      "name": "Music",
+      "url": "https://itunes.apple.com/us/genre/id34"
+     }
+    ],
+    "url": "https://music.apple.com/us/album/choosin-texas/1844932149?i=1844932150"
+   },
+   {
+    "artistName": "Morgan Wallen",
+    "id": "6812477290",
+    "name": "Last Thing You Need",
+    "releaseDate": "2026-09-17",
+    "kind": "songs",
+    "artistId": "829142092",
+    "artistUrl": "https://music.apple.com/us/artist/morgan-wallen/829142092",
+    "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/5d/d3/1c/5dd31c9c-1e1c-0bbc-104f-4a42e2bb4c59/075679556424.jpg/100x100bb.jpg",
+    "genres": [
+     {
+      "genreId": "6",
+      "name": "Country",
+      "url": "https://itunes.apple.com/us/genre/id6"
+     },
+     {
+      "genreId": "34",
+      "name": "Music",
+      "url": "https://itunes.apple.com/us/genre/id34"
+     }
+    ],
+    "url": "https://music.apple.com/us/album/last-thing-you-need/6812476961?i=6812477290"
+   },
+   {
+    "artistName": "Morgan Wallen",
+    "id": "6792676860",
+    "name": "Been By Now",
+    "releaseDate": "2026-07-24",
+    "kind": "songs",
+    "artistId": "829142092",
+    "artistUrl": "https://music.apple.com/us/artist/morgan-wallen/829142092",
+    "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/9f/8d/52/9f8d52a0-b6d9-d038-327b-4fe58bedce67/26UMGIM94572.rgb.jpg/100x100bb.jpg",
+    "genres": [
+     {
+      "genreId": "6",
+      "name": "Country",
+      "url": "https://itunes.apple.com/us/genre/id6"
+     },
+     {
+      "genreId": "34",
+      "name": "Music",
+      "url": "https://itunes.apple.com/us/genre/id34"
+     }
+    ],
+    "url": "https://music.apple.com/us/album/been-by-now/6792676858?i=6792676860"
+   }
+  ]
+ }
+}

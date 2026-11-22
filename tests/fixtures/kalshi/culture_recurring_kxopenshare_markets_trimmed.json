@@ -1,0 +1,38 @@
+{
+ "markets": [
+  {
+   "ticker": "KXOPENSHARE-26NOV16-18.9",
+   "event_ticker": "KXOPENSHARE-26NOV16",
+   "title": "OpenAI market share this week?",
+   "yes_sub_title": "Above 18.9%",
+   "strike_type": "greater",
+   "floor_strike": 18.9,
+   "open_time": "2026-11-09T17:00:00Z",
+   "close_time": "2026-11-16T04:59:00Z",
+   "expected_expiration_time": "2026-11-23T04:59:00Z",
+   "settlement_ts": "2026-11-16T16:45:19.567638Z",
+   "result": "yes",
+   "expiration_value": "19.0",
+   "volume_fp": "12363.09",
+   "rules_primary": "If OpenAI scores above 18.9% on OpenRouter text market share by model author week of Nov 9, 2026, then the market resolves to Yes.",
+   "status": "finalized"
+  },
+  {
+   "ticker": "KXOPENSHARE-26NOV16-19.1",
+   "event_ticker": "KXOPENSHARE-26NOV16",
+   "title": "OpenAI market share this week?",
+   "yes_sub_title": "Above 19.1%",
+   "strike_type": "greater",
+   "floor_strike": 19.1,
+   "open_time": "2026-11-09T17:00:00Z",
+   "close_time": "2026-11-16T04:59:00Z",
+   "expected_expiration_time": "2026-11-23T04:59:00Z",
+   "settlement_ts": "2026-11-16T16:45:19.567638Z",
+   "result": "no",
+   "expiration_value": "19.0",
+   "volume_fp": "15129.16",
+   "rules_primary": "If OpenAI scores above 19.1% on OpenRouter text market share by model author week of Nov 9, 2026, then the market resolves to Yes.",
+   "status": "finalized"
+  }
+ ]
+}

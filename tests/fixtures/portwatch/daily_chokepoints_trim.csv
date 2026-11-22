@@ -1,0 +1,9 @@
+﻿date,year,month,day,portid,portname,n_container,n_dry_bulk,n_general_cargo,n_roro,n_tanker,n_cargo,n_total,capacity_container,capacity_dry_bulk,capacity_general_cargo,capacity_roro,capacity_tanker,capacity_cargo,capacity,ObjectId
+2026/11/09,2026,11,9,chokepoint6,Strait of Hormuz,0,2,3,0,1,5,6,0,78298,439,0,68520,78738,147259,17308
+2026/11/10,2026,11,10,chokepoint6,Strait of Hormuz,0,0,1,0,0,1,1,0,0,0,0,0,0,0,17311
+2026/11/11,2026,11,11,chokepoint6,Strait of Hormuz,1,2,0,0,1,3,4,10241,0,0,0,23320,10241,33562,17313
+2026/11/12,2026,11,12,chokepoint6,Strait of Hormuz,0,0,0,0,1,0,1,0,0,0,0,32117,0,32117,17315
+2026/11/13,2026,11,13,chokepoint6,Strait of Hormuz,0,0,1,0,0,1,1,0,0,2169,0,0,2169,2169,17317
+2026/11/14,2026,11,14,chokepoint6,Strait of Hormuz,0,1,0,0,0,1,1,0,0,0,0,0,0,0,17319
+2026/11/15,2026,11,15,chokepoint6,Strait of Hormuz,1,0,1,0,0,2,2,3504,0,792,0,0,4297,4297,17321
+2026/11/15,2026,11,15,chokepoint1,Suez Canal,12,11,6,1,14,30,44,953591,299383,12041,0,618609,1265015,1883625,2078

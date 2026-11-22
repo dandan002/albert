@@ -1,0 +1,109 @@
+{
+ "_note": "trimmed copy of a recorded /historical/markets/{ticker}/candlesticks response (last 4 candles)",
+ "ticker": "KXNETFLIXRANKSHOW-26SEP14-CRE",
+ "response": {
+  "candlesticks": [
+   {
+    "end_period_ts": 1789434000,
+    "open_interest": "39903.71",
+    "price": {
+     "close": "0.0100",
+     "high": "0.0100",
+     "low": "0.0100",
+     "mean": "0.0100",
+     "open": "0.0100",
+     "previous": "0.0100"
+    },
+    "volume": "2356.97",
+    "yes_ask": {
+     "close": "0.0100",
+     "high": "0.0100",
+     "low": "0.0100",
+     "open": "0.0100"
+    },
+    "yes_bid": {
+     "close": "0.0000",
+     "high": "0.0000",
+     "low": "0.0000",
+     "open": "0.0000"
+    }
+   },
+   {
+    "end_period_ts": 1789437600,
+    "open_interest": "40141.71",
+    "price": {
+     "close": "0.0100",
+     "high": "0.0100",
+     "low": "0.0100",
+     "mean": "0.0100",
+     "open": "0.0100",
+     "previous": "0.0100"
+    },
+    "volume": "238.00",
+    "yes_ask": {
+     "close": "0.0100",
+     "high": "0.0100",
+     "low": "0.0100",
+     "open": "0.0100"
+    },
+    "yes_bid": {
+     "close": "0.0000",
+     "high": "0.0000",
+     "low": "0.0000",
+     "open": "0.0000"
+    }
+   },
+   {
+    "end_period_ts": 1789441200,
+    "open_interest": "65563.08",
+    "price": {
+     "close": "0.0100",
+     "high": "0.0100",
+     "low": "0.0100",
+     "mean": "0.0100",
+     "open": "0.0100",
+     "previous": "0.0100"
+    },
+    "volume": "25700.54",
+    "yes_ask": {
+     "close": "0.0100",
+     "high": "0.0100",
+     "low": "0.0100",
+     "open": "0.0100"
+    },
+    "yes_bid": {
+     "close": "0.0000",
+     "high": "0.0000",
+     "low": "0.0000",
+     "open": "0.0000"
+    }
+   },
+   {
+    "end_period_ts": 1789444800,
+    "open_interest": "65563.08",
+    "price": {
+     "close": null,
+     "high": null,
+     "low": null,
+     "mean": null,
+     "open": null,
+     "previous": "0.0100"
+    },
+    "volume": "0.00",
+    "yes_ask": {
+     "close": "1.0000",
+     "high": "1.0000",
+     "low": "0.0100",
+     "open": "0.0100"
+    },
+    "yes_bid": {
+     "close": "0.0000",
+     "high": "0.0000",
+     "low": "0.0000",
+     "open": "0.0000"
+    }
+   }
+  ],
+  "ticker": "KXNETFLIXRANKSHOW-26SEP14-CRE"
+ }
+}

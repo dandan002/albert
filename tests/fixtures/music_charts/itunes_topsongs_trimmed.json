@@ -1,0 +1,407 @@
+{
+ "feed": {
+  "author": {
+   "name": {
+    "label": "iTunes Store"
+   },
+   "uri": {
+    "label": "http://www.apple.com/itunes/"
+   }
+  },
+  "entry": [
+   {
+    "im:name": {
+     "label": "Just A Woman"
+    },
+    "im:image": [
+     {
+      "label": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/92/13/5d/92135d81-90ce-eed6-76ba-c9cc2d35f613/4099964306293.jpg/55x55bb.png",
+      "attributes": {
+       "height": "55"
+      }
+     },
+     {
+      "label": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/92/13/5d/92135d81-90ce-eed6-76ba-c9cc2d35f613/4099964306293.jpg/60x60bb.png",
+      "attributes": {
+       "height": "60"
+      }
+     },
+     {
+      "label": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/92/13/5d/92135d81-90ce-eed6-76ba-c9cc2d35f613/4099964306293.jpg/170x170bb.png",
+      "attributes": {
+       "height": "170"
+      }
+     }
+    ],
+    "im:collection": {
+     "im:name": {
+      "label": "Just A Woman - Single"
+     },
+     "link": {
+      "attributes": {
+       "rel": "alternate",
+       "type": "text/html",
+       "href": "https://music.apple.com/us/album/just-a-woman-single/6831322525?uo=2"
+      }
+     },
+     "im:contentType": {
+      "im:contentType": {
+       "attributes": {
+        "term": "Album",
+        "label": "Album"
+       }
+      },
+      "attributes": {
+       "term": "Music",
+       "label": "Music"
+      }
+     }
+    },
+    "im:price": {
+     "label": "$1.29",
+     "attributes": {
+      "amount": "1.29",
+      "currency": "USD"
+     }
+    },
+    "im:contentType": {
+     "im:contentType": {
+      "attributes": {
+       "term": "Track",
+       "label": "Track"
+      }
+     },
+     "attributes": {
+      "term": "Music",
+      "label": "Music"
+     }
+    },
+    "rights": {
+     "label": "\u2117 2026 Song Farmer Entertainment, Inc. under exclusive license to This is Hit Inc. d/b/a BBR Music Group"
+    },
+    "title": {
+     "label": "Just A Woman - Lainey Wilson"
+    },
+    "link": [
+     {
+      "attributes": {
+       "rel": "alternate",
+       "type": "text/html",
+       "href": "https://music.apple.com/us/album/just-a-woman/6831322525?i=6831322526&uo=2"
+      }
+     },
+     {
+      "im:duration": {
+       "label": "30000"
+      },
+      "attributes": {
+       "title": "Preview",
+       "rel": "enclosure",
+       "type": "audio/x-m4a",
+       "href": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/fa/aa/74/faaa74ed-d568-c537-c4e8-ded26c891ea6/mzaf_963052905005997234.plus.aac.p.m4a",
+       "im:assetType": "preview"
+      }
+     }
+    ],
+    "id": {
+     "label": "https://music.apple.com/us/album/just-a-woman/6831322525?i=6831322526&uo=2",
+     "attributes": {
+      "im:id": "6831322526"
+     }
+    },
+    "im:artist": {
+     "label": "Lainey Wilson",
+     "attributes": {
+      "href": "https://music.apple.com/us/artist/lainey-wilson/907166363?uo=2"
+     }
+    },
+    "category": {
+     "attributes": {
+      "im:id": "6",
+      "term": "Country",
+      "scheme": "https://music.apple.com/us/genre/music-country/id6?uo=2",
+      "label": "Country"
+     }
+    },
+    "im:releaseDate": {
+     "label": "2026-11-18T04:00:00-07:00",
+     "attributes": {
+      "label": "November 18, 2026"
+     }
+    }
+   },
+   {
+    "im:name": {
+     "label": "Choosin' Texas"
+    },
+    "im:image": [
+     {
+      "label": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/e2/91/4d/e2914d0a-7f1d-f04c-fbf4-c50b38548838/196873638690.jpg/55x55bb.png",
+      "attributes": {
+       "height": "55"
+      }
+     },
+     {
+      "label": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/e2/91/4d/e2914d0a-7f1d-f04c-fbf4-c50b38548838/196873638690.jpg/60x60bb.png",
+      "attributes": {
+       "height": "60"
+      }
+     },
+     {
+      "label": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/e2/91/4d/e2914d0a-7f1d-f04c-fbf4-c50b38548838/196873638690.jpg/170x170bb.png",
+      "attributes": {
+       "height": "170"
+      }
+     }
+    ],
+    "im:collection": {
+     "im:name": {
+      "label": "Choosin' Texas - Single"
+     },
+     "link": {
+      "attributes": {
+       "rel": "alternate",
+       "type": "text/html",
+       "href": "https://music.apple.com/us/album/choosin-texas-single/1844932149?uo=2"
+      }
+     },
+     "im:contentType": {
+      "im:contentType": {
+       "attributes": {
+        "term": "Album",
+        "label": "Album"
+       }
+      },
+      "attributes": {
+       "term": "Music",
+       "label": "Music"
+      }
+     }
+    },
+    "im:price": {
+     "label": "$0.69",
+     "attributes": {
+      "amount": "0.69",
+      "currency": "USD"
+     }
+    },
+    "im:contentType": {
+     "im:contentType": {
+      "attributes": {
+       "term": "Track",
+       "label": "Track"
+      }
+     },
+     "attributes": {
+      "term": "Music",
+      "label": "Music"
+     }
+    },
+    "rights": {
+     "label": "\u2117 2025 SAWGOD Records/Columbia"
+    },
+    "title": {
+     "label": "Choosin' Texas - Ella Langley"
+    },
+    "link": [
+     {
+      "attributes": {
+       "rel": "alternate",
+       "type": "text/html",
+       "href": "https://music.apple.com/us/album/choosin-texas/1844932149?i=1844932150&uo=2"
+      }
+     },
+     {
+      "im:duration": {
+       "label": "30000"
+      },
+      "attributes": {
+       "title": "Preview",
+       "rel": "enclosure",
+       "type": "audio/x-m4a",
+       "href": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/38/49/4c/38494cb4-f9e0-1db4-0b84-8c478cb55390/mzaf_4251933786704889664.plus.aac.p.m4a",
+       "im:assetType": "preview"
+      }
+     }
+    ],
+    "id": {
+     "label": "https://music.apple.com/us/album/choosin-texas/1844932149?i=1844932150&uo=2",
+     "attributes": {
+      "im:id": "1844932150"
+     }
+    },
+    "im:artist": {
+     "label": "Ella Langley",
+     "attributes": {
+      "href": "https://music.apple.com/us/artist/ella-langley/1384373733?uo=2"
+     }
+    },
+    "category": {
+     "attributes": {
+      "im:id": "6",
+      "term": "Country",
+      "scheme": "https://music.apple.com/us/genre/music-country/id6?uo=2",
+      "label": "Country"
+     }
+    },
+    "im:releaseDate": {
+     "label": "2025-10-17T05:00:00-07:00",
+     "attributes": {
+      "label": "October 17, 2025"
+     }
+    }
+   },
+   {
+    "im:name": {
+     "label": "Revival"
+    },
+    "im:image": [
+     {
+      "label": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/7a/7a/e4/7a7ae4aa-c96a-bc93-5d04-7c03aa5f35f5/196874013465.jpg/55x55bb.png",
+      "attributes": {
+       "height": "55"
+      }
+     },
+     {
+      "label": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/7a/7a/e4/7a7ae4aa-c96a-bc93-5d04-7c03aa5f35f5/196874013465.jpg/60x60bb.png",
+      "attributes": {
+       "height": "60"
+      }
+     },
+     {
+      "label": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/7a/7a/e4/7a7ae4aa-c96a-bc93-5d04-7c03aa5f35f5/196874013465.jpg/170x170bb.png",
+      "attributes": {
+       "height": "170"
+      }
+     }
+    ],
+    "im:collection": {
+     "im:name": {
+      "label": "Grateful"
+     },
+     "link": {
+      "attributes": {
+       "rel": "alternate",
+       "type": "text/html",
+       "href": "https://music.apple.com/us/album/grateful/1893402542?uo=2"
+      }
+     },
+     "im:contentType": {
+      "im:contentType": {
+       "attributes": {
+        "term": "Album",
+        "label": "Album"
+       }
+      },
+      "attributes": {
+       "term": "Music",
+       "label": "Music"
+      }
+     }
+    },
+    "im:price": {
+     "label": "$1.29",
+     "attributes": {
+      "amount": "1.29",
+      "currency": "USD"
+     }
+    },
+    "im:contentType": {
+     "im:contentType": {
+      "attributes": {
+       "term": "Track",
+       "label": "Track"
+      }
+     },
+     "attributes": {
+      "term": "Music",
+      "label": "Music"
+     }
+    },
+    "rights": {
+     "label": "\u2117 2026 RCA Records, under exclusive license from HBYCO Records"
+    },
+    "title": {
+     "label": "Revival - The Red Clay Strays"
+    },
+    "link": [
+     {
+      "attributes": {
+       "rel": "alternate",
+       "type": "text/html",
+       "href": "https://music.apple.com/us/album/revival/1893402542?i=1893402858&uo=2"
+      }
+     },
+     {
+      "im:duration": {
+       "label": "30000"
+      },
+      "attributes": {
+       "title": "Preview",
+       "rel": "enclosure",
+       "type": "audio/x-m4a",
+       "href": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/e3/27/39/e3273958-5994-569d-4c40-6b917fe432ef/mzaf_3548619690605617843.plus.aac.p.m4a",
+       "im:assetType": "preview"
+      }
+     }
+    ],
+    "id": {
+     "label": "https://music.apple.com/us/album/revival/1893402542?i=1893402858&uo=2",
+     "attributes": {
+      "im:id": "1893402858"
+     }
+    },
+    "im:artist": {
+     "label": "The Red Clay Strays",
+     "attributes": {
+      "href": "https://music.apple.com/us/artist/the-red-clay-strays/1483812664?uo=2"
+     }
+    },
+    "category": {
+     "attributes": {
+      "im:id": "6",
+      "term": "Country",
+      "scheme": "https://music.apple.com/us/genre/music-country/id6?uo=2",
+      "label": "Country"
+     }
+    },
+    "im:releaseDate": {
+     "label": "2026-06-05T05:00:00-07:00",
+     "attributes": {
+      "label": "June 5, 2026"
+     }
+    }
+   }
+  ],
+  "updated": {
+   "label": "2026-11-20T14:32:17-07:00"
+  },
+  "rights": {
+   "label": "Copyright 2008 Apple Inc."
+  },
+  "title": {
+   "label": "iTunes Store: Top Songs"
+  },
+  "icon": {
+   "label": "http://itunes.apple.com/favicon.ico"
+  },
+  "link": [
+   {
+    "attributes": {
+     "rel": "alternate",
+     "type": "text/html",
+     "href": "https://itunes.apple.com/WebObjects/MZStore.woa/wa/viewTop?cc=us&id=1&popId=1"
+    }
+   },
+   {
+    "attributes": {
+     "rel": "self",
+     "href": "https://itunes.apple.com/us/rss/topsongs/limit=100/json"
+    }
+   }
+  ],
+  "id": {
+   "label": "https://itunes.apple.com/us/rss/topsongs/limit=100/json"
+  }
+ }
+}
