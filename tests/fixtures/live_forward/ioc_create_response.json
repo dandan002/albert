@@ -1,0 +1,12 @@
+{
+ "_source": "albert live plumbing (demo) 2026-11-07T02:18:24Z, POST /portfolio/events/orders response to a 1-lot immediate_or_cancel taker order (steps.json 'fill'); as recorded",
+ "response": {
+  "average_fee_paid": "0.0147",
+  "average_fill_price": "0.7000",
+  "client_order_id": "albplumb1794017904-4",
+  "fill_count": "1.00",
+  "order_id": "01a1b3cd-32e0-7c4e-ae2d-03532964bf73",
+  "remaining_count": "0.00",
+  "ts_ms": 1794017932997
+ }
+}

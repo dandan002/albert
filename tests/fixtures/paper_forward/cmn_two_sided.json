@@ -1,0 +1,69 @@
+{
+ "_source": "GET /markets/KXNETFLIXRANKMOVIE-26NOV23-OBS/orderbook?depth=10 and its /markets row, fetched_at=2026-11-21T01:42:05.541664+00:00",
+ "market": {
+  "ticker": "KXNETFLIXRANKMOVIE-26NOV23-OBS",
+  "event_ticker": "KXNETFLIXRANKMOVIE-26NOV23",
+  "close_time": "2026-11-24T04:59:00Z",
+  "strike_type": "custom",
+  "rules_primary": "If Obsession is #1 on the Netflix Top 10 US Movie on the chart published on Nov 24, 2026, then the market resolves to Yes.",
+  "status": "active",
+  "result": "",
+  "yes_bid_dollars": "0.0100",
+  "yes_ask_dollars": "0.0200",
+  "yes_bid_size_fp": "50.00",
+  "yes_ask_size_fp": "9.25",
+  "last_price_dollars": "0.0200"
+ },
+ "orderbook": {
+  "orderbook_fp": {
+   "no_dollars": [
+    [
+     "0.6700",
+     "50.00"
+    ],
+    [
+     "0.6800",
+     "3.66"
+    ],
+    [
+     "0.7800",
+     "50.00"
+    ],
+    [
+     "0.7900",
+     "1.26"
+    ],
+    [
+     "0.8000",
+     "100.00"
+    ],
+    [
+     "0.8700",
+     "41.00"
+    ],
+    [
+     "0.9400",
+     "100.00"
+    ],
+    [
+     "0.9600",
+     "2000.00"
+    ],
+    [
+     "0.9700",
+     "167.44"
+    ],
+    [
+     "0.9800",
+     "9.25"
+    ]
+   ],
+   "yes_dollars": [
+    [
+     "0.0100",
+     "50.00"
+    ]
+   ]
+  }
+ }
+}

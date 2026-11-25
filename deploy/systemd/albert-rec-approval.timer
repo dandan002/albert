@@ -1,0 +1,10 @@
+[Unit]
+Description=albert: approval recorder schedule (every 5 min Mon-Fri 12:00-17:55 UTC around the release and 1 PM ET settlement; every 30 min otherwise)
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 12..17:00/5:00 UTC
+OnCalendar=*-*-* *:00/30:00
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

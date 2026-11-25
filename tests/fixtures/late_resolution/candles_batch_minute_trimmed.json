@@ -1,0 +1,139 @@
+{
+ "markets": [
+  {
+   "candlesticks": [
+    {
+     "end_period_ts": 1792425600,
+     "open_interest_fp": "7363.00",
+     "price": {
+      "previous_dollars": "0.9700"
+     },
+     "volume_fp": "0.00",
+     "yes_ask": {
+      "close_dollars": "1.0000",
+      "high_dollars": "1.0000",
+      "low_dollars": "1.0000",
+      "open_dollars": "1.0000"
+     },
+     "yes_bid": {
+      "close_dollars": "0.9500",
+      "high_dollars": "0.9600",
+      "low_dollars": "0.9500",
+      "open_dollars": "0.9600"
+     }
+    },
+    {
+     "end_period_ts": 1792472400,
+     "open_interest_fp": "7363.00",
+     "price": {
+      "previous_dollars": "0.9700"
+     },
+     "volume_fp": "0.00",
+     "yes_ask": {
+      "close_dollars": "0.9900",
+      "high_dollars": "1.0000",
+      "low_dollars": "0.9900",
+      "open_dollars": "1.0000"
+     },
+     "yes_bid": {
+      "close_dollars": "0.9600",
+      "high_dollars": "0.9600",
+      "low_dollars": "0.9500",
+      "open_dollars": "0.9500"
+     }
+    },
+    {
+     "end_period_ts": 1792476000,
+     "open_interest_fp": "7364.00",
+     "price": {
+      "close_dollars": "0.9900",
+      "high_dollars": "0.9900",
+      "low_dollars": "0.9900",
+      "mean_dollars": "0.9900",
+      "open_dollars": "0.9900",
+      "previous_dollars": "0.9700"
+     },
+     "volume_fp": "1.00",
+     "yes_ask": {
+      "close_dollars": "0.9900",
+      "high_dollars": "0.9900",
+      "low_dollars": "0.9900",
+      "open_dollars": "0.9900"
+     },
+     "yes_bid": {
+      "close_dollars": "0.9600",
+      "high_dollars": "0.9600",
+      "low_dollars": "0.9600",
+      "open_dollars": "0.9600"
+     }
+    }
+   ],
+   "market_ticker": "KXYTVIEWSW-WEE26OCT18-15.0M"
+  },
+  {
+   "candlesticks": [
+    {
+     "end_period_ts": 1792411200,
+     "open_interest_fp": "4208.00",
+     "price": {
+      "previous_dollars": "0.9900"
+     },
+     "volume_fp": "0.00",
+     "yes_ask": {
+      "close_dollars": "0.9900",
+      "high_dollars": "0.9900",
+      "low_dollars": "0.9900",
+      "open_dollars": "0.9900"
+     },
+     "yes_bid": {
+      "close_dollars": "0.9800",
+      "high_dollars": "0.9800",
+      "low_dollars": "0.9800",
+      "open_dollars": "0.9800"
+     }
+    },
+    {
+     "end_period_ts": 1792414800,
+     "open_interest_fp": "4208.00",
+     "price": {
+      "previous_dollars": "0.9900"
+     },
+     "volume_fp": "0.00",
+     "yes_ask": {
+      "close_dollars": "0.9900",
+      "high_dollars": "0.9900",
+      "low_dollars": "0.9900",
+      "open_dollars": "0.9900"
+     },
+     "yes_bid": {
+      "close_dollars": "0.9800",
+      "high_dollars": "0.9800",
+      "low_dollars": "0.9800",
+      "open_dollars": "0.9800"
+     }
+    },
+    {
+     "end_period_ts": 1792418400,
+     "open_interest_fp": "4208.00",
+     "price": {
+      "previous_dollars": "0.9900"
+     },
+     "volume_fp": "0.00",
+     "yes_ask": {
+      "close_dollars": "0.9900",
+      "high_dollars": "0.9900",
+      "low_dollars": "0.9900",
+      "open_dollars": "0.9900"
+     },
+     "yes_bid": {
+      "close_dollars": "0.9800",
+      "high_dollars": "0.9800",
+      "low_dollars": "0.9800",
+      "open_dollars": "0.9800"
+     }
+    }
+   ],
+   "market_ticker": "KXYTVIEWSW-WEE26OCT18-12.0M"
+  }
+ ]
+}

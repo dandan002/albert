@@ -1,0 +1,12 @@
+[Unit]
+Description=albert: music-chart recorder schedule (hourly; every 10 min around the HITS Tue preview / Fri final and the Sunday Billboard 200 reveal)
+
+[Timer]
+OnCalendar=*-*-* *:05:00
+OnCalendar=Tue *-*-* 15..19:00/10:00 America/New_York
+OnCalendar=Fri *-*-* 15..17:00/10:00 America/New_York
+OnCalendar=Sun *-*-* 09..19:00/10:00 America/New_York
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,90 @@
+{
+ "venue": "kalshi",
+ "url": "https://api.elections.kalshi.com/trade-api/v2/historical/markets/KXBTC15M-26SEP101200-00/candlesticks",
+ "params": {
+  "start_ts": 1789054800,
+  "end_ts": 1789056060,
+  "period_interval": 1
+ },
+ "fetched_at": "2026-11-23T01:02:30.128060+00:00",
+ "response": {
+  "candlesticks": [
+   {
+    "end_period_ts": 1789055160,
+    "open_interest": "84172.09",
+    "price": {
+     "close": "0.5400",
+     "high": "0.5700",
+     "low": "0.4100",
+     "mean": "0.4922",
+     "open": "0.4700",
+     "previous": null
+    },
+    "volume": "135997.94",
+    "yes_ask": {
+     "close": "0.5400",
+     "high": "0.9990",
+     "low": "0.4200",
+     "open": "0.9990"
+    },
+    "yes_bid": {
+     "close": "0.5300",
+     "high": "0.5600",
+     "low": "0.0000",
+     "open": "0.0000"
+    }
+   },
+   {
+    "end_period_ts": 1789055220,
+    "open_interest": "125053.90",
+    "price": {
+     "close": "0.2400",
+     "high": "0.5700",
+     "low": "0.2200",
+     "mean": "0.3856",
+     "open": "0.5300",
+     "previous": "0.5400"
+    },
+    "volume": "122271.62",
+    "yes_ask": {
+     "close": "0.2400",
+     "high": "0.5700",
+     "low": "0.2300",
+     "open": "0.5400"
+    },
+    "yes_bid": {
+     "close": "0.2300",
+     "high": "0.5600",
+     "low": "0.2200",
+     "open": "0.5300"
+    }
+   },
+   {
+    "end_period_ts": 1789055280,
+    "open_interest": "179002.68",
+    "price": {
+     "close": "0.2000",
+     "high": "0.2700",
+     "low": "0.1900",
+     "mean": "0.2283",
+     "open": "0.2400",
+     "previous": "0.2400"
+    },
+    "volume": "98292.12",
+    "yes_ask": {
+     "close": "0.2000",
+     "high": "0.2700",
+     "low": "0.2000",
+     "open": "0.2400"
+    },
+    "yes_bid": {
+     "close": "0.1900",
+     "high": "0.2500",
+     "low": "0.1900",
+     "open": "0.2300"
+    }
+   }
+  ],
+  "ticker": "KXBTC15M-26SEP101200-00"
+ }
+}

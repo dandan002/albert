@@ -14,7 +14,10 @@ Safety rules enforced here, not left to callers:
 * **Own orders only.** Every order carries ``client_order_id`` = ``<prefix><run>-<n>``;
   ``cancel_own`` lists resting orders and cancels only those with the bot's prefix.
 * **Per-order caps** (``ORDER_LIMITS``, every bot): at most 5 contracts and $2 of cost per order, and
-  prod orders must be post-only (every strategy is a maker). Raising them is a code change.
+  prod orders must be post-only. One exception (2026-11-25, the live approval-NO rule, user: "run
+  the approval NO ... live"): a client created with ``allow_taker=True`` may send non-post-only prod
+  orders, but only immediate-or-cancel or fill-or-kill, so a taker order can never rest. Raising any
+  of this is a code change.
 * **Global switches** (``switches``, ``albert.live_guard.Switches``): while ``data/live/KILL`` exists or
   the guard's daily-loss halt is in force, every new order is refused. Cancels always go through.
 * **Audit** (``audit``, ``albert.live_guard.Audit``): every write request and its outcome, and every
@@ -83,6 +86,7 @@ WRITE_ALLOW = [
 WRITE_COST = {"POST": 10.0, "PUT": 10.0, "DELETE": 2.0}   # tokens (DELETE order: 2)
 # Per-order ceilings for every bot (Phase 6). Mentions and the makers send 1 contract per order.
 ORDER_LIMITS = {"max_count": 5.0, "max_cost": 2.0}
+TAKER_TIF = ("immediate_or_cancel", "fill_or_kill")   # the only non-post-only prod orders (allow_taker)
 AUDIT_RESPONSE_CHARS = 2000
 
 
@@ -286,11 +290,12 @@ class KalshiTrader:
                  subaccount: int | None = None, write_rate: float = 100.0,
                  write_capacity: float = 100.0, transport: httpx.AsyncBaseTransport | None = None,
                  timeout: float = 10.0, actor: str = "", audit=None, switches=None,
-                 cancel_only: bool = False) -> None:
+                 cancel_only: bool = False, allow_taker: bool = False) -> None:
         if env not in ENVS:
             raise NotAllowed(f"unknown environment {env!r}")
         self.env, self.signer, self.subaccount = env, signer, subaccount
         self.actor, self.audit, self.switches, self.cancel_only = actor, audit, switches, cancel_only
+        self.allow_taker = allow_taker
         self.writable = True
         try:
             check_writable(env, allow_prod)
@@ -329,7 +334,10 @@ class KalshiTrader:
         if count * price > ORDER_LIMITS["max_cost"] + 1e-9:
             return f"cost ${count * price:.2f} > per-order cap ${ORDER_LIMITS['max_cost']:.2f}"
         if self.env == "prod" and not body.get("post_only"):
-            return "prod orders must be post-only"
+            if not self.allow_taker:
+                return "prod orders must be post-only"
+            if body.get("time_in_force") not in TAKER_TIF:
+                return "prod taker orders must be immediate_or_cancel or fill_or_kill"
         return None
 
     async def _send(self, method: str, path: str, *, params: dict[str, Any] | None = None,

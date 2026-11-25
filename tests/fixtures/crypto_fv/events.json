@@ -1,0 +1,147 @@
+{
+ "url": "https://api.elections.kalshi.com/trade-api/v2/events",
+ "params": {
+  "series_ticker": "KXBTCD",
+  "status": "settled",
+  "limit": 200
+ },
+ "fetched_at": "2026-11-23T00:56:52.742771+00:00",
+ "response": {
+  "cursor": "CgYI_Ljh1wYSEEtYQlRDRC0yNk5PVjE0MDg",
+  "events": [
+   {
+    "category": "Crypto",
+    "collateral_return_type": "DIRECNET",
+    "event_ticker": "KXBTCD-26NOV2219",
+    "exchange_index": 2,
+    "last_updated_ts": "2026-11-21T10:03:49.123769Z",
+    "mutually_exclusive": false,
+    "product_metadata": {
+     "cadence": "hourly"
+    },
+    "series_ticker": "KXBTCD",
+    "settlement_sources": [
+     {
+      "name": "CF Benchmarks",
+      "url": "https://www.cfbenchmarks.com/data/indices/BRTI?ref=blog.cfbenchmarks.com"
+     }
+    ],
+    "strike_date": "2026-11-23T00:00:00Z",
+    "strike_period": "",
+    "sub_title": "On Nov 22, 2026 at 7pm EST",
+    "title": "BTC price on Nov 22, 2026 at 7pm EST?"
+   },
+   {
+    "category": "Crypto",
+    "collateral_return_type": "DIRECNET",
+    "event_ticker": "KXBTCD-26NOV2218",
+    "exchange_index": 2,
+    "last_updated_ts": "2026-11-21T10:03:49.145422Z",
+    "mutually_exclusive": false,
+    "product_metadata": {
+     "cadence": "hourly"
+    },
+    "series_ticker": "KXBTCD",
+    "settlement_sources": [
+     {
+      "name": "CF Benchmarks",
+      "url": "https://www.cfbenchmarks.com/data/indices/BRTI?ref=blog.cfbenchmarks.com"
+     }
+    ],
+    "strike_date": "2026-11-22T23:00:00Z",
+    "strike_period": "",
+    "sub_title": "On Nov 22, 2026 at 6pm EST",
+    "title": "BTC price on Nov 22, 2026 at 6pm EST?"
+   },
+   {
+    "category": "Crypto",
+    "collateral_return_type": "DIRECNET",
+    "event_ticker": "KXBTCD-26NOV2217",
+    "exchange_index": 2,
+    "last_updated_ts": "2026-11-21T10:03:49.186846Z",
+    "mutually_exclusive": false,
+    "product_metadata": {
+     "cadence": "daily"
+    },
+    "series_ticker": "KXBTCD",
+    "settlement_sources": [
+     {
+      "name": "CF Benchmarks",
+      "url": "https://www.cfbenchmarks.com/data/indices/BRTI?ref=blog.cfbenchmarks.com"
+     }
+    ],
+    "strike_date": "2026-11-22T22:00:00Z",
+    "strike_period": "",
+    "sub_title": "On Nov 22, 2026 at 5pm EST",
+    "title": "BTC price on Nov 22, 2026 at 5pm EST?"
+   },
+   {
+    "category": "Crypto",
+    "collateral_return_type": "DIRECNET",
+    "event_ticker": "KXBTCD-26NOV2216",
+    "exchange_index": 2,
+    "last_updated_ts": "2026-11-21T10:03:49.195634Z",
+    "mutually_exclusive": false,
+    "product_metadata": {
+     "cadence": "hourly"
+    },
+    "series_ticker": "KXBTCD",
+    "settlement_sources": [
+     {
+      "name": "CF Benchmarks",
+      "url": "https://www.cfbenchmarks.com/data/indices/BRTI?ref=blog.cfbenchmarks.com"
+     }
+    ],
+    "strike_date": "2026-11-22T21:00:00Z",
+    "strike_period": "",
+    "sub_title": "On Nov 22, 2026 at 4pm EST",
+    "title": "BTC price on Nov 22, 2026 at 4pm EST?"
+   },
+   {
+    "category": "Crypto",
+    "collateral_return_type": "DIRECNET",
+    "event_ticker": "KXBTCD-26NOV2215",
+    "exchange_index": 2,
+    "last_updated_ts": "2026-11-21T10:03:49.163106Z",
+    "mutually_exclusive": false,
+    "product_metadata": {
+     "cadence": "hourly"
+    },
+    "series_ticker": "KXBTCD",
+    "settlement_sources": [
+     {
+      "name": "CF Benchmarks",
+      "url": "https://www.cfbenchmarks.com/data/indices/BRTI?ref=blog.cfbenchmarks.com"
+     }
+    ],
+    "strike_date": "2026-11-22T20:00:00Z",
+    "strike_period": "",
+    "sub_title": "On Nov 22, 2026 at 3pm EST",
+    "title": "BTC price on Nov 22, 2026 at 3pm EST?"
+   },
+   {
+    "category": "Crypto",
+    "collateral_return_type": "DIRECNET",
+    "event_ticker": "KXBTCD-26NOV2214",
+    "exchange_index": 2,
+    "last_updated_ts": "2026-11-21T10:03:49.138567Z",
+    "mutually_exclusive": false,
+    "product_metadata": {
+     "cadence": "hourly"
+    },
+    "series_ticker": "KXBTCD",
+    "settlement_sources": [
+     {
+      "name": "CF Benchmarks",
+      "url": "https://www.cfbenchmarks.com/data/indices/BRTI?ref=blog.cfbenchmarks.com"
+     }
+    ],
+    "strike_date": "2026-11-22T19:00:00Z",
+    "strike_period": "",
+    "sub_title": "On Nov 22, 2026 at 2pm EST",
+    "title": "BTC price on Nov 22, 2026 at 2pm EST?"
+   }
+  ],
+  "milestones": []
+ }
+}

@@ -1,0 +1,17 @@
+{
+ "cursor": "",
+ "trades": [
+  {
+   "count_fp": "1000.00",
+   "created_time": "2026-09-09T22:14:43.68346Z",
+   "is_block_trade": false,
+   "no_price_dollars": "0.9900",
+   "taker_book_side": "bid",
+   "taker_outcome_side": "yes",
+   "taker_side": "yes",
+   "ticker": "KXVOTEPRIMARY-MAPRIMARY08D26SLYN-58",
+   "trade_id": "0722a35e-c331-85ea-bcec-d508c148b820",
+   "yes_price_dollars": "0.0100"
+  }
+ ]
+}

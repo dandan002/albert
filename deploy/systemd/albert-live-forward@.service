@@ -1,0 +1,21 @@
+[Unit]
+Description=albert: live culture maker NO + approval NO (%i; prod also needs KALSHI_LIVE_ENABLED=1 and --live)
+After=network-online.target time-sync.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/albert
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/home/ubuntu/albert/deploy/forward-%i.conf
+ExecStart=/home/ubuntu/albert/.venv/bin/python -m albert live forward --env %i --minutes 525600 $FORWARD_ARGS
+# SIGTERM cancels every albc/alba order before exit (cmn bids are reposted at the next start);
+# cmn orders also carry expiration_time = their leg's close.
+KillSignal=SIGTERM
+TimeoutStopSec=120
+MemoryMax=600M
+Restart=on-failure
+RestartSec=300
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,240 @@
+{
+ "url": "https://api.elections.kalshi.com/trade-api/v2/markets/candlesticks",
+ "params": {
+  "market_tickers": "KXXRPD-26OCT3017-T1.1599,KXXRPD-26OCT3017-T1.2199,KXXRPD-26OCT3017-T1.2599,KXXRPD-26OCT3017-T1.2999",
+  "start_ts": 1792785600,
+  "end_ts": 1793397600,
+  "period_interval": 60
+ },
+ "fetched_at": "2026-11-23T02:36:56.646267+00:00",
+ "response": {
+  "markets": [
+   {
+    "candlesticks": [
+     {
+      "end_period_ts": 1792792800,
+      "open_interest_fp": "0.00",
+      "price": {},
+      "volume_fp": "0.00",
+      "yes_ask": {
+       "close_dollars": "0.9900",
+       "high_dollars": "1.0000",
+       "low_dollars": "0.9900",
+       "open_dollars": "1.0000"
+      },
+      "yes_bid": {
+       "close_dollars": "0.8800",
+       "high_dollars": "0.8800",
+       "low_dollars": "0.8800",
+       "open_dollars": "0.8800"
+      }
+     },
+     {
+      "end_period_ts": 1792796400,
+      "open_interest_fp": "0.00",
+      "price": {},
+      "volume_fp": "0.00",
+      "yes_ask": {
+       "close_dollars": "0.9700",
+       "high_dollars": "1.0000",
+       "low_dollars": "0.9700",
+       "open_dollars": "0.9900"
+      },
+      "yes_bid": {
+       "close_dollars": "0.8600",
+       "high_dollars": "0.8900",
+       "low_dollars": "0.0000",
+       "open_dollars": "0.8800"
+      }
+     },
+     {
+      "end_period_ts": 1792800000,
+      "open_interest_fp": "0.00",
+      "price": {},
+      "volume_fp": "0.00",
+      "yes_ask": {
+       "close_dollars": "0.9900",
+       "high_dollars": "1.0000",
+       "low_dollars": "0.9700",
+       "open_dollars": "0.9700"
+      },
+      "yes_bid": {
+       "close_dollars": "0.8800",
+       "high_dollars": "0.8800",
+       "low_dollars": "0.3000",
+       "open_dollars": "0.8600"
+      }
+     },
+     {
+      "end_period_ts": 1792803600,
+      "open_interest_fp": "0.00",
+      "price": {},
+      "volume_fp": "0.00",
+      "yes_ask": {
+       "close_dollars": "0.9700",
+       "high_dollars": "1.0000",
+       "low_dollars": "0.9700",
+       "open_dollars": "0.9900"
+      },
+      "yes_bid": {
+       "close_dollars": "0.8600",
+       "high_dollars": "0.8800",
+       "low_dollars": "0.8500",
+       "open_dollars": "0.8800"
+      }
+     },
+     {
+      "end_period_ts": 1792810800,
+      "open_interest_fp": "0.00",
+      "price": {},
+      "volume_fp": "0.00",
+      "yes_ask": {
+       "close_dollars": "0.9700",
+       "high_dollars": "0.9700",
+       "low_dollars": "0.9700",
+       "open_dollars": "0.9700"
+      },
+      "yes_bid": {
+       "close_dollars": "0.8600",
+       "high_dollars": "0.8600",
+       "low_dollars": "0.8500",
+       "open_dollars": "0.8600"
+      }
+     },
+     {
+      "end_period_ts": 1792836000,
+      "open_interest_fp": "0.00",
+      "price": {},
+      "volume_fp": "0.00",
+      "yes_ask": {
+       "close_dollars": "0.9700",
+       "high_dollars": "0.9700",
+       "low_dollars": "0.9700",
+       "open_dollars": "0.9700"
+      },
+      "yes_bid": {
+       "close_dollars": "0.8300",
+       "high_dollars": "0.8600",
+       "low_dollars": "0.8300",
+       "open_dollars": "0.8600"
+      }
+     }
+    ],
+    "market_ticker": "KXXRPD-26OCT3017-T1.1599"
+   },
+   {
+    "candlesticks": [
+     {
+      "end_period_ts": 1792792800,
+      "open_interest_fp": "0.00",
+      "price": {},
+      "volume_fp": "0.00",
+      "yes_ask": {
+       "close_dollars": "0.5800",
+       "high_dollars": "1.0000",
+       "low_dollars": "0.5800",
+       "open_dollars": "1.0000"
+      },
+      "yes_bid": {
+       "close_dollars": "0.4500",
+       "high_dollars": "0.4700",
+       "low_dollars": "0.4400",
+       "open_dollars": "0.4700"
+      }
+     },
+     {
+      "end_period_ts": 1792796400,
+      "open_interest_fp": "0.00",
+      "price": {},
+      "volume_fp": "0.00",
+      "yes_ask": {
+       "close_dollars": "0.5100",
+       "high_dollars": "0.6100",
+       "low_dollars": "0.4900",
+       "open_dollars": "0.5800"
+      },
+      "yes_bid": {
+       "close_dollars": "0.3700",
+       "high_dollars": "0.4700",
+       "low_dollars": "0.0000",
+       "open_dollars": "0.4500"
+      }
+     },
+     {
+      "end_period_ts": 1792800000,
+      "open_interest_fp": "0.00",
+      "price": {},
+      "volume_fp": "0.00",
+      "yes_ask": {
+       "close_dollars": "0.5300",
+       "high_dollars": "0.5300",
+       "low_dollars": "0.4800",
+       "open_dollars": "0.5100"
+      },
+      "yes_bid": {
+       "close_dollars": "0.4100",
+       "high_dollars": "0.4100",
+       "low_dollars": "0.3500",
+       "open_dollars": "0.3700"
+      }
+     },
+     {
+      "end_period_ts": 1792803600,
+      "open_interest_fp": "0.00",
+      "price": {},
+      "volume_fp": "0.00",
+      "yes_ask": {
+       "close_dollars": "0.4900",
+       "high_dollars": "0.5300",
+       "low_dollars": "0.4900",
+       "open_dollars": "0.5300"
+      },
+      "yes_bid": {
+       "close_dollars": "0.3700",
+       "high_dollars": "0.4100",
+       "low_dollars": "0.3500",
+       "open_dollars": "0.4100"
+      }
+     },
+     {
+      "end_period_ts": 1792807200,
+      "open_interest_fp": "0.00",
+      "price": {},
+      "volume_fp": "0.00",
+      "yes_ask": {
+       "close_dollars": "0.5300",
+       "high_dollars": "0.5300",
+       "low_dollars": "0.4900",
+       "open_dollars": "0.4900"
+      },
+      "yes_bid": {
+       "close_dollars": "0.3900",
+       "high_dollars": "0.3900",
+       "low_dollars": "0.3700",
+       "open_dollars": "0.3700"
+      }
+     },
+     {
+      "end_period_ts": 1792810800,
+      "open_interest_fp": "0.00",
+      "price": {},
+      "volume_fp": "0.00",
+      "yes_ask": {
+       "close_dollars": "0.5200",
+       "high_dollars": "0.5400",
+       "low_dollars": "0.5200",
+       "open_dollars": "0.5300"
+      },
+      "yes_bid": {
+       "close_dollars": "0.3900",
+       "high_dollars": "0.3900",
+       "low_dollars": "0.3900",
+       "open_dollars": "0.3900"
+      }
+     }
+    ],
+    "market_ticker": "KXXRPD-26OCT3017-T1.2999"
+   }
+  ]
+ }
+}

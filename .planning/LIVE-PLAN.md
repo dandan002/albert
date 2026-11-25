@@ -1,5 +1,62 @@
 # Live (cash) maker pilot: plan
 
+**UPDATE, 2026-11-25 ~18:50 UTC: two more rules trade real money.** User: "Let's just run the
+approval NO and culture maker live please". They went live after 4 days of paper (apr 11/11 settled
+NO, +$0.53; cmn 1 fill, +$0.16). The paper pass bars were not met; the user chose to go live. The
+paper service keeps running as the control.
+- **Service:** `albert-live-forward@prod` (`albert.live_forward`, `albert live forward`,
+  `deploy/forward-prod.conf`).
+- **cmn** (tag `albc`): the paper culture maker-NO rule with real post-only 1-lot NO bids. Each bid
+  expires at its leg's close. Worst case (resting bids + unsettled fills) ≤ $15.
+- **apr** (tag `alba`): the paper approval 5–15c NO rule as 1-lot immediate-or-cancel takers at
+  1 − bid. Worst case ≤ $5. One change from paper: legs where NO + fee ≥ 99c are skipped, since they
+  cannot profit (a 1c bid → 99c + 1c fee; found in the dry smoke).
+- **Order client:** `KalshiTrader(allow_taker=True)` now permits non-post-only prod orders only as
+  IOC/FOK, and only on that one client. The per-order caps still apply.
+- **Caps:** the bots' worst cases now sum to the guard's $60 at-risk KILL line (mentions $40 +
+  cmn $15 + apr $5).
+- **Fees re-checked from the API's series schedule:** 36 series quadratic ×1, KXLLM1 also charges
+  maker fees. kalshi.com is robots-blocked for us.
+- **Safety:** markets with any position or other order are skipped. KILL or STOP cancels everything
+  and exits; HALT cancels resting bids and pauses; SIGTERM cancels and the next start reposts
+  the cmn bids.
+- **Ledger:** `data/live/forward/prod/ledger.jsonl` and `status.json`. The guard books the fills
+  under `albc` / `alba` (`albert live check --env prod`).
+- **Dry smoke** (real reads, orders only logged) at the next real decision times: cmn would post 5
+  bids over 3 events (NO 0.83–0.85); apr would have taken only a 1c-bid leg, now skipped.
+- **Decision times:** apr daily at 06:00 UTC (settle − 12 h); cmn at each event's close − 72 h (next:
+  2026-11-26 14:59 UTC).
+
+**UPDATE, 2026-11-23 05:45 UTC**: second research swarm finished (12 agents + 2 skeptics;
+`.planning/research/SUMMARY.md`). No new live or paper strategy; no service was restarted or changed
+(the live services logged no 429s during the swarm). Pending user decisions from the portfolio study
+(`data/research/portfolio/report.md`): raise the cmn paper cash cap $25 → $40 (would restart
+`albert-paper-forward`), replace the paper pass bars with fills-needed gates (cmn ≈ 164 fills), and
+add per-bot guard caps before any second live bot (the $60 at-risk KILL would trip with mentions +
+cmn). Mentions supply risk: Kalshi has listed no Trump mention events since Nov 11.
+
+**UPDATE, 2026-11-21 01:50 UTC**: new paper service `albert-paper-forward` (`albert.paper_forward`;
+never sends an order, Kalshi public data only), started 01:45 UTC: forward paper tests of the swarm's
+culture maker NO (`cmn`), HITS → KXALBUMEQUIV (`hits`) and approval NO (`apr`) rules, $25 paper
+bankroll each (user: "assuming $20-30 bankroll initially"). New recorder timers `albert-rec-music.timer`
+and `albert-rec-approval.timer`. Kill file `data/paper_forward/STOP`; score with
+`python -m albert.paper_forward report`. First decisions: cmn 2026-11-21 04:59 UTC (Netflix weekly),
+apr 06:00 UTC, hits at the first HITS preview (Tue 2026-11-24). Existing bots untouched.
+
+**STATUS, 2026-11-20 22:00 UTC** (read-only check; no bot restarted or changed):
+
+- **Running:** `albert-mentions@prod` (live) and `@paper` since 2026-11-19 21:19 / 21:18 UTC, 0 restarts,
+  no errors; `albert-guard@prod`; recorders `albert-record`, `albert-record-vol`, `albert-record-hl`;
+  `albert-archive.timer` (daily 08:00 UTC). Both live makers are stopped.
+- **No mentions event since the restart, by design:** the Mentions milestone calendar has nothing the
+  bot trades. 145 of 150 upcoming milestones are earnings calls (excluded); the others are the Trump
+  monthly window series (Nov 30, excluded), Jensen Huang's NVIDIA GTC DC keynote (Dec 1; an executive,
+  traded only at a mostly political event) and the FOMC press conference (Dec 9, financial). Speech
+  milestones usually appear a few days ahead. Last live trades: Nov 18 (Vance, Carney).
+- **Account:** balance $97.28; the only resting order is the manual KXIMPEACH-29-JAN20 NO; kill and
+  halt off; bot book unchanged from the table below (−$2.35 across bots). Paper mentions since
+  2026-11-18: 34 orders, 1 fill.
+
 **PHASE 6 SAFETY LAYER, 2026-11-19** (user: "Let's build phase 6 we're live trading already anyway"):
 the roadmap's Phase 6 item (order client with enable flag, per-order and daily-loss caps, global kill
 switch, full order/fill audit log) is complete. New on top of each bot's own limits:

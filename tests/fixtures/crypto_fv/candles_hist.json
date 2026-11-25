@@ -1,0 +1,164 @@
+{
+ "url": "https://api.elections.kalshi.com/trade-api/v2/historical/markets/KXBTC-26MAY2817-B76375/candlesticks",
+ "params": {
+  "start_ts": 1779912000,
+  "end_ts": 1780005600,
+  "period_interval": 60
+ },
+ "fetched_at": "2026-11-23T03:57:54.460694+00:00",
+ "response": {
+  "candlesticks": [
+   {
+    "end_period_ts": 1779915600,
+    "open_interest": "0.00",
+    "price": {
+     "close": null,
+     "high": null,
+     "low": null,
+     "mean": null,
+     "open": null,
+     "previous": null
+    },
+    "volume": "0.00",
+    "yes_ask": {
+     "close": "0.7500",
+     "high": "0.9600",
+     "low": "0.0700",
+     "open": "0.9600"
+    },
+    "yes_bid": {
+     "close": "0.0000",
+     "high": "0.0300",
+     "low": "0.0000",
+     "open": "0.0000"
+    }
+   },
+   {
+    "end_period_ts": 1779919200,
+    "open_interest": "0.00",
+    "price": {
+     "close": null,
+     "high": null,
+     "low": null,
+     "mean": null,
+     "open": null,
+     "previous": null
+    },
+    "volume": "0.00",
+    "yes_ask": {
+     "close": "0.0400",
+     "high": "0.7500",
+     "low": "0.0400",
+     "open": "0.7500"
+    },
+    "yes_bid": {
+     "close": "0.0000",
+     "high": "0.0300",
+     "low": "0.0000",
+     "open": "0.0000"
+    }
+   },
+   {
+    "end_period_ts": 1779922800,
+    "open_interest": "0.00",
+    "price": {
+     "close": null,
+     "high": null,
+     "low": null,
+     "mean": null,
+     "open": null,
+     "previous": null
+    },
+    "volume": "0.00",
+    "yes_ask": {
+     "close": "0.0400",
+     "high": "0.0500",
+     "low": "0.0300",
+     "open": "0.0400"
+    },
+    "yes_bid": {
+     "close": "0.0100",
+     "high": "0.0100",
+     "low": "0.0000",
+     "open": "0.0000"
+    }
+   },
+   {
+    "end_period_ts": 1779926400,
+    "open_interest": "0.00",
+    "price": {
+     "close": null,
+     "high": null,
+     "low": null,
+     "mean": null,
+     "open": null,
+     "previous": null
+    },
+    "volume": "0.00",
+    "yes_ask": {
+     "close": "0.0400",
+     "high": "0.0800",
+     "low": "0.0300",
+     "open": "0.0400"
+    },
+    "yes_bid": {
+     "close": "0.0000",
+     "high": "0.0100",
+     "low": "0.0000",
+     "open": "0.0100"
+    }
+   },
+   {
+    "end_period_ts": 1779930000,
+    "open_interest": "0.00",
+    "price": {
+     "close": null,
+     "high": null,
+     "low": null,
+     "mean": null,
+     "open": null,
+     "previous": null
+    },
+    "volume": "0.00",
+    "yes_ask": {
+     "close": "0.0400",
+     "high": "0.0400",
+     "low": "0.0400",
+     "open": "0.0400"
+    },
+    "yes_bid": {
+     "close": "0.0100",
+     "high": "0.0100",
+     "low": "0.0000",
+     "open": "0.0000"
+    }
+   },
+   {
+    "end_period_ts": 1779933600,
+    "open_interest": "0.00",
+    "price": {
+     "close": null,
+     "high": null,
+     "low": null,
+     "mean": null,
+     "open": null,
+     "previous": null
+    },
+    "volume": "0.00",
+    "yes_ask": {
+     "close": "0.0300",
+     "high": "0.0800",
+     "low": "0.0300",
+     "open": "0.0400"
+    },
+    "yes_bid": {
+     "close": "0.0000",
+     "high": "0.0100",
+     "low": "0.0000",
+     "open": "0.0100"
+    }
+   }
+  ],
+  "ticker": "KXBTC-26MAY2817-B76375"
+ }
+}

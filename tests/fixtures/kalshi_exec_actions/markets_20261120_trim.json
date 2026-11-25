@@ -1,0 +1,88 @@
+{
+ "markets": [
+  {
+   "ticker": "KXEOWEEK-26NOV28-4",
+   "event_ticker": "KXEOWEEK-26NOV28",
+   "title": "Will the President sign more than 4 Executive Orders between Nov 22, 2026 and Nov 28, 2026?",
+   "yes_sub_title": "Above 4",
+   "strike_type": "greater",
+   "floor_strike": 4,
+   "cap_strike": null,
+   "rules_primary": "If the President signs above 4 executive orders during Nov 22, 2026 to Nov 28, 2026, then the market resolves to Yes.",
+   "status": "initialized",
+   "result": ""
+  },
+  {
+   "ticker": "KXTRUMPNOMNUM-26NOV22-T6",
+   "event_ticker": "KXTRUMPNOMNUM-26NOV22",
+   "title": "Will there be at least 6 presidential nominations sent to the Senate in the week of Nov 22, 2026?",
+   "yes_sub_title": "At least 6",
+   "strike_type": "greater_or_equal",
+   "floor_strike": 6,
+   "cap_strike": null,
+   "rules_primary": "If Donald Trump has sent at least 6 nominations to the U.S. Senate from Nov 22, 2026 through Nov 28, 2026 (as checked on the \u201cPresidential Actions\u201d page at whitehouse.gov before 10:00 AM ET on Nov 29, 2026), then the market resolves to Yes.",
+   "status": "active",
+   "result": ""
+  },
+  {
+   "ticker": "KXTRUMPACTD-26NOV21-YES",
+   "event_ticker": "KXTRUMPACTD-26NOV21",
+   "title": "Will Trump do anything on Nov 21, 2026?",
+   "yes_sub_title": "Yes",
+   "strike_type": "greater",
+   "floor_strike": 0,
+   "cap_strike": null,
+   "rules_primary": "If Donald Trump has taken any presidential actions on Nov 21, 2026 (as checked on the \u201cPresidential Actions\u201d page at whitehouse.gov at 10:00 AM ET on Nov 22, 2026), then the market resolves to Yes.",
+   "status": "active",
+   "result": ""
+  },
+  {
+   "ticker": "KXMAMDANIEO-26NOV28-T0",
+   "event_ticker": "KXMAMDANIEO-26NOV28",
+   "title": "Will Mamdani sign above 0 executive orders between Nov 22, 2026 and Nov 28, 2026?",
+   "yes_sub_title": "Above 0",
+   "strike_type": "greater",
+   "floor_strike": 0,
+   "cap_strike": null,
+   "rules_primary": "If the number of non-emergency executive orders signed by Zohran Mamdani is above 0 from Nov 22, 2026 to Nov 28, 2026, then the market resolves to Yes.",
+   "status": "initialized",
+   "result": ""
+  },
+  {
+   "ticker": "KXTRUMPPHOTO-26NOV29-7",
+   "event_ticker": "KXTRUMPPHOTO-26NOV29",
+   "title": "Will the number of distinct days with a Getty Images editorial photo of Trump be exactly 7 between Nov 23, 2026 and Nov 29, 2026?",
+   "yes_sub_title": "7",
+   "strike_type": "between",
+   "floor_strike": 7,
+   "cap_strike": 7,
+   "rules_primary": "If the number of distinct days Donald Trump is photographed in a tagged editorial photo on Getty Images between Nov 23, 2026 and Nov 29, 2026 is exactly 7, then the market resolves to Yes.",
+   "status": "active",
+   "result": ""
+  },
+  {
+   "ticker": "KXTRUMPACT-26NOV22-T9",
+   "event_ticker": "KXTRUMPACT-26NOV22",
+   "title": "Will there be at least 9 presidential actions in the week of Nov 22, 2026?",
+   "yes_sub_title": "At least 9",
+   "strike_type": "greater_or_equal",
+   "floor_strike": 9,
+   "cap_strike": null,
+   "rules_primary": "If Donald Trump has taken at least 9 presidential actions from Nov 22, 2026 through Nov 28, 2026 (as shown on the \u201cPresidential Actions\u201d page at whitehouse.gov by 10:00 AM ET on Nov 29, 2026), then the market resolves to Yes.",
+   "status": "initialized",
+   "result": ""
+  },
+  {
+   "ticker": "KXTRUMPACT-26FEB22-26FEB28",
+   "event_ticker": "KXTRUMPACT-26FEB22",
+   "title": "Will Trump do anything on Feb 28, 2026?",
+   "yes_sub_title": "February 28",
+   "strike_type": "greater",
+   "floor_strike": 0,
+   "cap_strike": null,
+   "rules_primary": "If Donald Trump has taken any presidential actions on Feb 28, 2026 (as checked on the \u201cPresidential Actions\u201d page at whitehouse.gov at 10:00 AM ET on Mar 1, 2026), then the market resolves to Yes.",
+   "status": "finalized",
+   "result": "no"
+  }
+ ]
+}

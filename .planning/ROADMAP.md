@@ -20,6 +20,9 @@ Each phase ends with a **live smoke run that produces non-empty, sanity-checked 
 - [x] Hyperliquid (data only, 2026-11-20): HIP-4 outcome metadata and candles (`ingest hl`), and
       a continuous WebSocket recording of non-financial outcome books and trades with
       addresses (`record-hl`, unit `albert-record-hl`).
+- [x] Raw stream archive (2026-11-20): closed days go to S3 (Intelligent-Tiering, SHA-256
+      verified, the host role cannot delete) by the daily `albert-archive.timer`, keeping 4 days on
+      disk; readers fail loudly on an archived day (`albert restore-stream <day> --venue <v>`).
 - [x] Typed Parquet tables (real decimal and timestamp columns, not strings) plus run manifests.
 - [x] Decide the non-financial category/tag list from observed values.
 
@@ -30,6 +33,9 @@ Each phase ends with a **live smoke run that produces non-empty, sanity-checked 
       path.
       Start with rule-based matching on title/date/entities, then do a manual review pass.
 - [x] Measure match quality and price-gap distributions.
+- [ ] Hyperliquid vs Kalshi (about 2026-12-04, after 2 weeks of recording): normalize sport
+      labels, match soccer/NBA/NFL markets, then the frozen lead-lag and wallet-flow checks
+      (`.planning/research/SUMMARY.md`).
 
 ## Phase 3: Research
 
@@ -42,13 +48,38 @@ Each phase ends with a **live smoke run that produces non-empty, sanity-checked 
       ask on the matched market (or the Polymarket price as a proxy).
 - [x] **Market inefficiencies:** calibration by category × price bucket (favorite-longshot bias)
       and cross-venue gaps.
-- [ ] Late-resolution drift (not built yet).
+- [x] Late-resolution drift (`late_resolution`, 2026-11-23): settlement is fast outside chart series;
+      near-certain takers lose (−1.7c holdout). No edge. Lead: Ramp AI Index / LMArena release
+      recorder.
+- [x] Second swarm (2026-11-23, 12 agents + 2 skeptics; `.planning/research/SUMMARY.md`): mentions
+      word model, literature, portfolio, deadline hazard, late resolution, maker-NO carry-over,
+      awards, cross-sectional model, science/health, and three crypto studies (research-only
+      exception). No new live or paper strategy; both crypto candidates downgraded to weak.
+- [ ] Portfolio proposals awaiting the user's decision (`data/research/portfolio/report.md`): cmn
+      paper cap $40, gates by fills needed (cmn ≈ 164), per-bot guard caps before any second live bot.
 - [x] Literature re-tests (`research literature`, 2026-11-03): maker/taker, sum-of-legs arb,
       category calibration slopes, rolling-min reversion, move reversal. Only the maker
       premium survives.
 - [x] Fixed two biases: decisions anchored on scheduled expiry (not actual close), and
       volume-blind samples (`ingest kalshi-detail --series`, `--universe population`). The
       Phase 5 longshot edge is withdrawn.
+- [x] Culture / approval / executive-action swarm (2026-11-20/21; `.planning/research/SUMMARY.md`):
+      Netflix, music charts, other culture/tech, approval, executive actions, other recurring
+      series, cross-family flow and technical indicators. No new live strategy.
+- [ ] Forward paper tests from the swarm: **running since 2026-11-21** (`albert.paper_forward`,
+      systemd `albert-paper-forward`, $25 paper bankroll per rule; `python -m albert.paper_forward report`):
+  - Culture maker NO (`cmn`): 1-contract post-only NO bid at ceil(mid + 12c) on real two-sided legs
+    with mid ≤ 5c, close − 72 h, cheapest NO first, ≤ 3 legs per event, ≤ $25 cash
+    (`data/research/culture_flow/review.md`). Pass: ≥ 150 fills over ≥ 10 weeks, t ≥ 2, ≥ +5c/fill,
+    < 10% YES, Sharpe ex top-5 > 1.
+  - HITS → KXALBUMEQUIV taker (`hits`): first sighting of the week's first preview, frozen tables,
+    book-sized (`data/research/music_charts/review.md`). Pass: 8-10 forward Tuesdays, t ≥ 2,
+    Sharpe ex top-5 > 1.
+  - Approval 5–15c NO (`apr`): every qualifying leg, 1 contract (no tie-break). Needs about 200 fills.
+- [x] Forward recorders for the promising leads scheduled 2026-11-21: `albert-rec-music.timer`,
+      `albert-rec-approval.timer`. Not scheduled (no edge): netflix, culture_recurring, exec_actions,
+      recurring_alt.
+- [ ] Settle the robots edge cases (403 robots.txt, kworb's YouTube list, What's on Netflix).
 
 ## Phase 4: Backtester
 
@@ -68,8 +99,9 @@ Each phase ends with a **live smoke run that produces non-empty, sanity-checked 
       trades): maker 24h/20h = −1.7% per filled $ (t = −0.8). No edge on major leagues.
 - [x] Weather (NWS/IEM): model loses to the market at every slot; decided brackets priced
       correctly. No edge at hourly resolution.
-- [ ] Volume-blind maker test for Weather and minor sports (needs candles + windowed trades
-      for every leg of each event).
+- [x] Volume-blind maker test for Weather and minor sports (`maker_carry`, 2026-11-23): daily
+      high/low flow is informed (−5.1c holdout), minor sports have no qualifying legs, rain ladder
+      weak (+4.5c, t 1.3). No edge.
 - [ ] Move the paper loop to a GCE VM (deploy/gcp.md).
 - [ ] Run it for >= 2 weeks or >= 100 fills and compare to the historical maker returns.
 

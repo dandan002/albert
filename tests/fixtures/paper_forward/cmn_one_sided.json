@@ -1,0 +1,64 @@
+{
+ "_source": "GET /markets/KXNETFLIXRANKSHOW-26NOV23-ALT/orderbook?depth=10 and its /markets row, fetched_at=2026-11-21T01:42:05.541664+00:00",
+ "market": {
+  "ticker": "KXNETFLIXRANKSHOW-26NOV23-ALT",
+  "event_ticker": "KXNETFLIXRANKSHOW-26NOV23",
+  "close_time": "2026-11-24T04:59:00Z",
+  "strike_type": "custom",
+  "rules_primary": "If The Altruists: Season 1 is #1 on the Netflix Top 10 US Show on the chart published on Nov 24, 2026, then the market resolves to Yes.",
+  "status": "active",
+  "result": "",
+  "yes_bid_dollars": "0.0000",
+  "yes_ask_dollars": "0.0100",
+  "yes_bid_size_fp": "0.00",
+  "yes_ask_size_fp": "4444.00",
+  "last_price_dollars": "0.0100"
+ },
+ "orderbook": {
+  "orderbook_fp": {
+   "no_dollars": [
+    [
+     "0.3200",
+     "1.00"
+    ],
+    [
+     "0.3600",
+     "5.00"
+    ],
+    [
+     "0.4600",
+     "5.00"
+    ],
+    [
+     "0.4900",
+     "1.00"
+    ],
+    [
+     "0.5100",
+     "5.00"
+    ],
+    [
+     "0.5900",
+     "1.00"
+    ],
+    [
+     "0.7900",
+     "50.00"
+    ],
+    [
+     "0.9600",
+     "2500.00"
+    ],
+    [
+     "0.9800",
+     "220.00"
+    ],
+    [
+     "0.9900",
+     "4444.00"
+    ]
+   ],
+   "yes_dollars": []
+  }
+ }
+}

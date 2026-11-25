@@ -1,0 +1,116 @@
+{
+ "url": "https://earthquake.usgs.gov/fdsnws/event/1/query",
+ "params": {
+  "format": "geojson",
+  "eventid": "us7000tdms",
+  "includesuperseded": "true"
+ },
+ "fetched_at": "2026-11-23T01:00:17.141028+00:00",
+ "response": {
+  "type": "Feature",
+  "properties": {
+   "mag": 5.9,
+   "place": "southern East Pacific Rise",
+   "time": 1788352556633,
+   "updated": 1795044285040,
+   "tz": null,
+   "url": "https://earthquake.usgs.gov/earthquakes/eventpage/us7000tdms",
+   "felt": null,
+   "cdi": null,
+   "mmi": 0,
+   "alert": "green",
+   "status": "reviewed",
+   "tsunami": 0,
+   "sig": 536,
+   "net": "us",
+   "code": "7000tdms",
+   "ids": ",usauto7000tdms,us7000tdms,",
+   "sources": ",usauto,us,",
+   "types": ",internal-moment-tensor,losspager,moment-tensor,origin,phase-data,shakemap,",
+   "nst": 178,
+   "dmin": 7.703,
+   "rms": 0.36,
+   "gap": 82,
+   "magType": "mww",
+   "type": "earthquake",
+   "title": "M 5.9 - southern East Pacific Rise",
+   "products": {
+    "internal-moment-tensor": [
+     {
+      "indexid": 28546770,
+      "indexTime": 1788353053804,
+      "id": "urn:usgs-product:us:internal-moment-tensor:us_7000tdms_mww:1788353043040",
+      "type": "internal-moment-tensor",
+      "code": "us_7000tdms_mww",
+      "source": "us",
+      "updateTime": 1788353043040,
+      "status": "UPDATE",
+      "properties": {
+       "eventtime": "2026-09-02T12:36:00.000Z"
+      },
+      "preferredWeight": 163
+     }
+    ],
+    "origin": [
+     {
+      "indexid": 28803760,
+      "indexTime": 1795044336788,
+      "id": "urn:usgs-product:us:origin:us7000tdms:1795044285040",
+      "type": "origin",
+      "code": "us7000tdms",
+      "source": "us",
+      "updateTime": 1795044285040,
+      "status": "UPDATE",
+      "properties": {
+       "magnitude": "5.9",
+       "magnitude-type": "mww",
+       "eventtime": "2026-09-02T12:35:56.633Z"
+      },
+      "preferredWeight": 158
+     },
+     {
+      "indexid": 28628212,
+      "indexTime": 1790265402767,
+      "id": "urn:usgs-product:us:origin:us7000tdms:1790265391040",
+      "type": "origin",
+      "code": "us7000tdms",
+      "source": "us",
+      "updateTime": 1790265391040,
+      "status": "UPDATE",
+      "properties": {
+       "magnitude": "5.9",
+       "magnitude-type": "mww",
+       "eventtime": "2026-09-02T12:35:56.633Z"
+      },
+      "preferredWeight": 158
+     },
+     {
+      "indexid": 28546806,
+      "indexTime": 1788353721627,
+      "id": "urn:usgs-product:us:origin:us7000tdms:1788353712040",
+      "type": "origin",
+      "code": "us7000tdms",
+      "source": "us",
+      "updateTime": 1788353712040,
+      "status": "UPDATE",
+      "properties": {
+       "magnitude": "5.9",
+       "magnitude-type": "mww",
+       "eventtime": "2026-09-02T12:35:56.627Z"
+      },
+      "preferredWeight": 158
+     }
+    ]
+   }
+  },
+  "geometry": {
+   "type": "Point",
+   "coordinates": [
+    -109.0117,
+    -34.8796,
+    10
+   ]
+  },
+  "id": "us7000tdms"
+ }
+}

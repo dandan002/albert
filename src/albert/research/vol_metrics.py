@@ -57,30 +57,59 @@ BANKROLL = 100.0
 DAYS_PER_YEAR = 365
 BLOCK_DAYS = 7
 N_BOOT = 2000
-CANDLE_SOURCES = (
+CANDLE_SOURCES = (   # paths or globs under ``root``; files without the needed columns are skipped
     "data/research/pm_hazard/candles.parquet",
     "data/research/vol_theta/candles_ext.parquet",
     "data/research/pm_smile/candles_fetched.parquet",
     "data/tables/kalshi_candles.parquet",
+    "data/research/ta_recurring/candles_marks.parquet",
+    "data/cache/*/candles/*.parquet",      # per-study candle caches (netflix, culture_flow, ...)
+    "data/research/*/candles/*.parquet",   # xcat-style study candles (exec_actions, recurring_alt, ...)
 )
+# per-study candle files name the same fields differently
+_CANDLE_ALIASES = {"yes_bid_close": ("yes_bid_close", "bid", "bid_close"),
+                   "yes_ask_close": ("yes_ask_close", "ask", "ask_close"),
+                   "price_close": ("price_close", "price", "p_close")}
 LEDGER_COLS = ["struct_id", "event_ticker", "ticker", "side", "n", "t_in", "cost_usd", "settle_ts", "payoff_usd"]
 
 
 # ---- marks ---------------------------------------------------------------------------------------
+def _candle_frame(path: str, tickers: list[str]) -> pl.LazyFrame | None:
+    """One candle file as (ticker, ts, yes_bid_close, yes_ask_close, price_close), hourly rows only;
+    None when the file lacks those fields."""
+    cols = pl.read_parquet_schema(path)
+    pick = {}
+    for want, names in _CANDLE_ALIASES.items():
+        name = next((n for n in names if n in cols), None)
+        if name is None:
+            return None
+        pick[want] = name
+    if "ticker" not in cols or "end_ts" not in cols:
+        return None
+    lf = pl.scan_parquet(path).filter(pl.col("ticker").is_in(tickers))
+    for period in ("period", "period_minutes"):
+        if period in cols:
+            lf = lf.filter(pl.col(period) == 60)
+    return lf.select("ticker", pl.col("end_ts").cast(pl.Datetime("us", "UTC")).alias("ts"),
+                     *[pl.col(src).cast(pl.Float64).alias(want) for want, src in pick.items()])
+
+
 def load_marks(tickers: list[str], root: Path = Path(".")) -> pl.DataFrame:
     """Hourly YES mids (ticker, ts, yes_mid) for ``tickers`` from every cached candle source: the
-    bid/ask midpoint when both sides are quoted, else the last trade price."""
+    bid/ask midpoint when both sides are really quoted (0 < bid < ask < 1), else the last trade
+    price. Kalshi candles report a missing bid as 0 and a missing ask as 1, so a dead longshot with
+    no bid and no ask must not be marked at 50c."""
     frames = []
     for src in CANDLE_SOURCES:
-        p = root / src
-        if not p.exists():
-            continue
-        frames.append(pl.scan_parquet(p).filter(pl.col("ticker").is_in(tickers))
-                      .select("ticker", pl.col("end_ts").alias("ts"), "yes_bid_close", "yes_ask_close", "price_close"))
+        for p in sorted(glob.glob(str(root / src))):
+            f = _candle_frame(p, tickers)
+            if f is not None:
+                frames.append(f)
     if not frames:
         return pl.DataFrame(schema={"ticker": pl.String, "ts": pl.Datetime("us", "UTC"), "yes_mid": pl.Float64})
     c = pl.concat(frames, how="diagonal_relaxed").collect()
     two_sided = (pl.col("yes_bid_close").is_not_null() & pl.col("yes_ask_close").is_not_null()
+                 & (pl.col("yes_bid_close") > 0) & (pl.col("yes_ask_close") < 1)
                  & (pl.col("yes_ask_close") > pl.col("yes_bid_close")))
     mid = pl.when(two_sided).then((pl.col("yes_bid_close") + pl.col("yes_ask_close")) / 2).otherwise(pl.col("price_close"))
     return (c.with_columns(mid.alias("yes_mid")).filter(pl.col("yes_mid").is_not_null())

@@ -1,0 +1,10 @@
+{
+ "ticker": "KXNHLGAME-26OCT21FLAOTT-FLA",
+ "event_ticker": "KXNHLGAME-26OCT21FLAOTT",
+ "series_ticker": "KXNHLGAME",
+ "close_time": "2026-10-22T02:25:21+00:00",
+ "expected_expiration_time": "2026-10-22T02:30:00+00:00",
+ "result": "no",
+ "fee_type": "quadratic_with_maker_fees",
+ "fee_multiplier": 1.0
+}

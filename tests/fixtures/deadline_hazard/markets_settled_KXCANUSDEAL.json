@@ -1,0 +1,58 @@
+{
+ "source": "recorded 2026-11-23 GET /markets?series_ticker=KXCANUSDEAL&status=settled (trimmed fields)",
+ "params": {
+  "series_ticker": "KXCANUSDEAL",
+  "status": "settled",
+  "limit": 1000,
+  "mve_filter": "exclude",
+  "min_close_ts": 1790812800
+ },
+ "fetched_at": "2026-11-23T01:03:43.646466+00:00",
+ "response": {
+  "cursor": "",
+  "markets": [
+   {
+    "ticker": "KXCANUSDEAL-26-26NOV01",
+    "event_ticker": "KXCANUSDEAL-26",
+    "title": "Will it be reported by a Source Agency that Canada and the United States have concluded a final trade agreement before Nov 1, 2026?",
+    "yes_sub_title": "Before Nov 1, 2026",
+    "market_type": "binary",
+    "status": "finalized",
+    "open_time": "2026-08-24T17:00:00Z",
+    "close_time": "2026-11-01T04:59:00Z",
+    "expected_expiration_time": "2026-11-08T15:00:00Z",
+    "can_close_early": true,
+    "settlement_ts": "2026-11-01T16:08:33.545477Z",
+    "result": "no",
+    "settlement_value_dollars": "0.0000",
+    "last_price_dollars": "0.0100",
+    "yes_bid_dollars": "0.0000",
+    "yes_ask_dollars": "1.0000",
+    "volume_fp": "3709.96",
+    "open_interest_fp": "3082.26",
+    "rules_primary": "If Canada and the United States have concluded a final trade agreement after Issuance and before Nov 1, 2026, then the market resolves to Yes."
+   },
+   {
+    "ticker": "KXCANUSDEAL-26-26OCT01",
+    "event_ticker": "KXCANUSDEAL-26",
+    "title": "Will it be reported by a Source Agency that Canada and the United States have concluded a final trade agreement before Oct 1, 2026?",
+    "yes_sub_title": "Before Oct 1, 2026",
+    "market_type": "binary",
+    "status": "finalized",
+    "open_time": "2026-08-21T17:00:00Z",
+    "close_time": "2026-10-01T03:59:00Z",
+    "expected_expiration_time": "2026-10-08T14:00:00Z",
+    "can_close_early": true,
+    "settlement_ts": "2026-10-01T13:54:33.967479Z",
+    "result": "no",
+    "settlement_value_dollars": "0.0000",
+    "last_price_dollars": "0.0100",
+    "yes_bid_dollars": "0.0000",
+    "yes_ask_dollars": "1.0000",
+    "volume_fp": "4974.36",
+    "open_interest_fp": "3535.24",
+    "rules_primary": "If Canada and the United States have concluded a final trade agreement after Issuance and before Oct 1, 2026, then the market resolves to Yes."
+   }
+  ]
+ }
+}

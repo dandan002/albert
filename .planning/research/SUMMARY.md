@@ -806,7 +806,7 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     `capped_book` NaN-price bug is fixed (12 h cell holdout $8.13 → $7.39/wk).
 - **Hyperliquid HIP-4 outcome markets: data collection started (2026-11-20; data only).**
   Hyperliquid's Terms (section 1.6) bar US persons, so it is never traded. Kalshi stays the only venue.
-  - *Universe (2026-11-20).* 313 live outcomes, about 160 non-financial: European soccer match
+  - *Universe (2026-11-20).* 319 outcomes, 162 non-financial: European soccer match
     results (EPL, La Liga, Serie A, Bundesliga, Ligue 1), NBA/NFL/esports match winners, and
     EPL/UCL/NFL/NBA season winners. The rest are perp/crypto price binaries, IPO, Fed-rate and
     recurring crypto questions (excluded). No politics, mentions, weather or culture.
@@ -814,9 +814,198 @@ Cost: about $15–80/month (VM + storage) plus a few dollars of live losses.
     (side 0; side 1 is the same book mirrored at 1 − p: 12 of 12 markets had identical trade
     hashes and sizes). Every trade carries buyer and seller addresses. `albert ingest hl` writes
     `hl_outcomes` and `hl_candles` (1 h back to listing, 1 m for the last 3.5 days).
+  - *Status (merged in PR #14).* Recorder: 162 coins on 2 connections, 0 errors, about 150 MB/day.
+    Ingest: 564k candles for the 133 traded sports outcomes, hourly from 2026-09-04. Rough
+    notional since September: EPL ~$10.4M, NFL ~$4.8M, UCL ~$4.3M, NBA ~$3.9M, La Liga ~$2.1M,
+    Ligue 1 / Bundesliga / Serie A ~$0.5M each. Before matching to Kalshi, normalize sport labels
+    (`football`, `Football`, `football/soccer` all occur).
   - *Planned check (after about 2 weeks of recording; frozen rules, dev/holdout):* (a) price
     agreement and lead-lag against Kalshi on matched soccer/NBA/NFL markets (prior: PM intl and
     PM US both agree with Kalshi within about 0.4c and neither leads); (b) whether identifiable
     Hyperliquid wallets' flow predicts Kalshi moves or outcomes (prior: PM wallets show no
     persistence, rank correlation 0.02). Any trade would be on Kalshi only and needs
     event-clustered t ≥ 2, ≥ 60% positive weeks, and Sharpe/vol from `vol_metrics`.
+- **Earnings-call mentions, re-asked 2026-11-20 (no new run; from `mentions_history` and
+  `pre_event`).** The NO-bid rule does not hold on earnings calls. At the live 12c margin:
+  +2.0c/fill (t 0.5) before Aug 17, +3.1c (t 0.4) Aug 17–Sep, +0.8c (t 0.2) October, −0.5c Nov 1–5;
+  184 events, 374 fills, about +1.5c pooled, against +6 to +13c for speeches. Book (Aug 20 – Oct
+  30, $5/order): Sharpe 1.6 [−3.6, 3.2], −2.5 without the top-5 events, vol 186%, max DD −$46. The
+  8c margin and the raw-mid control are flat too. Untested: the 12 h early phase and anything after
+  Nov 5. They also stay out of scope as financial (`albert.categories`).
+- **Culture, approval and executive-action swarm (2026-11-20/21; 8 research agents + 3 skeptics;
+  reports in `data/research/{netflix,music_charts,culture_recurring,approval2,exec_actions,
+  recurring_alt,culture_flow,ta_recurring}/report.md`, reviews in `.../review.md`).** User: "agent
+  swarm approach to researching strategies on culture markets like top Netflix shows weekly and
+  other repetitive markets. Full research freedom, including alternative info", plus approval
+  ratings, executive orders and (added) technical indicators. Each agent wrote hypotheses before
+  outcome data, froze rules on dev (≤ Sep 30), scored Oct 1 – Nov 20 once; candidates went to an
+  adversarial reviewer.
+  - *Netflix* (`netflix.py`, 54 dev cells): the weekly #1 is decided before any allowed daily data
+    is public (winner ~0.94 by Sun 18:00 ET, ~0.98 by Mon 18:00 ET). What's on Netflix daily pages
+    (allowed; live ~18:00Z D to 00:38Z D+1) pick the winner 45–59% and lose when traded. Late-week
+    NO on 1–10c legs: 41/41 dev → 8 legs, 1 loss, −7.6c holdout; favourite 90–98c Sunday:
+    −27.7%/$ holdout (global movies). netflix.com is robots-blocked except ClaudeBot (not used);
+    FlixPatrol, Reelgood blocked. **No edge.**
+  - *Music charts* (`music_charts.py`, ≥ 83 dev cells): HITS Daily Double (allowed) posts album
+    projections Tue ~16:00 ET; Kalshi's Luminate ladders absorb them over ~24 h. Frozen taker
+    claimed dev +20.8c (t 3.75), holdout +16.7c (t 1.83, 14 events). **Review: weakened** — HITS
+    edits tables in place (a traded holdout row did not exist yet at decision) and `publishedAt`
+    precedes visibility by 20–45 min. Corrected (first-published tables, act ≥ 45 min after the
+    stamp): dev +17.4c t 3.06, holdout +10.4c t 1.22 (14 fills, 5 decision hours), Sharpe ex top-5
+    −3.1. The post-decision drift toward the HITS price is real (+3.4c at 1 h t 3.0, +7.8c at 24 h
+    t 3.9). Billboard #1/#2, the HITS Friday final and the Sunday Billboard 200 reveal are priced.
+    billboard.com, Spotify charts, chartmasters blocked; kworb's Spotify pages treated as blocked.
+    **Paper candidate (KXALBUMEQUIV only, clock from first sighting, frozen tables, book-sized).**
+  - *Other culture/tech* (`culture_recurring.py`, 118 cells): universe led by Rotten Tomatoes
+    ($32M/3 mo), OpenRouter shares, LMArena; Kalshi has no box-office series now. RT favourite
+    85–97c at T−6h: 29/29 dev, 6/6 holdout, ~+6c (exact p 0.11 pooled), $0.2/week. RT robots.txt
+    returns 403 → treated as blocked (so culture.py's Wayback RT data is out under the policy).
+    **No tradable edge**; OpenRouter in-week share needs a recorder.
+  - *Approval* (`approval2.py`, 170 cells): pollster front-running fails (the ladder moves when
+    Rasmussen publishes, before RCP enters it, 15/16 days). Frozen NO on 5–15c KXTRUMPAPPROVE legs at
+    01:00 ET: dev +1.8c t 0.5 → holdout +4.6c t 2.63. **Review: weakened** — under the $5 cap the
+    code picked legs alphabetically; random pick ≈ +2.9c (t 1.5), all legs +2.6c (t 1.4); losing-leg
+    count p ≈ 0.07; pooled Sep–Nov +3.7c t 2.3, Sharpe 4.8 (3.8 ex top-5), $0.76/week. A generic
+    near-expiry 5–15c longshot premium (positive 4–23 h out, both sides of the mode), not a trend
+    bet. VoteHub, Silver Bulletin, NYT blocked. **At most a free paper side-job (~$25/yr).**
+  - *Executive actions* (`exec_actions.py`, 228 cells): White House presidential-actions feed
+    (allowed, timestamped) rebuilds all 448 KXTRUMPACT/ACTD/NOMNUM results; Federal Register rebuilds
+    all 125 KXEOWEEK. Nowcast taker on KXTRUMPACT dev +20.0c t 4.5 → holdout +1.4c t 0.16 (White
+    House activity fell in Oct–Nov). Kalshi prints 1–16 s after each post; televised signings
+    priced ≥ 90c beforehand. **No edge.** Post-hoc NO-only lead (+19.9c dev, 7 holdout fills).
+  - *Other recurring* (`recurring_alt.py`, 113 cells, 152 series): PortWatch publishes after the
+    week; the Tuesday release lands 40–60 min before close and is swept within a second (the feature
+    service has no verifiable robots.txt). Strait NO 10–20c: dev +5.9c → holdout −7.3c. Truth
+    Social/ActBlue 3–10c NO: pennies, post-hoc. **No edge.**
+  - *Technical indicators* (`ta_recurring.py`, 2,268 cells, 31,939 volume-blind markets): 0 pass
+    Holm; frozen Donchian-48 exec-actions trend +12.3c → +0.15c; resting bids lose 1–5c/fill to
+    adverse selection and indicators add ~1c; post-publication moves revert. **No edge** (same as
+    `ta_calendar` on sports/weather).
+  - *Cross-family flow* (`culture_flow.py`, 272 cells): Polymarket twins agree within 0.35–0.73c and
+    don't lead; Netflix specialist wallets persist on Polymarket (top 20 +19.8%/$ holdout, t 5.9) but
+    following them on Kalshi loses (−2.4c). **Mentions mechanism carries over:** maker NO selling YES
+    at mid + 12c on ≤ 5c legs at close − 72 h, 37 series: dev +8.9c/fill t 2.4 (80 fills) → holdout
+    +12.5c t 7.7 (88 fills, 47 events); 24 h weaker, 6 h ≈ 0. Named before holdout scoring but not
+    the frozen primary. **Review: weakened, not refuted** — trade prints reproduce the candle fills
+    exactly (89 vs 88 fills, +12.56c); 2 exact-book fills matched; pooled 169 fills +10.8c t 5.3,
+    4.1% resolved YES vs 15% break-even; all 7 losers followed ≥ 200 contracts of informed flow;
+    69% of holdout orders sat on books with no YES bid; leave-one-family/week ≥ +11c; no unseen data
+    yet. Cash-aware book: $0.59/week on the $57 not used by mentions (Sharpe 9.0 on a near-loss-free
+    sample; dev book at $40 Sharpe 4.5). **Best paper candidate** (rules in `culture_flow/review.md`:
+    live book, 1 contract post-only, real two-sided mid ≤ 5c, ≤ 3 legs per event, $20 cash cap; pass
+    at ≥ 150 fills / 10 weeks, t ≥ 2, ≥ +5c/fill, < 10% YES, Sharpe ex top-5 > 1).
+  - **Net:** no new live strategy. Two paper tests worth running (culture maker NO; HITS → album
+    units), one free side-job (approval longshot NO). Recorders built and smoke-tested, none
+    scheduled: `python -m albert.research.{netflix,music_charts,culture_recurring,approval2,
+    exec_actions,recurring_alt} record`.
+  - *Shared fix (2026-11-21):* `vol_metrics.load_marks` marked books with no bid (0) and no ask (1)
+    at 50c and read only fixed candle files. It now uses the mid only when 0 < bid < ask < 1 (else
+    the last trade) and also reads per-study caches (`data/cache/*/candles/`,
+    `data/research/*/candles/`, `ta_recurring/candles_marks.parquet`). Sharpe/vol of earlier
+    NO-on-longshot ledgers re-run through `vol_metrics` will change (lower vol).
+  - *Open policy questions (user):* (1) a robots.txt that returns 403 (RT treated as blocked; RCP's
+    archived robots copy used by approval2 and approval.py); (2) kworb.net's YouTube list in the
+    culture_recurring recorder (YouTube's data API is blocked); (3) What's on Netflix's own in-app
+    tracking treated as allowed while netflix.com is blocked except ClaudeBot.
+  - **Forward paper tests started 2026-11-21 01:45 UTC** (user: "Let's do paper tests assuming $20-30
+    bankroll initially and run recorders for each promising strategy"): `albert.paper_forward`
+    (systemd `albert-paper-forward`, no order client, Kalshi public data only), $25 paper bankroll per
+    rule, append-only ledgers in `data/paper_forward/<rule>/ledger.jsonl`, hourly marks in
+    `marks.jsonl`. **cmn** = culture maker NO as in `culture_flow/review.md` (REST book at close −
+    72 h, real two-sided mid ≤ 5c, 1 lot at ceil(mid + 12c), cheapest NO first, ≤ 3 legs/event,
+    resting collateral + open positions ≤ $25; legs past a cap are shadow orders, tracked not
+    booked; fill = first YES-taker print strictly through). **hits** = HITS first-sight trigger
+    (listing polled every 5 min Tue 13-21 ET, else 30 min; raw post frozen), frozen dev fit,
+    KXALBUMEQUIV only, edge ≥ 5c after fee, ≤ displayed size / 10 contracts / 4% of bankroll per
+    order, 5% per event, quotes logged at +1/+6/+24 h. **apr** = 1 NO at 1 − bid on every
+    KXTRUMPAPPROVE leg with 5c < mid ≤ 15c and spread ≤ 10c at settlement − 12 h (every qualifying
+    leg, so no tie-break). Pass bars unchanged from the reviews (cmn ≥ 150 fills over ≥ 10 weeks;
+    hits 8-10 Tuesdays; apr ≈ 200 fills). Recorders scheduled: `albert-rec-music.timer` (hourly,
+    every 10 min Tue/Fri HITS windows and Sun reveal) and `albert-rec-approval.timer` (5 min Mon-Fri
+    12-18 UTC, else 30 min). Not scheduled (no edge): netflix, culture_recurring, exec_actions,
+    recurring_alt. Score: `python -m albert.paper_forward report`.
+- **Second swarm (2026-11-23; 12 research agents + 2 skeptics; reports in
+  `data/research/<slug>/report.md`, reviews in `data/research/crypto_{fast,fv}_review/review.md`).**
+  User: "Even more swarm research? Same and different approaches, 12 subagents, full research
+  discretion. Dedicate 2-3 to crypto as exceptions to the no finance rule". The crypto exception is
+  **research only**: crypto stays excluded from live trading (AGENTS.md) unless the user decides
+  otherwise. Protocol as before (hypotheses before outcomes, freeze on dev ≤ Sep 30, score Oct 1 –
+  Nov 22 once, Holm/Bonferroni, `vol_metrics` books). Subagents could not write `report.md` (harness
+  rule); the lead wrote them from each agent's returned findings and output files.
+  - *Mentions word model* (`mentions_model`): a walk-forward word model from Kalshi history adds
+    nothing to the mid (log-loss gain −1.0 to −1.9 per 1,000 legs); best of 13 overlays +$16.7 (t 1.37)
+    dev → +$6.2 (t 1.11) holdout; skipping "likely" words is wrong-signed; YES bids lose 8–11c/fill.
+    The live rule replicates exactly. **No edge; keep the live rule.** Supply risk: Kalshi listed no
+    Trump mention events after Nov 11. presidency.ucsb.edu, c-span, factba.se, rollcall are blocked.
+  - *Literature sweep* (`lit_sweep`, 26 claims, 19 already tested here): Moshrefi late-game
+    calibration is a look-ahead (actual-end clock); on known clocks calibrated, frozen taker +2.6c →
+    −0.85c. Le large political trades −11.2c → +3.7c. Event-grouped longshots reverse on Kalshi.
+    35 cells, none near Bonferroni. kalshi.com, ucd.ie, cepr.org blocked. **No edge.**
+  - *Portfolio* (`portfolio`): daily correlations within ±0.25; mentions earns ~$84/week per $100 of
+    cash vs cmn ~$4.6, so mentions gets cash first; an expected-fill budget hurts cmn, a $40 cash cap
+    keeps 93% of uncapped P&L; mentions + cmn peaks at $63.9 cash in use, which trips the $60 at-risk
+    KILL. Dev-chosen mix holdout $12.2/week, Sharpe 11.4 vs live mentions $10.0, 9.8. Losing-month
+    probability: mentions 5.2%, + cmn 4.4%, + apr 3.9%, + HITS $5/event 7.0%. Proposals (NOT applied,
+    user decision): cmn paper cap $40; HITS $2/event; ≥ $50 reserve; per-bot guard caps (mentions
+    $42, cmn $42, HITS $12), KILL if free cash < $5, −$20/7 d and −$25 from peak, −$5 day stops; gates
+    by fills needed for t ≥ 2 at half the research edge (cmn 164 fills ≈ 28 weeks, HITS 67 ≈ 26
+    weeks, apr 1,545 ≈ never; the old "150 fills in 10 weeks" is impossible at ~6 fills/week).
+  - *Deadline hazard* (`deadline_hazard`, 70 dev cells): taker NO at T − 24 h on one-off deadline
+    contracts, YES mid 2–10c, spread ≤ 10c: +1.98c (401 trades) → +1.87c (83 trades, 0 YES; p 0.21
+    for zero YES vs 1.55 expected), book Sharpe 6.7 / 5.3 ex top-5, ~$0.5–0.9/week. Same near-expiry
+    longshot premium as apr/cmn. Far status-quo NO, roll demand, ladder arbitrage: no edge. Kalshi APY
+    (3.5%) needs ≥ $250 average balance. **Weak.**
+  - *Late resolution* (`late_resolution`): median close→settle 0.08 h sports, 0.5 h elections/mentions,
+    1.2–1.35 h weather, 10.6–12.4 h entertainment/science. Post-determination money is in one-off
+    broadcast races (Super Bowl, Nobel, Emmys), out of scope. Near-certain taker (95–99c, spread ≤ 5c):
+    −1.31c (t −4.1) → −1.71c (t −4.5). **No edge.** Lead: Ramp AI Index / LMArena releases (robots
+    allowed) left winners at 97–98c for 5–30 min; 2 Ramp releases only, needs a recorder. Closes
+    ROADMAP "late-resolution drift".
+  - *Science/health/space* (`sci_health`, 714 cells): KXBIGGESTQUAKE NO when YES bid ≥ base rate + 3c,
+    5.2–5.8 strikes: +29.5c (t 3.6) → +8.8c (t 1.0), Sharpe ex top-5 −4.0. The 3–5c mid premium over
+    the 10-year base rate pays for clustering (holdout mid 25.0% vs realized 24.5%). Kalshi reprices
+    before USGS publishes (median 7 vs 15 min). Hurricanes priced off NHC. **No edge.** Disclosure:
+    first quake run used revised magnitudes; rebuilt from displayed values (810/812 match), holdout
+    seen twice, same verdict. Post-hoc lead: NO on 6.0–7.0 strikes late in the day.
+  - *Maker NO carry-over* (`maker_carry`, 81 dev cells): unchanged cmn rule on new families: holdout
+    −4.7c/fill (t −1.35, 128 fills). Daily highs/lows: informed flow (21% YES vs 15% break-even); award
+    and non-cmn entertainment: −14.9c, 31% YES; politics/deadlines/elections: almost no fills; minor
+    sports: no qualifying legs. Rain ladder 24 h, 6c: +10.2c → +4.5c (t 1.3), $0.24/week. **No edge.**
+    Closes ROADMAP "volume-blind maker test for Weather and minor sports".
+  - *Awards* (`awards`, 24 cells): the cmn rule on award series +12.0c (t 5.8, major film/TV season) →
+    −10.8c holdout (Daytime Emmys 5 of 7 fills lost, Streamer Awards 2 of 5); 24 h version +13.5c →
+    −10.2c. Precursors are priced within an hour. Gold Derby and AwardsWatch blocked. **No edge.** The
+    cmn paper universe (37 series) has no award series, but the maker-NO mechanism fails on thin,
+    low-attention events.
+  - *Cross-sectional model* (`xs_ml`, 147 cells): beats the mid and the FLB curve in log loss out of
+    sample (holdout +12 to +19 milli-log-loss), but the information sits in one-sided books ("no bid
+    means NO") that cannot be traded. Frozen taker −5.6c (t −2.8) holdout; maker −2.7c; 17 of 42 taker
+    cells t ≤ −2. Only Holm survivor is the culture_flow maker NO, and the model gate keeps the same 11
+    holdout fills as no gate. **No edge.**
+  - *Crypto 15-minute* (`crypto_fast`; research only): spot-implied fair value gap ≥ 12c at minutes
+    5–9, first signal per window: +0.8c (t 0.2) dev → +7.7c (t 2.25 by day) holdout. **Skeptic:
+    downgrade to WEAK** — frozen cell sat at the 100-trade minimum and took the highest t with no
+    bar, next-best cell +3.5c; t 1.95 by window, 1.69 by week, 1.35 without DOGE; only 60% of $5
+    signals printed at or better within 5 s; holdout was a −27 to −42% sell-off. No speed edge: the
+    Kalshi book moves with Coinbase within the same second; 60 s CF Benchmarks settlement average.
+  - *Crypto ladders fair value* (`crypto_fv`; research only): HAR/Student-t model blended with the
+    mid on KXBTCD/ETHD/SOLD/XRPD at T − 2/4 h: +4.1c (t 3.1) → +5.8c (t 2.2). **Skeptic: downgrade
+    to WEAK** — the model adds nothing (−0.56c vs same price bucket/side; −2.9c paired vs a 55–92c
+    favourite control; a mid-only recalibration does as well). What remains is a model-free favourite
+    bias 2–4 h before close (+5c dev, +6.5c holdout, Jun 0c, Nov 12c; at 8–24 h favourites lose),
+    NO side and November only (Oct +3.0c t 0.7). Weekly-clustered Holm p 0.073. Minor bug:
+    `fill_null` vs NaN (crypto_fv.py:388-390), immaterial.
+  - *Crypto flow* (`crypto_flow`; research only, 578 cells): maker NO does not carry over (−13.6c/fill
+    dev; spot-informed fills); no favourite-longshot bias on daily/weekly ladders. Monthly one-touch
+    NO at 5–10c, 168 h: +4.3c → +4.4c with 0 losses in 109 fills but 54 events / 9 monthly cycles
+    (p 0.17), $0.4–0.7/week, and a crash month touches many legs at once. **Weak.**
+  - **Net:** no new live strategy and nothing to promote to paper. Both crypto candidates are weak
+    after review and stay research-only. Three studies (awards, maker_carry, xs_ml) show the maker-NO
+    mechanism does not generalise beyond mentions and the cmn universe: on thin, low-attention
+    events the cheap-leg fills are informed. The near-expiry longshot premium recurs (apr, cmn,
+    deadline_hazard, crypto_fv favourites) but is small per dollar and tail-exposed at $100. Shared
+    Kalshi public rate limits (429s at ~0.1–1.4 requests/s from 12 agents) cut several dev samples;
+    the live services logged no 429s. Robots-blocked hosts added this round: presidency.ucsb.edu,
+    c-span.org, factba.se, rollcall.com, kalshi.com (429), ucd.ie, cepr.org, mpra, Gold Derby,
+    AwardsWatch, YouTube data, AP, Deadline, noaadata.apps.nsidc.org, gml.noaa.gov `/webdata/`,
+    spc.noaa.gov, exoplanetarchive, CoinGecko `/api`, api.exchange.coinbase.com (401).
