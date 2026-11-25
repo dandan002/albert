@@ -48,7 +48,15 @@ Each phase ends with a **live smoke run that produces non-empty, sanity-checked 
       ask on the matched market (or the Polymarket price as a proxy).
 - [x] **Market inefficiencies:** calibration by category × price bucket (favorite-longshot bias)
       and cross-venue gaps.
-- [ ] Late-resolution drift (not built yet).
+- [x] Late-resolution drift (`late_resolution`, 2026-11-23): settlement is fast outside chart series;
+      near-certain takers lose (−1.7c holdout). No edge. Lead: Ramp AI Index / LMArena release
+      recorder.
+- [x] Second swarm (2026-11-23, 12 agents + 2 skeptics; `.planning/research/SUMMARY.md`): mentions
+      word model, literature, portfolio, deadline hazard, late resolution, maker-NO carry-over,
+      awards, cross-sectional model, science/health, and three crypto studies (research-only
+      exception). No new live or paper strategy; both crypto candidates downgraded to weak.
+- [ ] Portfolio proposals awaiting the user's decision (`data/research/portfolio/report.md`): cmn
+      paper cap $40, gates by fills needed (cmn ≈ 164), per-bot guard caps before any second live bot.
 - [x] Literature re-tests (`research literature`, 2026-11-03): maker/taker, sum-of-legs arb,
       category calibration slopes, rolling-min reversion, move reversal. Only the maker
       premium survives.
@@ -91,8 +99,9 @@ Each phase ends with a **live smoke run that produces non-empty, sanity-checked 
       trades): maker 24h/20h = −1.7% per filled $ (t = −0.8). No edge on major leagues.
 - [x] Weather (NWS/IEM): model loses to the market at every slot; decided brackets priced
       correctly. No edge at hourly resolution.
-- [ ] Volume-blind maker test for Weather and minor sports (needs candles + windowed trades
-      for every leg of each event).
+- [x] Volume-blind maker test for Weather and minor sports (`maker_carry`, 2026-11-23): daily
+      high/low flow is informed (−5.1c holdout), minor sports have no qualifying legs, rain ladder
+      weak (+4.5c, t 1.3). No edge.
 - [ ] Move the paper loop to a GCE VM (deploy/gcp.md).
 - [ ] Run it for >= 2 weeks or >= 100 fills and compare to the historical maker returns.
 

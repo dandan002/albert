@@ -1,5 +1,40 @@
 # Live (cash) maker pilot: plan
 
+**UPDATE, 2026-11-25 ~18:50 UTC: two more rules trade real money.** User: "Let's just run the
+approval NO and culture maker live please". They went live after 4 days of paper (apr 11/11 settled
+NO, +$0.53; cmn 1 fill, +$0.16). The paper pass bars were not met; the user chose to go live. The
+paper service keeps running as the control.
+- **Service:** `albert-live-forward@prod` (`albert.live_forward`, `albert live forward`,
+  `deploy/forward-prod.conf`).
+- **cmn** (tag `albc`): the paper culture maker-NO rule with real post-only 1-lot NO bids. Each bid
+  expires at its leg's close. Worst case (resting bids + unsettled fills) ≤ $15.
+- **apr** (tag `alba`): the paper approval 5–15c NO rule as 1-lot immediate-or-cancel takers at
+  1 − bid. Worst case ≤ $5. One change from paper: legs where NO + fee ≥ 99c are skipped, since they
+  cannot profit (a 1c bid → 99c + 1c fee; found in the dry smoke).
+- **Order client:** `KalshiTrader(allow_taker=True)` now permits non-post-only prod orders only as
+  IOC/FOK, and only on that one client. The per-order caps still apply.
+- **Caps:** the bots' worst cases now sum to the guard's $60 at-risk KILL line (mentions $40 +
+  cmn $15 + apr $5).
+- **Fees re-checked from the API's series schedule:** 36 series quadratic ×1, KXLLM1 also charges
+  maker fees. kalshi.com is robots-blocked for us.
+- **Safety:** markets with any position or other order are skipped. KILL or STOP cancels everything
+  and exits; HALT cancels resting bids and pauses; SIGTERM cancels and the next start reposts
+  the cmn bids.
+- **Ledger:** `data/live/forward/prod/ledger.jsonl` and `status.json`. The guard books the fills
+  under `albc` / `alba` (`albert live check --env prod`).
+- **Dry smoke** (real reads, orders only logged) at the next real decision times: cmn would post 5
+  bids over 3 events (NO 0.83–0.85); apr would have taken only a 1c-bid leg, now skipped.
+- **Decision times:** apr daily at 06:00 UTC (settle − 12 h); cmn at each event's close − 72 h (next:
+  2026-11-26 14:59 UTC).
+
+**UPDATE, 2026-11-23 05:45 UTC**: second research swarm finished (12 agents + 2 skeptics;
+`.planning/research/SUMMARY.md`). No new live or paper strategy; no service was restarted or changed
+(the live services logged no 429s during the swarm). Pending user decisions from the portfolio study
+(`data/research/portfolio/report.md`): raise the cmn paper cash cap $25 → $40 (would restart
+`albert-paper-forward`), replace the paper pass bars with fills-needed gates (cmn ≈ 164 fills), and
+add per-bot guard caps before any second live bot (the $60 at-risk KILL would trip with mentions +
+cmn). Mentions supply risk: Kalshi has listed no Trump mention events since Nov 11.
+
 **UPDATE, 2026-11-21 01:50 UTC**: new paper service `albert-paper-forward` (`albert.paper_forward`;
 never sends an order, Kalshi public data only), started 01:45 UTC: forward paper tests of the swarm's
 culture maker NO (`cmn`), HITS → KXALBUMEQUIV (`hits`) and approval NO (`apr`) rules, $25 paper
