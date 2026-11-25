@@ -1,0 +1,52 @@
+{
+ "params": {
+  "limit": 500,
+  "minimum_start_date": "2026-11-14T00:00:00Z",
+  "category": "Mentions"
+ },
+ "response": {
+  "milestones": [
+   {
+    "category": "Mentions",
+    "details": {
+     "main_game_event_ticker": "KXEARNINGSMENTIONWMT-26NOV19",
+     "quarter": "Q3 2027",
+     "ticker": "WMT"
+    },
+    "end_date": "2026-11-19T14:30:00Z",
+    "id": "a766fee8-0ae3-4a57-87fb-d541b2f01fc3",
+    "last_updated_ts": "2026-10-23T00:29:49.771813Z",
+    "notification_message": "What will be said during the Walmart Earnings Call?",
+    "primary_event_tickers": [
+     "KXEARNINGSMENTIONWMT-26NOV19"
+    ],
+    "related_event_tickers": [
+     "KXEARNINGSMENTIONWMT-26NOV19"
+    ],
+    "source_ids": {},
+    "start_date": "2026-11-19T13:00:00Z",
+    "title": "Walmart Earnings Call",
+    "type": "company_report"
+   },
+   {
+    "category": "Mentions",
+    "details": {},
+    "end_date": "2026-11-19T01:00:00Z",
+    "id": "721e2924-891c-431a-b1c5-198eda018c71",
+    "last_updated_ts": "2026-10-13T18:32:52.01796Z",
+    "notification_message": "What will JD Vance say at the NYT DealBook Summit?",
+    "primary_event_tickers": [
+     "KXVANCEMENTION-26NOV18"
+    ],
+    "related_event_tickers": [
+     "KXVANCEMENTION-26NOV18"
+    ],
+    "source_ids": {},
+    "start_date": "2026-11-18T13:00:00Z",
+    "title": "JD Vance at NYT DealBook Summit",
+    "type": "one_off_milestone"
+   }
+  ],
+  "cursor": ""
+ }
+}

@@ -1,0 +1,64 @@
+{
+ "venue": "kalshi",
+ "url": "https://api.elections.kalshi.com/trade-api/v2/markets/trades",
+ "params": {
+  "ticker": "KXBTC15M-26NOV221945-45",
+  "limit": 1000,
+  "min_ts": 1795394580,
+  "max_ts": 1795394700
+ },
+ "fetched_at": "2026-11-23T00:59:35.905451+00:00",
+ "response": {
+  "cursor": "EhIKEAcqEq9GsY0_GyNq9m2fZUEaDAiGmY7YBhCw2efMAQ",
+  "trades": [
+   {
+    "count_fp": "7.66",
+    "created_time": "2026-11-23T00:44:59.991583Z",
+    "is_block_trade": false,
+    "no_price_dollars": "0.9990",
+    "taker_book_side": "bid",
+    "taker_outcome_side": "yes",
+    "taker_side": "yes",
+    "ticker": "KXBTC15M-26NOV221945-45",
+    "trade_id": "072a12af-0519-94ff-8bc7-745170705c99",
+    "yes_price_dollars": "0.0010"
+   },
+   {
+    "count_fp": "10.41",
+    "created_time": "2026-11-23T00:44:59.982727Z",
+    "is_block_trade": false,
+    "no_price_dollars": "0.9990",
+    "taker_book_side": "bid",
+    "taker_outcome_side": "yes",
+    "taker_side": "yes",
+    "ticker": "KXBTC15M-26NOV221945-45",
+    "trade_id": "072a12af-0519-a5bf-865c-af7b9d1bd571",
+    "yes_price_dollars": "0.0010"
+   },
+   {
+    "count_fp": "35.23",
+    "created_time": "2026-11-23T00:44:59.979358Z",
+    "is_block_trade": false,
+    "no_price_dollars": "0.9990",
+    "taker_book_side": "bid",
+    "taker_outcome_side": "yes",
+    "taker_side": "yes",
+    "ticker": "KXBTC15M-26NOV221945-45",
+    "trade_id": "072a12af-0519-9e9b-c365-52009cfbeff9",
+    "yes_price_dollars": "0.0010"
+   },
+   {
+    "count_fp": "1831.90",
+    "created_time": "2026-11-23T00:44:59.919485Z",
+    "is_block_trade": false,
+    "no_price_dollars": "0.9990",
+    "taker_book_side": "bid",
+    "taker_outcome_side": "yes",
+    "taker_side": "yes",
+    "ticker": "KXBTC15M-26NOV221945-45",
+    "trade_id": "072a12af-0519-a9cb-d05a-261bd803ec65",
+    "yes_price_dollars": "0.0010"
+   }
+  ]
+ }
+}

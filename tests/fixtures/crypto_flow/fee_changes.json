@@ -1,0 +1,40 @@
+{
+ "venue": "kalshi",
+ "url": "https://api.elections.kalshi.com/trade-api/v2/series/fee_changes",
+ "params": {
+  "show_historical": "true"
+ },
+ "fetched_at": "2026-11-23T01:00:05.208461+00:00",
+ "response": {
+  "series_fee_change_arr": [
+   {
+    "fee_multiplier": 0,
+    "fee_type": "quadratic",
+    "id": "529f23f6-5574-4ff0-b923-db3d7c134f19",
+    "scheduled_ts": "2026-02-26T03:45:00Z",
+    "series_ticker": "KXETHY"
+   },
+   {
+    "fee_multiplier": 0,
+    "fee_type": "quadratic",
+    "id": "80e167b5-0272-438c-b68f-4cd2c9f470b3",
+    "scheduled_ts": "2026-02-26T03:15:00Z",
+    "series_ticker": "KXBTCY"
+   },
+   {
+    "fee_multiplier": 1,
+    "fee_type": "quadratic_with_maker_fees",
+    "id": "1ec69e74-e933-4add-bf7c-17159755becb",
+    "scheduled_ts": "2026-09-03T18:35:23Z",
+    "series_ticker": "KXRTX5090MON"
+   },
+   {
+    "fee_multiplier": 1,
+    "fee_type": "quadratic_with_maker_fees",
+    "id": "f2e6f476-4055-45d3-ac69-402cd6d1384e",
+    "scheduled_ts": "2026-09-03T18:35:23Z",
+    "series_ticker": "KXH200W"
+   }
+  ]
+ }
+}

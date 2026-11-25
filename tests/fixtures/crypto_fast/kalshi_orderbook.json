@@ -1,0 +1,14 @@
+{
+ "venue": "kalshi",
+ "url": "https://api.elections.kalshi.com/trade-api/v2/markets/KXBTC15M-26NOV221945-45/orderbook",
+ "params": {
+  "depth": 5
+ },
+ "fetched_at": "2026-11-23T00:59:35.286401+00:00",
+ "response": {
+  "orderbook_fp": {
+   "no_dollars": [],
+   "yes_dollars": []
+  }
+ }
+}

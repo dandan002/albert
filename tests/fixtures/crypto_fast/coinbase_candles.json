@@ -1,0 +1,47 @@
+{
+ "venue": "coinbase",
+ "url": "https://api.coinbase.com/api/v3/brokerage/market/products/BTC-USD/candles",
+ "params": {
+  "start": 1789054800,
+  "end": 1789056059,
+  "granularity": "ONE_MINUTE",
+  "limit": 350
+ },
+ "fetched_at": "2026-11-23T01:13:11.126538+00:00",
+ "response": {
+  "candles": [
+   {
+    "start": "1789056000",
+    "low": "77201.86",
+    "high": "77258.82",
+    "open": "77218.74",
+    "close": "77258.82",
+    "volume": "3.22506377"
+   },
+   {
+    "start": "1789055940",
+    "low": "77187.13",
+    "high": "77218.75",
+    "open": "77196.09",
+    "close": "77218.74",
+    "volume": "1.15006074"
+   },
+   {
+    "start": "1789055880",
+    "low": "77175.28",
+    "high": "77214.39",
+    "open": "77175.28",
+    "close": "77195.8",
+    "volume": "1.00118712"
+   },
+   {
+    "start": "1789055820",
+    "low": "77157.32",
+    "high": "77182",
+    "open": "77165.63",
+    "close": "77175.28",
+    "volume": "4.8405209"
+   }
+  ]
+ }
+}

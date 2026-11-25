@@ -1,0 +1,2 @@
+{"t_recv":1795396017961003389,"msg":"{\"channel\":\"trade\",\"type\":\"update\",\"data\":[{\"symbol\":\"SOL/USD\",\"side\":\"sell\",\"price\":70.50,\"qty\":6.70257634,\"ord_type\":\"limit\",\"trade_id\":35911806,\"timestamp\":\"2026-11-23T01:06:57.904365Z\"}]}"}
+{"t_recv":1795396017961123488,"msg":"{\"channel\":\"trade\",\"type\":\"update\",\"data\":[{\"symbol\":\"SOL/USD\",\"side\":\"sell\",\"price\":70.50,\"qty\":18.29742366,\"ord_type\":\"limit\",\"trade_id\":35911807,\"timestamp\":\"2026-11-23T01:06:57.905849Z\"}]}"}
