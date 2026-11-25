@@ -831,6 +831,87 @@ def live_mentions(
     asyncio.run(main())
 
 
+@live_app.command("forward")
+def live_forward(
+    env: str = typer.Option("prod", "--env", help="prod (real orders; needs --live and KALSHI_LIVE_ENABLED=1) | "
+                            "dry (prod data and account reads; orders are only logged)"),
+    live: bool = typer.Option(False, "--live", help="Required for prod"),
+    rules: str = typer.Option("cmn,apr", help="Comma list: cmn (culture maker NO), apr (approval NO)"),
+    cmn_cap: float = typer.Option(15.0, help="$ worst case for cmn: resting NO bids + fills not yet settled"),
+    apr_cap: float = typer.Option(5.0, help="$ worst case for apr: fills not yet settled"),
+    minutes: float = typer.Option(525600.0),
+    poll_s: float = typer.Option(60.0),
+    once: bool = typer.Option(False, "--once", help="dry only: one pass (decisions due now), then exit"),
+) -> None:
+    """Culture maker NO (albc) and approval NO (alba) with real orders: the albert.paper_forward rules
+    run by albert.live_forward. Stop with `touch data/live/forward/STOP` or SIGTERM (a SIGTERM's
+    cancelled cmn bids are reposted at the next start)."""
+    import asyncio
+    import signal
+
+    from albert.live_forward import RULES, DryTrader, ForwardBot, ForwardLimits
+    from albert.paper_forward import Public
+    from albert.venues.kalshi_trade import KalshiTrader, signer_for
+
+    want = tuple(r.strip() for r in rules.split(",") if r.strip())
+    if not want or any(r not in RULES for r in want):
+        raise typer.BadParameter(f"--rules must be a comma list of {', '.join(RULES)}")
+    if env not in ("prod", "dry"):
+        raise typer.BadParameter("--env must be prod or dry")
+    if once and env != "dry":
+        raise typer.BadParameter("--once is for --env dry")
+    if cmn_cap <= 0 or apr_cap <= 0:
+        raise typer.BadParameter("caps must be positive")
+    root = settings().data_dir / "live" / "forward"
+    dry = None
+    if env == "dry":
+        if live:
+            raise typer.BadParameter("--live makes no sense with --env dry")
+        dry = DryTrader(KalshiTrader("prod", signer_for("prod"), allow_prod=False, actor="forward-dry"))
+        traders, switches, closers = {r: dry for r in want}, None, [dry]
+    else:
+        safety = _safety("prod")
+        traders = {}
+        if "cmn" in want:
+            traders["cmn"] = KalshiTrader("prod", signer_for("prod"), allow_prod=live, actor="albc", **safety)
+        if "apr" in want:
+            traders["apr"] = KalshiTrader("prod", signer_for("prod"), allow_prod=live, actor="alba",
+                                          allow_taker=True, **safety)
+        closers = list(traders.values())
+        if not all(t.writable for t in closers):
+            raise typer.BadParameter("prod is not enabled for orders (needs KALSHI_LIVE_ENABLED=1 and --live)")
+        switches = safety["switches"]
+    bot = ForwardBot(env, traders, Public(), root, limits=ForwardLimits(cmn_cap, apr_cap), rules=want,
+                     switches=switches, stop_file=root / "STOP",
+                     log=lambda m: typer.echo(f"{datetime.now(UTC):%Y-%m-%dT%H:%M:%SZ} {m}"))
+
+    async def main():
+        task = asyncio.current_task()
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, task.cancel)
+        typer.echo(f"live forward {env}: rules {','.join(want)}, caps cmn ${cmn_cap:.2f} apr ${apr_cap:.2f} "
+                   f"({bot.dir})")
+        try:
+            if once:
+                await bot.prepare()
+                await bot.tick()
+                typer.echo(json.dumps(bot.status(bot.clock()), indent=1, default=str))
+                typer.echo(f"dry orders logged (not sent): {len(dry.sent)}")
+                for b in dry.sent:
+                    typer.echo(f"  {b['client_order_id']} {b['ticker']} {b['side']} {b['price']} "
+                               f"post_only={b['post_only']} tif={b['time_in_force']}")
+            else:
+                await bot.run(minutes, poll_s)
+        except asyncio.CancelledError:
+            pass
+        finally:
+            for c in closers:
+                await c.aclose()
+
+    asyncio.run(main())
+
+
 @live_app.command("l2")
 def live_l2(
     env: str = ENV_OPT,

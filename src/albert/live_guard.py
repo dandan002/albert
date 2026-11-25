@@ -16,7 +16,7 @@ this module adds what sits above them, shared by every bot on the account.
       deduplicated by trade_id: the exchange's record, not the bots' own ledgers.
     - ``order_tags.jsonl``: order id -> client_order_id (REST fills carry no client_order_id), from
       ``GET /portfolio/orders/{id}``. The prefix names the bot (``albm`` mentions, ``albi`` / ``albl``
-      makers); anything else is the user's manual trading and is left out of the bot book.
+      makers, ``albc`` culture maker NO, ``alba`` approval NO); anything else is the user's manual trading and is left out of the bot book.
 * **Guard** (``albert live guard``; systemd ``albert-guard@prod``), every ``poll_s``:
     1. syncs fills and their order tags;
     2. marks the bot book, every ``alb*`` fill: a settled market at its settlement value, an open
